@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0-beta.2] - 2024-01-13
+
+### Fixed
+- **Test Suite**: Fixed all remaining test failures (167/167 tests now passing)
+- **Rate Limiting**: Fixed rate limiter configuration in EtsyClient constructor to properly respect `minRequestInterval`
+- **Token Manager**: Fixed fs mocking issues in FileTokenStorage tests
+- **Integration Tests**: Fixed timing issues and caching interference in rate limiting tests
+- **Daily Reset**: Improved rate limiter daily reset logic and testing
+- **Caching**: Fixed caching interference with rate limiting tests by allowing cache disable
+
+### Added
+- **Testing Guide**: Added comprehensive `TEST_PACKAGE.md` with step-by-step testing instructions
+- **Type Support**: Added `minRequestInterval` to EtsyClientConfig interface
+
+### Changed
+- **Rate Limiter**: Enhanced rate limiter to properly handle edge cases and large daily limits
+- **Error Handling**: Improved error propagation in client makeRequest method
+
+### Technical Improvements
+- 100% test coverage with all 167 tests passing
+- Improved timer handling in tests using fake timers
+- Better mock isolation in integration tests
+- Enhanced rate limiter state management
+
 ## [1.0.0-beta.1] - 2024-01-13
 
 ### Added
