@@ -92,3 +92,7 @@ temp/
 *.njsproj
 *.sln
 *.sw?
+
+# Examples
+test-package
+examples

@@ -21,11 +21,6 @@ export {
   FileTokenStorage
 } from './auth/token-manager';
 
-export type {
-  TokenRefreshCallback,
-  TokenStorage
-} from './auth/token-manager';
-
 // ============================================================================
 // Rate Limiting Exports
 // ============================================================================
@@ -45,6 +40,8 @@ export type {
   // Authentication Types
   EtsyTokens,
   EtsyTokenResponse,
+  TokenRefreshCallback,
+  TokenStorage,
   
   // API Response Types
   EtsyApiResponse,
@@ -57,7 +54,6 @@ export type {
   EtsyListingProduct,
   EtsyListingOffering,
   EtsyListingPropertyValue,
-  
   
   // API Parameters
   ListingParams,
@@ -85,9 +81,9 @@ export {
 
 import { EtsyClient } from './client';
 import { AuthHelper } from './auth/auth-helper';
-import { TokenManager, TokenStorage } from './auth/token-manager';
+import { TokenManager } from './auth/token-manager';
 import { EtsyRateLimiter } from './rate-limiting';
-import { EtsyClientConfig, AuthHelperConfig, RateLimitConfig } from './types';
+import { EtsyClientConfig, AuthHelperConfig, RateLimitConfig, TokenStorage } from './types';
 
 /**
  * Create a new Etsy client with configuration

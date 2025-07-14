@@ -3,7 +3,7 @@
   "version": "1.0.0-beta.2",
   "type": "module",
   "description": "JavaScript/TypeScript client for the Etsy Open API v3 with OAuth 2.0 authentication",
-  "main": "dist/index.js",
+  "main": "dist/index.cjs",
   "module": "dist/index.esm.js",
   "types": "dist/index.d.ts",
   "files": [
@@ -45,7 +45,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/profplum700/etsy-v3-api-client.git"
+    "url": "git+https://github.com/profplum700/etsy-v3-api-client.git"
   },
   "bugs": {
     "url": "https://github.com/profplum700/etsy-v3-api-client/issues"
@@ -76,7 +76,7 @@
   "exports": {
     ".": {
       "import": "./dist/index.esm.js",
-      "require": "./dist/index.js",
+      "require": "./dist/index.cjs",
       "types": "./dist/index.d.ts"
     }
   },

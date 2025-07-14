@@ -3,21 +3,7 @@
  * Handles automatic token refresh and storage
  */
 
-import { EtsyTokens, EtsyTokenResponse, EtsyAuthError, EtsyClientConfig } from '../types';
-
-/**
- * Token refresh callback function type
- */
-export type TokenRefreshCallback = (accessToken: string, refreshToken: string, expiresAt: Date) => void;
-
-/**
- * Token storage interface for persisting tokens
- */
-export interface TokenStorage {
-  save(tokens: EtsyTokens): Promise<void>;
-  load(): Promise<EtsyTokens | null>;
-  clear(): Promise<void>;
-}
+import { EtsyTokens, EtsyTokenResponse, EtsyAuthError, EtsyClientConfig, TokenRefreshCallback, TokenStorage } from '../types';
 
 /**
  * In-memory token storage implementation

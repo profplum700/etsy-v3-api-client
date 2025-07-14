@@ -26,7 +26,9 @@ const plugins = [
     declaration: false,
     declarationMap: false,
     compilerOptions: {
-      skipLibCheck: true
+      skipLibCheck: true,
+      target: 'ES2020',
+      useDefineForClassFields: false
     }
   })
 ];
@@ -64,7 +66,7 @@ export default [
   {
     input: 'src/index.ts',
     output: {
-      file: pkg.main,
+      file: 'dist/index.cjs',
       format: 'cjs',
       sourcemap: true,
       exports: 'named',

@@ -56,6 +56,15 @@ export interface EtsyTokenResponse {
   scope: string;
 }
 
+// Token Management Types
+export type TokenRefreshCallback = (accessToken: string, refreshToken: string, expiresAt: Date) => void;
+
+export interface TokenStorage {
+  save(tokens: EtsyTokens): Promise<void>;
+  load(): Promise<EtsyTokens | null>;
+  clear(): Promise<void>;
+}
+
 // ============================================================================
 // Etsy API Response Types
 // ============================================================================
