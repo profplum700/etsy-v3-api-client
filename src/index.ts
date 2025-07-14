@@ -18,9 +18,12 @@ export { AuthHelper, ETSY_SCOPES, COMMON_SCOPE_COMBINATIONS } from './auth/auth-
 export { 
   TokenManager, 
   MemoryTokenStorage, 
-  FileTokenStorage,
-  type TokenRefreshCallback,
-  type TokenStorage
+  FileTokenStorage
+} from './auth/token-manager';
+
+export type {
+  TokenRefreshCallback,
+  TokenStorage
 } from './auth/token-manager';
 
 // ============================================================================
