@@ -33,7 +33,7 @@ describe('TokenManager', () => {
     };
 
     mockFetch = jest.fn();
-    (global as any).fetch = mockFetch;
+    (global as unknown as { fetch: jest.Mock }).fetch = mockFetch;
 
     // Set up fs mocks properly
     mockFs = require('fs').promises as jest.Mocked<typeof fs>;

@@ -11,7 +11,8 @@ export interface EtsyClientConfig {
   accessToken: string;
   refreshToken: string;
   expiresAt: Date;
-  refreshSave?: (accessToken: string, refreshToken: string, expiresAt: Date) => void;
+   
+  refreshSave?: (_accessToken: string, _refreshToken: string, _expiresAt: Date) => void;
   
   // Optional configuration
   baseUrl?: string;
@@ -57,10 +58,12 @@ export interface EtsyTokenResponse {
 }
 
 // Token Management Types
-export type TokenRefreshCallback = (accessToken: string, refreshToken: string, expiresAt: Date) => void;
+ 
+export type TokenRefreshCallback = (_accessToken: string, _refreshToken: string, _expiresAt: Date) => void;
 
 export interface TokenStorage {
-  save(tokens: EtsyTokens): Promise<void>;
+   
+  save(_tokens: EtsyTokens): Promise<void>;
   load(): Promise<EtsyTokens | null>;
   clear(): Promise<void>;
 }
@@ -319,25 +322,53 @@ export interface RateLimitStatus {
 export class EtsyApiError extends Error {
   constructor(
     message: string,
-    public statusCode?: number,
-    public response?: unknown
+    public _statusCode?: number,
+    public _response?: unknown
   ) {
     super(message);
     this.name = 'EtsyApiError';
   }
+
+  /**
+   * HTTP status code associated with the error, if available.
+   */
+  get statusCode(): number | undefined {
+    return this._statusCode;
+  }
+
+  /**
+   * Raw response body returned by the Etsy API, if available.
+   */
+  get response(): unknown | undefined {
+    return this._response;
+  }
 }
 
 export class EtsyAuthError extends Error {
-  constructor(message: string, public code?: string) {
+  constructor(message: string, public _code?: string) {
     super(message);
     this.name = 'EtsyAuthError';
+  }
+
+  /**
+   * OAuth / auth error code returned by Etsy, if provided.
+   */
+  get code(): string | undefined {
+    return this._code;
   }
 }
 
 export class EtsyRateLimitError extends Error {
-  constructor(message: string, public retryAfter?: number) {
+  constructor(message: string, public _retryAfter?: number) {
     super(message);
     this.name = 'EtsyRateLimitError';
+  }
+
+  /**
+   * Number of seconds suggested by Etsy to wait before retrying the request.
+   */
+  get retryAfter(): number | undefined {
+    return this._retryAfter;
   }
 }
 
@@ -346,17 +377,24 @@ export class EtsyRateLimitError extends Error {
 // ============================================================================
 
 export interface CacheStorage {
-  get(key: string): Promise<string | null>;
-  set(key: string, value: string, ttl?: number): Promise<void>;
-  delete(key: string): Promise<void>;
+   
+  get(_key: string): Promise<string | null>;
+   
+  set(_key: string, _value: string, _ttl?: number): Promise<void>;
+   
+  delete(_key: string): Promise<void>;
   clear(): Promise<void>;
 }
 
 export interface LoggerInterface {
-  debug(message: string, ...args: unknown[]): void;
-  info(message: string, ...args: unknown[]): void;
-  warn(message: string, ...args: unknown[]): void;
-  error(message: string, ...args: unknown[]): void;
+   
+  debug(_message: string, ..._args: unknown[]): void;
+   
+  info(_message: string, ..._args: unknown[]): void;
+   
+  warn(_message: string, ..._args: unknown[]): void;
+   
+  error(_message: string, ..._args: unknown[]): void;
 }
 
 // ============================================================================

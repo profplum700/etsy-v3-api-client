@@ -16,18 +16,26 @@ import {
   SearchParams,
   EtsyApiError,
   EtsyAuthError,
+  EtsyTokens,
+  RateLimitStatus,
   LoggerInterface,
   CacheStorage
 } from './types';
 import { TokenManager } from './auth/token-manager';
 import { EtsyRateLimiter } from './rate-limiting';
+import { assertFetchSupport, isNode } from './utils/environment';
 
 /**
  * Default logger implementation
  */
 class DefaultLogger implements LoggerInterface {
   debug(message: string, ...args: unknown[]): void {
-    if (process.env.NODE_ENV === 'development') {
+    // Only log debug in development (check both browser and Node.js)
+    const isDevelopment = isNode 
+      ? process.env.NODE_ENV === 'development'
+      : window.location?.hostname === 'localhost' || window.location?.hostname === '127.0.0.1';
+    
+    if (isDevelopment) {
       console.log(`[DEBUG] ${message}`, ...args);
     }
   }
@@ -366,7 +374,7 @@ export class EtsyClient {
   /**
    * Get rate limit status
    */
-  public getRateLimitStatus() {
+  public getRateLimitStatus(): RateLimitStatus {
     return this.rateLimiter.getRateLimitStatus();
   }
 
@@ -382,7 +390,7 @@ export class EtsyClient {
   /**
    * Get current tokens
    */
-  public getCurrentTokens() {
+  public getCurrentTokens(): EtsyTokens | null {
     return this.tokenManager.getCurrentTokens();
   }
 
@@ -396,7 +404,7 @@ export class EtsyClient {
   /**
    * Refresh token manually
    */
-  public async refreshToken() {
+  public async refreshToken(): Promise<EtsyTokens> {
     return this.tokenManager.refreshToken();
   }
 
@@ -404,12 +412,7 @@ export class EtsyClient {
    * Fetch implementation that works in both Node.js and browser
    */
   private async fetch(url: string, options: RequestInit): Promise<Response> {
-    if (typeof fetch === 'undefined') {
-      throw new EtsyAuthError(
-        'Fetch is not available. Please provide a fetch implementation or use Node.js 18+ or a modern browser.',
-        'FETCH_NOT_AVAILABLE'
-      );
-    }
+    assertFetchSupport();
     return fetch(url, options);
   }
 }

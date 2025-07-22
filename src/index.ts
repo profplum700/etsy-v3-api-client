@@ -18,7 +18,10 @@ export { AuthHelper, ETSY_SCOPES, COMMON_SCOPE_COMBINATIONS } from './auth/auth-
 export { 
   TokenManager, 
   MemoryTokenStorage, 
-  FileTokenStorage
+  FileTokenStorage,
+  LocalStorageTokenStorage,
+  SessionStorageTokenStorage,
+  createDefaultTokenStorage
 } from './auth/token-manager';
 
 // ============================================================================
@@ -26,6 +29,28 @@ export {
 // ============================================================================
 
 export { EtsyRateLimiter, defaultRateLimiter } from './rate-limiting';
+
+// ============================================================================
+// Utility Exports
+// ============================================================================
+
+export {
+  isBrowser,
+  isNode,
+  hasLocalStorage,
+  hasSessionStorage,
+  getEnvironmentInfo,
+  getAvailableStorage
+} from './utils/environment';
+
+export {
+  generateCodeVerifier,
+  generateState,
+  createCodeChallenge,
+  generateRandomBase64Url,
+  sha256,
+  sha256Base64Url
+} from './utils/crypto';
 
 
 // ============================================================================

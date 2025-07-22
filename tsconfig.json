@@ -2,7 +2,7 @@
   "compilerOptions": {
     "target": "ES2022",
     "module": "ESNext",
-    "lib": ["ES2022", "DOM"],
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "moduleResolution": "node",
     "allowJs": false,
     "outDir": "./dist",
@@ -43,14 +43,12 @@
     "importsNotUsedAsValues": "remove"
   },
   "include": [
-    "src/**/*"
+    "src/**/*",
+    "__tests__/**/*"
   ],
   "exclude": [
     "node_modules",
     "dist",
-    "__tests__",
-    "**/*.test.ts",
-    "**/*.spec.ts",
     "examples"
   ]
 }

@@ -1,6 +1,6 @@
 {
   "name": "@profplum700/etsy-v3-api-client",
-  "version": "1.0.0-beta.4",
+  "version": "1.0.0-beta.5",
   "type": "module",
   "description": "JavaScript/TypeScript client for the Etsy Open API v3 with OAuth 2.0 authentication",
   "main": "dist/index.cjs",
@@ -17,8 +17,8 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "lint": "eslint src/**/*.ts",
-    "lint:fix": "eslint --fix \"src/**/*.ts\"",
+    "lint": "eslint --config eslint.config.mjs .",
+    "lint:fix": "eslint --fix --config eslint.config.mjs .",
     "type-check": "tsc --noEmit",
     "dev": "rollup -c --watch",
     "prepublishOnly": "npm run build && npm run test",
@@ -36,7 +36,14 @@
     "client",
     "sdk",
     "e-commerce",
-    "marketplace"
+    "marketplace",
+    "browser",
+    "universal",
+    "isomorphic",
+    "nodejs",
+    "nextjs",
+    "react",
+    "web"
   ],
   "author": {
     "name": "Henry",
@@ -52,7 +59,7 @@
   },
   "homepage": "https://github.com/profplum700/etsy-v3-api-client#readme",
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^28.0.6",
@@ -75,13 +82,34 @@
   },
   "exports": {
     ".": {
+      "browser": {
+        "import": "./dist/browser.esm.js",
+        "require": "./dist/browser.umd.js"
+      },
+      "node": {
+        "import": "./dist/node.esm.js",
+        "require": "./dist/node.cjs"
+      },
       "import": "./dist/index.esm.js",
       "require": "./dist/index.cjs",
+      "types": "./dist/index.d.ts"
+    },
+    "./browser": {
+      "import": "./dist/browser.esm.js",
+      "require": "./dist/browser.umd.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./node": {
+      "import": "./dist/node.esm.js",
+      "require": "./dist/node.cjs",
       "types": "./dist/index.d.ts"
     }
   },
   "sideEffects": false,
   "publishConfig": {
     "access": "public"
+  },
+  "dependencies": {
+    "@eslint/js": "^9.31.0"
   }
 }

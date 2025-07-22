@@ -230,7 +230,7 @@ describe('Utility Functions', () => {
       expect(authHelper).toBeInstanceOf(AuthHelper);
     });
 
-    it('should pass configuration to AuthHelper', () => {
+    it('should pass configuration to AuthHelper', async () => {
       const config = {
         keystring: 'test-key',
         redirectUri: 'https://example.com/callback',
@@ -240,7 +240,7 @@ describe('Utility Functions', () => {
 
       const authHelper = createAuthHelper(config);
       expect(authHelper).toBeInstanceOf(AuthHelper);
-      expect(authHelper.getState()).toBe('custom-state');
+      expect(await authHelper.getState()).toBe('custom-state');
     });
   });
 
@@ -333,10 +333,10 @@ describe('Type Definitions', () => {
   describe('Type guards and validation', () => {
     it('should validate ETSY_WHEN_MADE_VALUES type', () => {
       const testValue = '1950s';
-      expect(ETSY_WHEN_MADE_VALUES.includes(testValue as any)).toBe(true);
+      expect(ETSY_WHEN_MADE_VALUES.includes(testValue as typeof ETSY_WHEN_MADE_VALUES[number])).toBe(true);
       
       const invalidValue = '2000s';
-      expect(ETSY_WHEN_MADE_VALUES.includes(invalidValue as any)).toBe(false);
+      expect(ETSY_WHEN_MADE_VALUES.includes(invalidValue as typeof ETSY_WHEN_MADE_VALUES[number])).toBe(false);
     });
 
     it('should validate error instances', () => {
@@ -369,7 +369,7 @@ describe('Integration with other modules', () => {
     expect(client.getCurrentTokens()).toBeDefined();
   });
 
-  it('should work correctly with AuthHelper', () => {
+  it('should work correctly with AuthHelper', async () => {
     const config = {
       keystring: 'test-key',
       redirectUri: 'https://example.com/callback',
@@ -377,7 +377,8 @@ describe('Integration with other modules', () => {
     };
 
     const authHelper = createAuthHelper(config);
-    expect(authHelper.getAuthUrl()).toContain('https://www.etsy.com/oauth/connect');
+    const authUrl = await authHelper.getAuthUrl();
+    expect(authUrl).toContain('https://www.etsy.com/oauth/connect');
     expect(authHelper.getScopes()).toEqual(['shops_r', 'listings_r']);
   });
 

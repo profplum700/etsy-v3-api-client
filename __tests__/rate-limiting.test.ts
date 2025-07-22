@@ -316,8 +316,6 @@ describe('EtsyRateLimiter', () => {
         minRequestInterval: 100
       });
       
-      const startTime = Date.now();
-      
       // Make multiple requests with timer advancement
       const promises = [];
       for (let i = 0; i < 5; i++) {
@@ -326,9 +324,6 @@ describe('EtsyRateLimiter', () => {
         jest.advanceTimersByTime(100);
       }
       await Promise.all(promises);
-      
-      const endTime = Date.now();
-      const elapsedTime = endTime - startTime;
       
       // Should have processed all requests
       expect(rateLimiter.getRemainingRequests()).toBe(9995);

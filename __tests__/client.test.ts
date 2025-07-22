@@ -3,7 +3,7 @@
  */
 
 import { EtsyClient } from '../src/client';
-import { EtsyApiError, EtsyAuthError, EtsyClientConfig } from '../src/types';
+import { EtsyApiError, EtsyClientConfig } from '../src/types';
 import { TokenManager } from '../src/auth/token-manager';
 import { EtsyRateLimiter } from '../src/rate-limiting';
 
@@ -49,7 +49,7 @@ describe('EtsyClient', () => {
         token_type: 'Bearer',
         scope: 'shops_r listings_r'
       })
-    } as any;
+    } as unknown as jest.Mocked<TokenManager>;
 
     // Mock EtsyRateLimiter
     mockRateLimiter = {
@@ -61,11 +61,11 @@ describe('EtsyClient', () => {
         canMakeRequest: true
       }),
       canMakeRequest: jest.fn().mockReturnValue(true)
-    } as any;
+    } as unknown as jest.Mocked<EtsyRateLimiter>;
 
     // Mock fetch
     mockFetch = jest.fn();
-    (global as any).fetch = mockFetch;
+    (global as unknown as { fetch: jest.Mock }).fetch = mockFetch;
 
     // Setup constructor mocks
     (TokenManager as jest.Mock).mockImplementation(() => mockTokenManager);
@@ -87,7 +87,7 @@ describe('EtsyClient', () => {
     });
 
     it('should initialize rate limiter with default settings', () => {
-      const client = new EtsyClient(mockConfig);
+      new EtsyClient(mockConfig);
       expect(EtsyRateLimiter).toHaveBeenCalledWith({
         maxRequestsPerDay: 10000,
         maxRequestsPerSecond: 10,
@@ -104,7 +104,7 @@ describe('EtsyClient', () => {
           maxRequestsPerSecond: 5
         }
       };
-      const client = new EtsyClient(configWithRateLimit);
+      new EtsyClient(configWithRateLimit);
       expect(EtsyRateLimiter).toHaveBeenCalledWith({
         maxRequestsPerDay: 5000,
         maxRequestsPerSecond: 5,
@@ -119,7 +119,7 @@ describe('EtsyClient', () => {
           enabled: false
         }
       };
-      const client = new EtsyClient(configWithDisabledRateLimit);
+      new EtsyClient(configWithDisabledRateLimit);
       expect(EtsyRateLimiter).toHaveBeenCalledWith(undefined);
     });
   });

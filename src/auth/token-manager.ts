@@ -4,6 +4,7 @@
  */
 
 import { EtsyTokens, EtsyTokenResponse, EtsyAuthError, EtsyClientConfig, TokenRefreshCallback, TokenStorage } from '../types';
+import { isNode, hasLocalStorage, hasSessionStorage, assertFetchSupport } from '../utils/environment';
 
 /**
  * In-memory token storage implementation
@@ -157,12 +158,12 @@ export class TokenManager {
         token_type: tokenResponse.token_type,
         scope: tokenResponse.scope
       };
-    } catch (error) {
-      if (error instanceof EtsyAuthError) {
-        throw error;
+    } catch (_error) {
+      if (_error instanceof EtsyAuthError) {
+        throw _error;
       }
       throw new EtsyAuthError(
-        `Token refresh failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `Token refresh failed: ${_error instanceof Error ? _error.message : 'Unknown error'}`,
         'TOKEN_REFRESH_ERROR'
       );
     }
@@ -238,13 +239,113 @@ export class TokenManager {
    * Fetch implementation that works in both Node.js and browser
    */
   private async fetch(url: string, options: RequestInit): Promise<Response> {
-    if (typeof fetch === 'undefined') {
-      throw new EtsyAuthError(
-        'Fetch is not available. Please provide a fetch implementation or use Node.js 18+ or a modern browser.',
-        'FETCH_NOT_AVAILABLE'
-      );
-    }
+    assertFetchSupport();
     return fetch(url, options);
+  }
+}
+
+/**
+ * Create appropriate token storage based on current environment
+ */
+export function createDefaultTokenStorage(options?: {
+  filePath?: string;
+  storageKey?: string;
+  preferSession?: boolean;
+}): TokenStorage {
+  if (isNode) {
+    return new FileTokenStorage(options?.filePath || './etsy-tokens.json');
+  } else if (options?.preferSession && hasSessionStorage) {
+    return new SessionStorageTokenStorage(options?.storageKey);
+  } else if (hasLocalStorage) {
+    return new LocalStorageTokenStorage(options?.storageKey);
+  } else if (hasSessionStorage) {
+    return new SessionStorageTokenStorage(options?.storageKey);
+  } else {
+    return new MemoryTokenStorage();
+  }
+}
+
+/**
+ * Browser localStorage token storage implementation
+ */
+export class LocalStorageTokenStorage implements TokenStorage {
+  private storageKey: string;
+
+  constructor(storageKey: string = 'etsy_tokens') {
+    if (!hasLocalStorage) {
+      throw new Error('localStorage is not available in this environment');
+    }
+    this.storageKey = storageKey;
+  }
+
+  async save(tokens: EtsyTokens): Promise<void> {
+    const data = JSON.stringify(tokens);
+    localStorage.setItem(this.storageKey, data);
+  }
+
+  async load(): Promise<EtsyTokens | null> {
+    try {
+      const data = localStorage.getItem(this.storageKey);
+      if (!data) return null;
+      
+      const tokens = JSON.parse(data);
+      
+      // Convert expires_at string back to Date
+      if (tokens.expires_at) {
+        tokens.expires_at = new Date(tokens.expires_at);
+      }
+      
+      return tokens;
+    } catch {
+      // Invalid data
+      return null;
+    }
+  }
+
+  async clear(): Promise<void> {
+    localStorage.removeItem(this.storageKey);
+  }
+}
+
+/**
+ * Browser sessionStorage token storage implementation
+ */
+export class SessionStorageTokenStorage implements TokenStorage {
+  private storageKey: string;
+
+  constructor(storageKey: string = 'etsy_tokens') {
+    if (!hasSessionStorage) {
+      throw new Error('sessionStorage is not available in this environment');
+    }
+    this.storageKey = storageKey;
+  }
+
+  async save(tokens: EtsyTokens): Promise<void> {
+    const data = JSON.stringify(tokens);
+    sessionStorage.setItem(this.storageKey, data);
+  }
+
+  async load(): Promise<EtsyTokens | null> {
+    try {
+      const data = sessionStorage.getItem(this.storageKey);
+      if (!data) return null;
+      
+      const tokens = JSON.parse(data);
+      
+      // Convert expires_at string back to Date
+      if (tokens.expires_at) {
+        tokens.expires_at = new Date(tokens.expires_at);
+      }
+      
+      return tokens;
+    } catch {
+      // Invalid data
+      return null;
+    }
+  }
+
+  async clear(): Promise<void> {
+    sessionStorage.removeItem(this.storageKey);
   }
 }
 
@@ -255,19 +356,32 @@ export class FileTokenStorage implements TokenStorage {
   private filePath: string;
 
   constructor(filePath: string) {
+    if (!isNode) {
+      throw new Error('FileTokenStorage is only available in Node.js environments');
+    }
     this.filePath = filePath;
   }
 
   async save(tokens: EtsyTokens): Promise<void> {
-    const { promises: fs } = await import('fs');
-    const data = JSON.stringify(tokens, null, 2);
-    await fs.writeFile(this.filePath, data, 'utf8');
+    if (!isNode) {
+      throw new Error('FileTokenStorage is only available in Node.js');
+    }
+    try {
+      const fs = await import(/* webpackIgnore: true */ 'fs');
+      const data = JSON.stringify(tokens, null, 2);
+      await fs.promises.writeFile(this.filePath, data, 'utf8');
+    } catch {
+      throw new Error('Failed to save tokens to file');
+    }
   }
 
   async load(): Promise<EtsyTokens | null> {
+    if (!isNode) {
+      return null;
+    }
     try {
-      const { promises: fs } = await import('fs');
-      const data = await fs.readFile(this.filePath, 'utf8');
+      const fs = await import(/* webpackIgnore: true */ 'fs');
+      const data = await fs.promises.readFile(this.filePath, 'utf8');
       const tokens = JSON.parse(data);
       
       // Convert expires_at string back to Date
@@ -276,17 +390,20 @@ export class FileTokenStorage implements TokenStorage {
       }
       
       return tokens;
-    } catch (error) {
+    } catch {
       // File doesn't exist or is invalid
       return null;
     }
   }
 
   async clear(): Promise<void> {
+    if (!isNode) {
+      return;
+    }
     try {
-      const { promises: fs } = await import('fs');
-      await fs.unlink(this.filePath);
-    } catch (error) {
+      const fs = await import(/* webpackIgnore: true */ 'fs');
+      await fs.promises.unlink(this.filePath);
+    } catch {
       // File doesn't exist, ignore
     }
   }

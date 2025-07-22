@@ -28,7 +28,7 @@ describe('AuthHelper', () => {
     };
 
     mockFetch = jest.fn();
-    (global as any).fetch = mockFetch;
+    global.fetch = mockFetch;
 
     // Mock crypto functions
     (randomBytes as jest.Mock).mockReturnValue({
@@ -48,22 +48,22 @@ describe('AuthHelper', () => {
       expect(authHelper).toBeInstanceOf(AuthHelper);
     });
 
-    it('should generate code verifier and state if not provided', () => {
+    it('should generate code verifier and state if not provided', async () => {
       const authHelper = new AuthHelper(mockConfig);
       expect(randomBytes).toHaveBeenCalledWith(32);
-      expect(authHelper.getCodeVerifier()).toBe('mock-random-string');
-      expect(authHelper.getState()).toBe('mock-random-string');
+      expect(await authHelper.getCodeVerifier()).toBe('mock-random-string');
+      expect(await authHelper.getState()).toBe('mock-random-string');
     });
 
-    it('should use provided code verifier and state', () => {
+    it('should use provided code verifier and state', async () => {
       const configWithPkce = {
         ...mockConfig,
         codeVerifier: 'custom-code-verifier',
         state: 'custom-state'
       };
       const authHelper = new AuthHelper(configWithPkce);
-      expect(authHelper.getCodeVerifier()).toBe('custom-code-verifier');
-      expect(authHelper.getState()).toBe('custom-state');
+      expect(await authHelper.getCodeVerifier()).toBe('custom-code-verifier');
+      expect(await authHelper.getState()).toBe('custom-state');
     });
   });
 
@@ -74,27 +74,28 @@ describe('AuthHelper', () => {
       authHelper = new AuthHelper(mockConfig);
     });
 
-    it('should generate correct authorization URL', () => {
-      const url = authHelper.getAuthUrl();
-      
-      expect(createHash).toHaveBeenCalledWith('sha256');
-      expect(url).toContain('https://www.etsy.com/oauth/connect');
-      expect(url).toContain('response_type=code');
-      expect(url).toContain('client_id=test-api-key');
-      expect(url).toContain('redirect_uri=https%3A%2F%2Fexample.com%2Fcallback');
-      expect(url).toContain('scope=shops_r+listings_r');
-      expect(url).toContain('state=mock-random-string');
-      expect(url).toContain('code_challenge=mock-code-challenge');
-      expect(url).toContain('code_challenge_method=S256');
+    it('should generate a valid authorization URL', async () => {
+      const authUrl = await authHelper.getAuthUrl();
+      const url = new URL(authUrl);
+
+      expect(url.origin).toBe('https://www.etsy.com');
+      expect(url.pathname).toBe('/oauth/connect');
+      expect(url.searchParams.get('response_type')).toBe('code');
+      expect(url.searchParams.get('client_id')).toBe(mockConfig.keystring);
+      expect(url.searchParams.get('redirect_uri')).toBe(mockConfig.redirectUri);
+      expect(url.searchParams.get('scope')).toBe('shops_r listings_r');
+      expect(url.searchParams.get('state')).toBe(await authHelper.getState());
+      expect(url.searchParams.get('code_challenge')).toBe('mock-code-challenge');
+      expect(url.searchParams.get('code_challenge_method')).toBe('S256');
     });
 
-    it('should handle URL encoding properly', () => {
+    it('should handle URL encoding properly', async () => {
       const configWithSpecialChars = {
         ...mockConfig,
         redirectUri: 'https://example.com/callback?param=value&other=test'
       };
       const authHelper = new AuthHelper(configWithSpecialChars);
-      const url = authHelper.getAuthUrl();
+      const url = await authHelper.getAuthUrl();
       
       expect(url).toContain('redirect_uri=https%3A%2F%2Fexample.com%2Fcallback%3Fparam%3Dvalue%26other%3Dtest');
     });
@@ -107,19 +108,23 @@ describe('AuthHelper', () => {
       authHelper = new AuthHelper(mockConfig);
     });
 
-    it('should set authorization code with valid state', () => {
-      const state = authHelper.getState();
-      authHelper.setAuthorizationCode('test-auth-code', state);
+    it('should set authorization code with valid state', async () => {
+      const state = await authHelper.getState();
+      await authHelper.setAuthorizationCode('test-auth-code', state);
       // Should not throw any errors
     });
 
-    it('should throw error with invalid state', () => {
-      expect(() => {
-        authHelper.setAuthorizationCode('test-auth-code', 'invalid-state');
-      }).toThrow(EtsyAuthError);
-      expect(() => {
-        authHelper.setAuthorizationCode('test-auth-code', 'invalid-state');
-      }).toThrow('State parameter mismatch');
+    it('should throw error for state mismatch', async () => {
+      const state = await authHelper.getState();
+      await expect(authHelper.setAuthorizationCode('test-code', `${state}-invalid`))
+        .rejects.toThrow(new EtsyAuthError('State parameter mismatch', 'INVALID_STATE'));
+    });
+
+    it('should throw error with invalid state', async () => {
+      await expect(authHelper.setAuthorizationCode('test-auth-code', 'invalid-state'))
+        .rejects.toThrow(EtsyAuthError);
+      await expect(authHelper.setAuthorizationCode('test-auth-code', 'invalid-state'))
+        .rejects.toThrow('State parameter mismatch');
     });
   });
 
@@ -149,7 +154,7 @@ describe('AuthHelper', () => {
         json: jest.fn().mockResolvedValue(mockTokenResponse)
       });
 
-      const state = authHelper.getState();
+      const state = await authHelper.getState();
       authHelper.setAuthorizationCode('test-auth-code', state);
 
       const result = await authHelper.getAccessToken();
@@ -183,8 +188,8 @@ describe('AuthHelper', () => {
         text: jest.fn().mockResolvedValue('Invalid authorization code')
       });
 
-      const state = authHelper.getState();
-      authHelper.setAuthorizationCode('invalid-auth-code', state);
+      const state = await authHelper.getState();
+      await authHelper.setAuthorizationCode('invalid-auth-code', state);
 
       await expect(authHelper.getAccessToken()).rejects.toThrow(EtsyAuthError);
       await expect(authHelper.getAccessToken()).rejects.toThrow('Token exchange failed: 400 Bad Request');
@@ -193,14 +198,12 @@ describe('AuthHelper', () => {
     it('should handle network errors', async () => {
       mockFetch.mockRejectedValue(new Error('Network error'));
 
-      const state = authHelper.getState();
-      authHelper.setAuthorizationCode('test-auth-code', state);
+      const state = await authHelper.getState();
+      await authHelper.setAuthorizationCode('test-auth-code', state);
 
       await expect(authHelper.getAccessToken()).rejects.toThrow(EtsyAuthError);
       await expect(authHelper.getAccessToken()).rejects.toThrow('Token exchange failed: Network error');
     });
-
-    
   });
 
   describe('getter methods', () => {
@@ -210,12 +213,16 @@ describe('AuthHelper', () => {
       authHelper = new AuthHelper(mockConfig);
     });
 
-    it('should return state', () => {
-      expect(authHelper.getState()).toBe('mock-random-string');
+    it('should return state', async () => {
+      const state = await authHelper.getState();
+      expect(state).toBe('mock-random-string');
+      expect(state.length).toBeGreaterThan(0);
     });
 
-    it('should return code verifier', () => {
-      expect(authHelper.getCodeVerifier()).toBe('mock-random-string');
+    it('should return code verifier', async () => {
+      const codeVerifier = await authHelper.getCodeVerifier();
+      expect(codeVerifier).toBe('mock-random-string');
+      expect(codeVerifier.length).toBeGreaterThan(0);
     });
 
     it('should return scopes', () => {
@@ -230,13 +237,13 @@ describe('AuthHelper', () => {
   });
 
   describe('crypto functions', () => {
-    it('should generate secure random strings', () => {
+    it('should generate secure random strings', async () => {
       // Test with real crypto functions
       jest.unmock('crypto');
       
       const authHelper = new AuthHelper(mockConfig);
-      const codeVerifier = authHelper.getCodeVerifier();
-      const state = authHelper.getState();
+      const codeVerifier = await authHelper.getCodeVerifier();
+      const state = await authHelper.getState();
       
       expect(codeVerifier).toBeDefined();
       expect(state).toBeDefined();
@@ -266,7 +273,7 @@ describe('AuthHelper', () => {
         json: jest.fn().mockResolvedValue(mockTokenResponse)
       });
 
-      const state = authHelper.getState();
+      const state = await authHelper.getState();
       authHelper.setAuthorizationCode('test-auth-code', state);
 
       await authHelper.getAccessToken();
@@ -276,20 +283,22 @@ describe('AuthHelper', () => {
 
     it('should throw error when fetch is not available', async () => {
       // Remove global fetch to test fallback behavior
-      const originalFetch = (global as any).fetch;
-      const originalGlobalThis = globalThis.fetch;
-      
-      delete (global as any).fetch;
-      delete (globalThis as any).fetch;
+      const originalFetch = global.fetch;
+      const originalGlobalThisFetch = globalThis.fetch;
 
-      const state = authHelper.getState();
-      authHelper.setAuthorizationCode('test-auth-code', state);
+      // @ts-ignore
+      delete global.fetch;
+      // @ts-ignore
+      delete globalThis.fetch;
+
+      const state = await authHelper.getState();
+      await authHelper.setAuthorizationCode('test-auth-code', state);
 
       await expect(authHelper.getAccessToken()).rejects.toThrow('Fetch is not available');
 
       // Restore fetch
-      (global as any).fetch = originalFetch;
-      globalThis.fetch = originalGlobalThis;
+      global.fetch = originalFetch;
+      globalThis.fetch = originalGlobalThisFetch;
     });
   });
 });

@@ -6,10 +6,14 @@
 import { EtsyClient } from '../src/client';
 import { AuthHelper } from '../src/auth/auth-helper';
 import { TokenManager, MemoryTokenStorage } from '../src/auth/token-manager';
-import { EtsyRateLimiter } from '../src/rate-limiting';
 import { EtsyApiError, EtsyAuthError, EtsyRateLimitError } from '../src/types';
+import { createHash, randomBytes } from 'crypto';
 
-
+// Mock crypto module
+jest.mock('crypto', () => ({
+  createHash: jest.fn(),
+  randomBytes: jest.fn()
+}));
 
 describe('Integration Tests', () => {
   let mockFetch: jest.Mock;
@@ -17,7 +21,18 @@ describe('Integration Tests', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockFetch = jest.fn();
-    (global as any).fetch = mockFetch;
+    (global as unknown as { fetch: jest.Mock }).fetch = mockFetch;
+
+    // Mock crypto functions
+    (randomBytes as jest.Mock).mockReturnValue({
+      toString: jest.fn().mockReturnValue('mock-random-string')
+    });
+
+    const mockHashInstance = {
+      update: jest.fn().mockReturnThis(),
+      digest: jest.fn().mockReturnValue('mock-code-challenge')
+    };
+    (createHash as jest.Mock).mockReturnValue(mockHashInstance);
   });
 
   describe('Authentication Flow Integration', () => {
@@ -26,15 +41,17 @@ describe('Integration Tests', () => {
       const authHelper = new AuthHelper({
         keystring: 'test-api-key',
         redirectUri: 'https://example.com/callback',
-        scopes: ['shops_r', 'listings_r']
+        scopes: ['shops_r', 'listings_r'],
+        state: 'mock-random-string',
+        codeVerifier: 'mock-random-string'
       });
 
-      const authUrl = authHelper.getAuthUrl();
+      const authUrl = await authHelper.getAuthUrl();
       expect(authUrl).toContain('https://www.etsy.com/oauth/connect');
 
       // Step 2: Simulate auth callback and token exchange
-      const state = authHelper.getState();
-      authHelper.setAuthorizationCode('test-auth-code', state);
+      const state = await authHelper.getState();
+      await authHelper.setAuthorizationCode('test-auth-code', state);
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
@@ -116,7 +133,7 @@ describe('Integration Tests', () => {
     it('should enforce rate limits during API calls', async () => {
       // Setup fresh mock for this test
       const testMockFetch = jest.fn();
-      (global as any).fetch = testMockFetch;
+      (global as unknown as { fetch: jest.Mock }).fetch = testMockFetch;
       
       const client = new EtsyClient({
         keystring: 'test-api-key',
@@ -155,7 +172,7 @@ describe('Integration Tests', () => {
     it('should throw rate limit error when daily limit exceeded', async () => {
       // Setup fresh mock for this test
       const testMockFetch = jest.fn();
-      (global as any).fetch = testMockFetch;
+      (global as unknown as { fetch: jest.Mock }).fetch = testMockFetch;
       
       const client = new EtsyClient({
         keystring: 'test-api-key',

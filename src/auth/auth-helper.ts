@@ -3,8 +3,9 @@
  * Inspired by the Python etsyv3 library authentication flow
  */
 
-import { createHash, randomBytes } from 'crypto';
 import { AuthHelperConfig, EtsyTokens, EtsyTokenResponse, EtsyAuthError } from '../types';
+import { generateCodeVerifier, generateState, createCodeChallenge } from '../utils/crypto';
+import { assertFetchSupport } from '../utils/environment';
 
 /**
  * Helper class for OAuth 2.0 authentication flow with Etsy API v3
@@ -20,48 +21,40 @@ export class AuthHelper {
   private readonly keystring: string;
   private readonly redirectUri: string;
   private readonly scopes: string[];
-  private readonly codeVerifier: string;
-  private readonly state: string;
+  private codeVerifier: string;
+  private state: string;
   private authorizationCode?: string;
   private receivedState?: string;
+  private initialized: Promise<void>;
 
   constructor(config: AuthHelperConfig) {
     this.keystring = config.keystring;
     this.redirectUri = config.redirectUri;
     this.scopes = config.scopes;
-    this.codeVerifier = config.codeVerifier || this.generateCodeVerifier();
-    this.state = config.state || this.generateState();
+    this.codeVerifier = config.codeVerifier || '';
+    this.state = config.state || '';
+    
+    // Initialize async values
+    this.initialized = this.initialize(config);
   }
 
-  /**
-   * Generate a cryptographically secure code verifier for PKCE
-   */
-  private generateCodeVerifier(): string {
-    return randomBytes(32).toString('base64url');
-  }
-
-  /**
-   * Generate a cryptographically secure state parameter
-   */
-  private generateState(): string {
-    return randomBytes(32).toString('base64url');
-  }
-
-  /**
-   * Create code challenge from code verifier using SHA256
-   */
-  private createCodeChallenge(codeVerifier: string): string {
-    return createHash('sha256')
-      .update(codeVerifier)
-      .digest('base64url');
+  private async initialize(config: AuthHelperConfig): Promise<void> {
+    if (!config.codeVerifier) {
+      this.codeVerifier = await generateCodeVerifier();
+    }
+    if (!config.state) {
+      this.state = await generateState();
+    }
   }
 
   /**
    * Get the authorization URL for the OAuth 2.0 flow
    * User should visit this URL to authorize the application
    */
-  public getAuthUrl(): string {
-    const codeChallenge = this.createCodeChallenge(this.codeVerifier);
+  public async getAuthUrl(): Promise<string> {
+    await this.initialized;
+    
+    const codeChallenge = await createCodeChallenge(this.codeVerifier);
     
     const params = new URLSearchParams({
       response_type: 'code',
@@ -80,7 +73,9 @@ export class AuthHelper {
    * Set the authorization code and state received from the callback
    * This should be called in your redirect URI handler
    */
-  public setAuthorizationCode(code: string, state: string): void {
+  public async setAuthorizationCode(code: string, state: string): Promise<void> {
+    await this.initialized;
+    
     if (state !== this.state) {
       throw new EtsyAuthError('State parameter mismatch', 'INVALID_STATE');
     }
@@ -107,7 +102,8 @@ export class AuthHelper {
     });
 
     try {
-      const response = await this.fetch('https://api.etsy.com/v3/public/oauth/token', {
+      assertFetchSupport();
+      const response = await fetch('https://api.etsy.com/v3/public/oauth/token', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -147,14 +143,16 @@ export class AuthHelper {
   /**
    * Get current state parameter (useful for validation)
    */
-  public getState(): string {
+  public async getState(): Promise<string> {
+    await this.initialized;
     return this.state;
   }
 
   /**
    * Get current code verifier (useful for debugging)
    */
-  public getCodeVerifier(): string {
+  public async getCodeVerifier(): Promise<string> {
+    await this.initialized;
     return this.codeVerifier;
   }
 
@@ -172,18 +170,6 @@ export class AuthHelper {
     return this.redirectUri;
   }
 
-  /**
-   * Fetch implementation that works in both Node.js and browser
-   */
-  private async fetch(url: string, options: RequestInit): Promise<Response> {
-    if (typeof fetch === 'undefined') {
-      throw new EtsyAuthError(
-        'Fetch is not available. Please provide a fetch implementation or use Node.js 18+ or a modern browser.',
-        'FETCH_NOT_AVAILABLE'
-      );
-    }
-    return fetch(url, options);
-  }
 }
 
 /**
