@@ -83,8 +83,5 @@
   "sideEffects": false,
   "publishConfig": {
     "access": "public"
-  },
-  "dependencies": {
-    "node-fetch": "^3.3.2"
   }
 }

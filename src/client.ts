@@ -404,26 +404,12 @@ export class EtsyClient {
    * Fetch implementation that works in both Node.js and browser
    */
   private async fetch(url: string, options: RequestInit): Promise<Response> {
-    // Use global fetch if available (modern browsers and Node.js 18+)
-    if (typeof globalThis.fetch !== 'undefined') {
-      return globalThis.fetch(url, options);
-    }
-
-    // Check for fetch on global object (test environment)
-    if (typeof (global as any).fetch !== 'undefined') {
-      return (global as any).fetch(url, options);
-    }
-
-    // Fallback to node-fetch for older Node.js versions
-    try {
-      const nodeFetch = await import('node-fetch');
-      const fetch = nodeFetch.default || nodeFetch;
-      return fetch(url, options as any) as any;
-    } catch (error) {
+    if (typeof fetch === 'undefined') {
       throw new EtsyAuthError(
         'Fetch is not available. Please provide a fetch implementation or use Node.js 18+ or a modern browser.',
         'FETCH_NOT_AVAILABLE'
       );
     }
+    return fetch(url, options);
   }
 }

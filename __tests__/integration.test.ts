@@ -9,8 +9,7 @@ import { TokenManager, MemoryTokenStorage } from '../src/auth/token-manager';
 import { EtsyRateLimiter } from '../src/rate-limiting';
 import { EtsyApiError, EtsyAuthError, EtsyRateLimitError } from '../src/types';
 
-// Mock node-fetch
-jest.mock('node-fetch');
+
 
 describe('Integration Tests', () => {
   let mockFetch: jest.Mock;

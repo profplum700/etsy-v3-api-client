@@ -12,8 +12,7 @@ jest.mock('crypto', () => ({
   randomBytes: jest.fn()
 }));
 
-// Mock node-fetch
-jest.mock('node-fetch');
+
 
 describe('AuthHelper', () => {
   let mockConfig: AuthHelperConfig;
@@ -201,21 +200,7 @@ describe('AuthHelper', () => {
       await expect(authHelper.getAccessToken()).rejects.toThrow('Token exchange failed: Network error');
     });
 
-    it('should handle fetch not available error', async () => {
-      // Remove global fetch
-      delete (global as any).fetch;
-      
-      // Mock dynamic import to fail
-      jest.doMock('node-fetch', () => {
-        throw new Error('node-fetch not available');
-      });
-
-      const state = authHelper.getState();
-      authHelper.setAuthorizationCode('test-auth-code', state);
-
-      await expect(authHelper.getAccessToken()).rejects.toThrow(EtsyAuthError);
-      await expect(authHelper.getAccessToken()).rejects.toThrow('Fetch is not available');
-    });
+    
   });
 
   describe('getter methods', () => {

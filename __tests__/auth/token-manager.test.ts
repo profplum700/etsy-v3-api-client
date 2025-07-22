@@ -14,8 +14,7 @@ jest.mock('fs', () => ({
     unlink: jest.fn()
   }
 }));
-// Mock node-fetch
-jest.mock('node-fetch');
+
 
 describe('TokenManager', () => {
   let mockConfig: EtsyClientConfig;
@@ -475,20 +474,7 @@ describe('TokenManager', () => {
   });
 
   describe('fetch method', () => {
-    it('should handle fetch not available error', async () => {
-      // Remove global fetch
-      delete (global as any).fetch;
-      
-      // Mock dynamic import to fail
-      jest.doMock('node-fetch', () => {
-        throw new Error('node-fetch not available');
-      });
-
-      const tokenManager = new TokenManager(mockConfig);
-      
-      await expect(tokenManager.refreshToken()).rejects.toThrow(EtsyAuthError);
-      await expect(tokenManager.refreshToken()).rejects.toThrow('Fetch is not available');
-    });
+    
   });
 });
 

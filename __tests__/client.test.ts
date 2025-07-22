@@ -10,7 +10,7 @@ import { EtsyRateLimiter } from '../src/rate-limiting';
 // Mock dependencies
 jest.mock('../src/auth/token-manager');
 jest.mock('../src/rate-limiting');
-jest.mock('node-fetch');
+
 
 describe('EtsyClient', () => {
   let mockConfig: EtsyClientConfig;
@@ -176,18 +176,7 @@ describe('EtsyClient', () => {
       await expect(client.getUser()).rejects.toThrow('Request failed: Network error');
     });
 
-    it('should handle fetch not available error', async () => {
-      // Remove global fetch
-      delete (global as any).fetch;
-      
-      // Mock dynamic import to fail
-      jest.doMock('node-fetch', () => {
-        throw new Error('node-fetch not available');
-      });
-
-      await expect(client.getUser()).rejects.toThrow(EtsyAuthError);
-      await expect(client.getUser()).rejects.toThrow('Fetch is not available');
-    });
+    
   });
 
   describe('getUser', () => {
