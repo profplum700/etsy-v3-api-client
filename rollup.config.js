@@ -2,10 +2,12 @@ import resolve from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
 import typescript from '@rollup/plugin-typescript';
 import terser from '@rollup/plugin-terser';
+import replace from '@rollup/plugin-replace';
 import dts from 'rollup-plugin-dts';
 import pkg from './package.json' with { type: 'json' };
 
-const external = [
+// External dependencies for Node.js builds
+const nodeExternal = [
   ...Object.keys(pkg.peerDependencies || {}),
   // Node.js built-ins for Node.js builds only
   'fs',
@@ -13,6 +15,9 @@ const external = [
   'buffer',
   'url'
 ];
+
+// No externals for browser builds - we bundle everything except Node.js built-ins
+const browserExternal = [];
 
 // Node.js build plugins
 const nodePlugins = [
@@ -35,6 +40,28 @@ const nodePlugins = [
 
 // Browser build plugins
 const browserPlugins = [
+  replace({
+    preventAssignment: true,
+    values: {
+      // Replace Node.js environment checks with false for browser builds
+      'typeof process !== \'undefined\'': 'false',
+      'process.versions?.node': 'undefined',
+      // Replace isNode checks
+      '!!process.versions?.node': 'false'
+    },
+    delimiters: ['', '']
+  }),
+  replace({
+    preventAssignment: true,
+    values: {
+      // Replace fs import patterns in helper methods
+      'const fs = await import(\'fs\');': 'const fs = { promises: { writeFile: () => {}, readFile: () => {}, unlink: () => {} } };',
+      'await fs.promises.writeFile(filePath, data, \'utf8\');': '/* writeFile not available in browser */',
+      'return await fs.promises.readFile(filePath, \'utf8\');': 'throw new Error(\'readFile not available in browser\');',
+      'await fs.promises.unlink(filePath);': '/* unlink not available in browser */'
+    },
+    delimiters: ['', '']
+  }),
   resolve({
     preferBuiltins: false,
     browser: true,
@@ -83,7 +110,7 @@ export default [
       sourcemap: true,
       inlineDynamicImports: true
     },
-    external,
+    external: nodeExternal,
     plugins: nodePlugins,
     onwarn
   },
@@ -98,7 +125,7 @@ export default [
       exports: 'named',
       inlineDynamicImports: true
     },
-    external,
+    external: nodeExternal,
     plugins: nodePlugins,
     onwarn
   },
@@ -112,7 +139,7 @@ export default [
       sourcemap: true,
       inlineDynamicImports: true
     },
-    external: [], // No externals for browser build
+    external: browserExternal,
     plugins: browserPlugins,
     onwarn
   },
@@ -128,7 +155,7 @@ export default [
       inlineDynamicImports: true,
       exports: 'named'
     },
-    external: [],
+    external: browserExternal,
     plugins: [...browserPlugins, terser()],
     onwarn
   },
@@ -142,7 +169,7 @@ export default [
       sourcemap: true,
       inlineDynamicImports: true
     },
-    external,
+    external: nodeExternal,
     plugins: nodePlugins,
     onwarn
   },
@@ -157,7 +184,7 @@ export default [
       exports: 'named',
       inlineDynamicImports: true
     },
-    external,
+    external: nodeExternal,
     plugins: nodePlugins,
     onwarn
   },
@@ -169,7 +196,7 @@ export default [
       file: pkg.types,
       format: 'esm'
     },
-    external,
+    external: nodeExternal,
     plugins: [dts()],
     onwarn
   }

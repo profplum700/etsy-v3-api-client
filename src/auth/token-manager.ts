@@ -367,9 +367,8 @@ export class FileTokenStorage implements TokenStorage {
       throw new Error('FileTokenStorage is only available in Node.js');
     }
     try {
-      const fs = await import(/* webpackIgnore: true */ 'fs');
       const data = JSON.stringify(tokens, null, 2);
-      await fs.promises.writeFile(this.filePath, data, 'utf8');
+      await this._writeFile(this.filePath, data);
     } catch {
       throw new Error('Failed to save tokens to file');
     }
@@ -380,8 +379,7 @@ export class FileTokenStorage implements TokenStorage {
       return null;
     }
     try {
-      const fs = await import(/* webpackIgnore: true */ 'fs');
-      const data = await fs.promises.readFile(this.filePath, 'utf8');
+      const data = await this._readFile(this.filePath);
       const tokens = JSON.parse(data);
       
       // Convert expires_at string back to Date
@@ -401,10 +399,28 @@ export class FileTokenStorage implements TokenStorage {
       return;
     }
     try {
-      const fs = await import(/* webpackIgnore: true */ 'fs');
-      await fs.promises.unlink(this.filePath);
+      await this._deleteFile(this.filePath);
     } catch {
       // File doesn't exist, ignore
     }
+  }
+
+  // Helper methods that will be excluded from browser builds
+  private async _writeFile(filePath: string, data: string): Promise<void> {
+    if (typeof process === 'undefined') return;
+    const fs = await import('fs');
+    await fs.promises.writeFile(filePath, data, 'utf8');
+  }
+
+  private async _readFile(filePath: string): Promise<string> {
+    if (typeof process === 'undefined') throw new Error('Not available');
+    const fs = await import('fs');
+    return await fs.promises.readFile(filePath, 'utf8');
+  }
+
+  private async _deleteFile(filePath: string): Promise<void> {
+    if (typeof process === 'undefined') return;
+    const fs = await import('fs');
+    await fs.promises.unlink(filePath);
   }
 }
