@@ -2,7 +2,14 @@
  * Unit tests for TokenManager
  */
 
-import { TokenManager, MemoryTokenStorage, FileTokenStorage } from '../../src/auth/token-manager';
+import { 
+  TokenManager, 
+  MemoryTokenStorage, 
+  FileTokenStorage,
+  LocalStorageTokenStorage,
+  SessionStorageTokenStorage,
+  createDefaultTokenStorage
+} from '../../src/auth/token-manager';
 import { EtsyAuthError, EtsyClientConfig, EtsyTokens } from '../../src/types';
 import { promises as fs } from 'fs';
 
@@ -588,5 +595,404 @@ describe('FileTokenStorage', () => {
     await storage.clear();
     
     expect(mockFs.unlink).toHaveBeenCalledWith('/tmp/test-tokens.json');
+  });
+});
+
+describe('LocalStorageTokenStorage', () => {
+  let storage: any;
+  let mockTokens: EtsyTokens;
+  let mockLocalStorage: { [key: string]: string };
+  let LocalStorageTokenStorage: any;
+
+  beforeEach(() => {
+    // Mock browser environment first
+    delete (global as any).process;
+    Object.defineProperty(global, 'window', {
+      value: { document: {} },
+      writable: true,
+      configurable: true,
+    });
+
+    // Mock localStorage
+    mockLocalStorage = {};
+    Object.defineProperty(global, 'localStorage', {
+      value: {
+        getItem: jest.fn((key: string) => mockLocalStorage[key] || null),
+        setItem: jest.fn((key: string, value: string) => {
+          mockLocalStorage[key] = value;
+        }),
+        removeItem: jest.fn((key: string) => {
+          delete mockLocalStorage[key];
+        }),
+        clear: jest.fn(() => {
+          Object.keys(mockLocalStorage).forEach(key => delete mockLocalStorage[key]);
+        }),
+      },
+      writable: true,
+      configurable: true,
+    });
+
+    // Reset modules and import with fresh environment
+    jest.resetModules();
+    ({ LocalStorageTokenStorage } = require('../../src/auth/token-manager'));
+    
+    storage = new LocalStorageTokenStorage('test-tokens');
+    mockTokens = {
+      access_token: 'test-access-token',
+      refresh_token: 'test-refresh-token',
+      expires_at: new Date(Date.now() + 3600000),
+      token_type: 'Bearer',
+      scope: 'shops_r listings_r'
+    };
+  });
+
+  afterEach(() => {
+    delete (global as any).localStorage;
+    delete (global as any).window;
+  });
+
+  it('should save and load tokens', async () => {
+    await storage.save(mockTokens);
+    const loadedTokens = await storage.load();
+    
+    expect(localStorage.setItem).toHaveBeenCalledWith(
+      'test-tokens',
+      expect.stringContaining('"access_token":"test-access-token"')
+    );
+    expect(localStorage.getItem).toHaveBeenCalledWith('test-tokens');
+    expect(loadedTokens).toEqual(mockTokens);
+  });
+
+  it('should return null when no tokens stored', async () => {
+    const loadedTokens = await storage.load();
+    expect(loadedTokens).toBeNull();
+  });
+
+  it('should handle date conversion when loading', async () => {
+    const tokensWithStringDate = {
+      ...mockTokens,
+      expires_at: mockTokens.expires_at.toISOString()
+    };
+    mockLocalStorage['test-tokens'] = JSON.stringify(tokensWithStringDate);
+
+    const loadedTokens = await storage.load();
+    
+    expect(loadedTokens?.expires_at).toBeInstanceOf(Date);
+    expect(loadedTokens?.expires_at).toEqual(mockTokens.expires_at);
+  });
+
+  it('should clear tokens', async () => {
+    await storage.save(mockTokens);
+    await storage.clear();
+    
+    expect(localStorage.removeItem).toHaveBeenCalledWith('test-tokens');
+    
+    const loadedTokens = await storage.load();
+    expect(loadedTokens).toBeNull();
+  });
+
+  it('should handle localStorage errors gracefully', async () => {
+    // Mock localStorage to throw errors
+    (localStorage.setItem as jest.Mock).mockImplementation(() => {
+      throw new Error('Storage quota exceeded');
+    });
+
+    await expect(storage.save(mockTokens)).rejects.toThrow('Storage quota exceeded');
+  });
+
+  it('should handle JSON parse errors', async () => {
+    mockLocalStorage['test-tokens'] = 'invalid-json';
+
+    const loadedTokens = await storage.load();
+    expect(loadedTokens).toBeNull();
+  });
+});
+
+describe('SessionStorageTokenStorage', () => {
+  let storage: any;
+  let mockTokens: EtsyTokens;
+  let mockSessionStorage: { [key: string]: string };
+  let SessionStorageTokenStorage: any;
+
+  beforeEach(() => {
+    // Mock browser environment first
+    delete (global as any).process;
+    Object.defineProperty(global, 'window', {
+      value: { document: {} },
+      writable: true,
+      configurable: true,
+    });
+
+    // Mock sessionStorage
+    mockSessionStorage = {};
+    Object.defineProperty(global, 'sessionStorage', {
+      value: {
+        getItem: jest.fn((key: string) => mockSessionStorage[key] || null),
+        setItem: jest.fn((key: string, value: string) => {
+          mockSessionStorage[key] = value;
+        }),
+        removeItem: jest.fn((key: string) => {
+          delete mockSessionStorage[key];
+        }),
+        clear: jest.fn(() => {
+          Object.keys(mockSessionStorage).forEach(key => delete mockSessionStorage[key]);
+        }),
+      },
+      writable: true,
+      configurable: true,
+    });
+
+    // Reset modules and import with fresh environment
+    jest.resetModules();
+    ({ SessionStorageTokenStorage } = require('../../src/auth/token-manager'));
+    
+    storage = new SessionStorageTokenStorage('test-tokens');
+    mockTokens = {
+      access_token: 'test-access-token',
+      refresh_token: 'test-refresh-token',
+      expires_at: new Date(Date.now() + 3600000),
+      token_type: 'Bearer',
+      scope: 'shops_r listings_r'
+    };
+  });
+
+  afterEach(() => {
+    delete (global as any).sessionStorage;
+    delete (global as any).window;
+  });
+
+  it('should save and load tokens', async () => {
+    await storage.save(mockTokens);
+    const loadedTokens = await storage.load();
+    
+    expect(sessionStorage.setItem).toHaveBeenCalledWith(
+      'test-tokens',
+      expect.stringContaining('"access_token":"test-access-token"')
+    );
+    expect(sessionStorage.getItem).toHaveBeenCalledWith('test-tokens');
+    expect(loadedTokens).toEqual(mockTokens);
+  });
+
+  it('should return null when no tokens stored', async () => {
+    const loadedTokens = await storage.load();
+    expect(loadedTokens).toBeNull();
+  });
+
+  it('should handle date conversion when loading', async () => {
+    const tokensWithStringDate = {
+      ...mockTokens,
+      expires_at: mockTokens.expires_at.toISOString()
+    };
+    mockSessionStorage['test-tokens'] = JSON.stringify(tokensWithStringDate);
+
+    const loadedTokens = await storage.load();
+    
+    expect(loadedTokens?.expires_at).toBeInstanceOf(Date);
+    expect(loadedTokens?.expires_at).toEqual(mockTokens.expires_at);
+  });
+
+  it('should clear tokens', async () => {
+    await storage.save(mockTokens);
+    await storage.clear();
+    
+    expect(sessionStorage.removeItem).toHaveBeenCalledWith('test-tokens');
+    
+    const loadedTokens = await storage.load();
+    expect(loadedTokens).toBeNull();
+  });
+
+  it('should handle sessionStorage errors gracefully', async () => {
+    // Mock sessionStorage to throw errors
+    (sessionStorage.setItem as jest.Mock).mockImplementation(() => {
+      throw new Error('Storage quota exceeded');
+    });
+
+    await expect(storage.save(mockTokens)).rejects.toThrow('Storage quota exceeded');
+  });
+
+  it('should handle JSON parse errors', async () => {
+    mockSessionStorage['test-tokens'] = 'invalid-json';
+
+    const loadedTokens = await storage.load();
+    expect(loadedTokens).toBeNull();
+  });
+});
+
+describe('createDefaultTokenStorage', () => {
+  let originalProcess: any;
+  let originalWindow: any;
+  let originalLocalStorage: any;
+  let originalSessionStorage: any;
+
+  beforeAll(() => {
+    originalProcess = (global as any).process;
+    originalWindow = (global as any).window;
+    originalLocalStorage = (global as any).localStorage;
+    originalSessionStorage = (global as any).sessionStorage;
+  });
+
+  afterAll(() => {
+    // Restore original globals
+    if (originalProcess !== undefined) {
+      (global as any).process = originalProcess;
+    } else {
+      delete (global as any).process;
+    }
+    if (originalWindow !== undefined) {
+      (global as any).window = originalWindow;
+    } else {
+      delete (global as any).window;
+    }
+    if (originalLocalStorage !== undefined) {
+      (global as any).localStorage = originalLocalStorage;
+    } else {
+      delete (global as any).localStorage;
+    }
+    if (originalSessionStorage !== undefined) {
+      (global as any).sessionStorage = originalSessionStorage;
+    } else {
+      delete (global as any).sessionStorage;
+    }
+  });
+
+  const mockBrowserEnvironment = () => {
+    delete (global as any).process;
+    Object.defineProperty(global, 'window', {
+      value: { document: {} },
+      writable: true,
+      configurable: true,
+    });
+    Object.defineProperty(global, 'localStorage', {
+      value: {
+        getItem: jest.fn(),
+        setItem: jest.fn(),
+        removeItem: jest.fn(),
+        clear: jest.fn(),
+      },
+      writable: true,
+      configurable: true,
+    });
+    Object.defineProperty(global, 'sessionStorage', {
+      value: {
+        getItem: jest.fn(),
+        setItem: jest.fn(),
+        removeItem: jest.fn(),
+        clear: jest.fn(),
+      },
+      writable: true,
+      configurable: true,
+    });
+  };
+
+  const mockNodeEnvironment = () => {
+    delete (global as any).window;
+    delete (global as any).localStorage;
+    delete (global as any).sessionStorage;
+    Object.defineProperty(global, 'process', {
+      value: {
+        versions: { node: '18.0.0' },
+        version: 'v18.0.0',
+      },
+      writable: true,
+      configurable: true,
+    });
+  };
+
+  it('should return LocalStorageTokenStorage in browser with localStorage', () => {
+    mockBrowserEnvironment();
+    
+    // Reset modules to ensure fresh import with new environment
+    jest.resetModules();
+    const { createDefaultTokenStorage, LocalStorageTokenStorage } = require('../../src/auth/token-manager');
+    
+    const storage = createDefaultTokenStorage();
+    expect(storage).toBeInstanceOf(LocalStorageTokenStorage);
+  });
+
+  it('should return SessionStorageTokenStorage in browser without localStorage', () => {
+    mockBrowserEnvironment();
+    delete (global as any).localStorage;
+    
+    jest.resetModules();
+    const { createDefaultTokenStorage, SessionStorageTokenStorage } = require('../../src/auth/token-manager');
+    
+    const storage = createDefaultTokenStorage();
+    expect(storage).toBeInstanceOf(SessionStorageTokenStorage);
+  });
+
+  it('should return MemoryTokenStorage in browser without any storage', () => {
+    mockBrowserEnvironment();
+    delete (global as any).localStorage;
+    delete (global as any).sessionStorage;
+    
+    jest.resetModules();
+    const { createDefaultTokenStorage, MemoryTokenStorage } = require('../../src/auth/token-manager');
+    
+    const storage = createDefaultTokenStorage();
+    expect(storage).toBeInstanceOf(MemoryTokenStorage);
+  });
+
+  it('should return FileTokenStorage in Node.js environment', () => {
+    mockNodeEnvironment();
+    
+    const storage = createDefaultTokenStorage();
+    expect(storage).toBeInstanceOf(FileTokenStorage);
+  });
+
+  it('should return FileTokenStorage with custom path in Node.js', () => {
+    mockNodeEnvironment();
+    
+    const storage = createDefaultTokenStorage({ filePath: '/custom/path/tokens.json' });
+    expect(storage).toBeInstanceOf(FileTokenStorage);
+  });
+
+  it('should return MemoryTokenStorage in unsupported environment', () => {
+    delete (global as any).window;
+    delete (global as any).process;
+    delete (global as any).localStorage;
+    delete (global as any).sessionStorage;
+    
+    jest.resetModules();
+    const { createDefaultTokenStorage, MemoryTokenStorage } = require('../../src/auth/token-manager');
+    
+    const storage = createDefaultTokenStorage();
+    expect(storage).toBeInstanceOf(MemoryTokenStorage);
+  });
+
+  it('should handle localStorage access errors', () => {
+    mockBrowserEnvironment();
+    
+    // Mock localStorage to throw on access
+    Object.defineProperty(global, 'localStorage', {
+      get: () => {
+        throw new Error('Access denied');
+      },
+      configurable: true,
+    });
+    
+    jest.resetModules();
+    const { createDefaultTokenStorage, SessionStorageTokenStorage } = require('../../src/auth/token-manager');
+    
+    const storage = createDefaultTokenStorage();
+    expect(storage).toBeInstanceOf(SessionStorageTokenStorage);
+  });
+
+  it('should handle sessionStorage access errors', () => {
+    mockBrowserEnvironment();
+    delete (global as any).localStorage;
+    
+    // Mock sessionStorage to throw on access
+    Object.defineProperty(global, 'sessionStorage', {
+      get: () => {
+        throw new Error('Access denied');
+      },
+      configurable: true,
+    });
+    
+    jest.resetModules();
+    const { createDefaultTokenStorage, MemoryTokenStorage } = require('../../src/auth/token-manager');
+    
+    const storage = createDefaultTokenStorage();
+    expect(storage).toBeInstanceOf(MemoryTokenStorage);
   });
 });

@@ -10,7 +10,7 @@ export const isBrowser = typeof window !== 'undefined' && typeof window.document
 /**
  * Check if we're running in a Node.js environment
  */
-export const isNode = typeof process !== 'undefined' && process.versions?.node;
+export const isNode = typeof process !== 'undefined' && !!process.versions?.node;
 
 /**
  * Check if we're running in a Web Worker

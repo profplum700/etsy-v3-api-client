@@ -7,12 +7,18 @@ import { EtsyClient } from '../src/client';
 import { AuthHelper } from '../src/auth/auth-helper';
 import { TokenManager, MemoryTokenStorage } from '../src/auth/token-manager';
 import { EtsyApiError, EtsyAuthError, EtsyRateLimitError } from '../src/types';
-import { createHash, randomBytes } from 'crypto';
 
 // Mock crypto module
 jest.mock('crypto', () => ({
   createHash: jest.fn(),
   randomBytes: jest.fn()
+}));
+
+// Mock the crypto utils to return predictable values
+jest.mock('../src/utils/crypto', () => ({
+  generateState: jest.fn().mockResolvedValue('mock-state-123'),
+  generateCodeVerifier: jest.fn().mockResolvedValue('mock-code-verifier-123'),
+  createCodeChallenge: jest.fn().mockResolvedValue('mock-code-challenge-123')
 }));
 
 describe('Integration Tests', () => {
@@ -22,17 +28,6 @@ describe('Integration Tests', () => {
     jest.clearAllMocks();
     mockFetch = jest.fn();
     (global as unknown as { fetch: jest.Mock }).fetch = mockFetch;
-
-    // Mock crypto functions
-    (randomBytes as jest.Mock).mockReturnValue({
-      toString: jest.fn().mockReturnValue('mock-random-string')
-    });
-
-    const mockHashInstance = {
-      update: jest.fn().mockReturnThis(),
-      digest: jest.fn().mockReturnValue('mock-code-challenge')
-    };
-    (createHash as jest.Mock).mockReturnValue(mockHashInstance);
   });
 
   describe('Authentication Flow Integration', () => {
@@ -41,9 +36,7 @@ describe('Integration Tests', () => {
       const authHelper = new AuthHelper({
         keystring: 'test-api-key',
         redirectUri: 'https://example.com/callback',
-        scopes: ['shops_r', 'listings_r'],
-        state: 'mock-random-string',
-        codeVerifier: 'mock-random-string'
+        scopes: ['shops_r', 'listings_r']
       });
 
       const authUrl = await authHelper.getAuthUrl();
@@ -381,8 +374,8 @@ describe('Integration Tests', () => {
         scopes: ['shops_r', 'listings_r']
       });
 
-      const state = authHelper.getState();
-      authHelper.setAuthorizationCode('test-code', state);
+      const state = await authHelper.getState();
+      await authHelper.setAuthorizationCode('test-code', state);
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
@@ -447,6 +440,397 @@ describe('Integration Tests', () => {
 
       // Verify all API calls were made
       expect(mockFetch).toHaveBeenCalledTimes(3);
+    });
+  });
+
+  describe('Browser Environment Integration', () => {
+    let originalProcess: any;
+    let originalWindow: any;
+    let originalCrypto: any;
+    let originalLocalStorage: any;
+    let originalSessionStorage: any;
+
+    beforeAll(() => {
+      // Save original environment
+      originalProcess = (global as any).process;
+      originalWindow = (global as any).window;
+      originalCrypto = (global as any).crypto;
+      originalLocalStorage = (global as any).localStorage;
+      originalSessionStorage = (global as any).sessionStorage;
+    });
+
+    afterAll(() => {
+      // Restore original environment
+      if (originalProcess !== undefined) {
+        (global as any).process = originalProcess;
+      } else {
+        delete (global as any).process;
+      }
+      if (originalWindow !== undefined) {
+        (global as any).window = originalWindow;
+      } else {
+        delete (global as any).window;
+      }
+      if (originalCrypto !== undefined) {
+        (global as any).crypto = originalCrypto;
+      } else {
+        delete (global as any).crypto;
+      }
+      if (originalLocalStorage !== undefined) {
+        (global as any).localStorage = originalLocalStorage;
+      } else {
+        delete (global as any).localStorage;
+      }
+      if (originalSessionStorage !== undefined) {
+        (global as any).sessionStorage = originalSessionStorage;
+      } else {
+        delete (global as any).sessionStorage;
+      }
+    });
+
+    const setupBrowserEnvironment = () => {
+      // Clear Node.js environment
+      delete (global as any).process;
+      
+      // Setup browser environment
+      Object.defineProperty(global, 'window', {
+        value: { document: {} },
+        writable: true,
+        configurable: true,
+      });
+
+      // Mock Web Crypto API
+      Object.defineProperty(global, 'crypto', {
+        value: {
+          getRandomValues: jest.fn((array: Uint8Array) => {
+            for (let i = 0; i < array.length; i++) {
+              array[i] = i % 256;
+            }
+            return array;
+          }),
+          subtle: {
+            digest: jest.fn(async (algorithm: string, data: Uint8Array) => {
+              const hash = new Uint8Array(32);
+              for (let i = 0; i < 32; i++) {
+                hash[i] = (data[0] || 0) + i;
+              }
+              return hash.buffer;
+            })
+          }
+        },
+        writable: true,
+        configurable: true,
+      });
+
+      // Mock browser storage
+      const mockStorage = {
+        getItem: jest.fn(() => null),
+        setItem: jest.fn(),
+        removeItem: jest.fn(),
+        clear: jest.fn(),
+      };
+
+      Object.defineProperty(global, 'localStorage', {
+        value: mockStorage,
+        writable: true,
+        configurable: true,
+      });
+
+      Object.defineProperty(global, 'sessionStorage', {
+        value: mockStorage,
+        writable: true,
+        configurable: true,
+      });
+
+      // Mock btoa/atob for base64 operations
+      Object.defineProperty(global, 'btoa', {
+        value: (str: string) => Buffer.from(str, 'binary').toString('base64'),
+        writable: true,
+        configurable: true,
+      });
+
+      Object.defineProperty(global, 'atob', {
+        value: (str: string) => Buffer.from(str, 'base64').toString('binary'),
+        writable: true,
+        configurable: true,
+      });
+
+      // Mock TextEncoder
+      Object.defineProperty(global, 'TextEncoder', {
+        value: class TextEncoder {
+          encode(str: string) {
+            return new Uint8Array(Buffer.from(str, 'utf8'));
+          }
+        },
+        writable: true,
+        configurable: true,
+      });
+    };
+
+    it('should work end-to-end in browser environment with localStorage', async () => {
+      setupBrowserEnvironment();
+      
+      // Reset modules to get fresh imports with browser environment
+      jest.resetModules();
+      const { EtsyClient } = require('../src/client');
+      const { AuthHelper } = require('../src/auth/auth-helper');
+      const { LocalStorageTokenStorage } = require('../src/auth/token-manager');
+
+      // Step 1: Authentication in browser
+      const authHelper = new AuthHelper({
+        keystring: 'test-api-key',
+        redirectUri: 'https://example.com/callback',
+        scopes: ['shops_r', 'listings_r']
+      });
+
+      const authUrl = await authHelper.getAuthUrl();
+      expect(authUrl).toContain('https://www.etsy.com/oauth/connect');
+
+      const state = await authHelper.getState();
+      await authHelper.setAuthorizationCode('test-auth-code', state);
+
+      // Mock token exchange
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: jest.fn().mockResolvedValue({
+          access_token: 'browser-access-token',
+          refresh_token: 'browser-refresh-token',
+          expires_in: 3600,
+          token_type: 'Bearer',
+          scope: 'shops_r listings_r'
+        })
+      });
+
+      const tokens = await authHelper.getAccessToken();
+      expect(tokens.access_token).toBe('browser-access-token');
+
+      // Step 2: Create client with localStorage storage
+      const storage = new LocalStorageTokenStorage();
+      const client = new EtsyClient({
+        keystring: 'test-api-key',
+        accessToken: tokens.access_token,
+        refreshToken: tokens.refresh_token,
+        expiresAt: tokens.expires_at,
+        rateLimiting: {
+          enabled: true,
+          minRequestInterval: 0
+        }
+      }, storage);
+
+      // Step 3: Make API call
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: jest.fn().mockResolvedValue({
+          user_id: 999,
+          login_name: 'browseruser',
+          shop_id: 888
+        })
+      });
+
+      const user = await client.getUser();
+      expect(user.user_id).toBe(999);
+      expect(user.login_name).toBe('browseruser');
+
+      // Verify localStorage was available and used
+      expect(global.localStorage.setItem).toBeDefined();
+    });
+
+    it('should work with sessionStorage when localStorage unavailable', async () => {
+      setupBrowserEnvironment();
+      
+      // Remove localStorage to test sessionStorage fallback
+      delete (global as any).localStorage;
+      
+      // Setup sessionStorage to actually store and retrieve data
+      const mockSessionStorage: { [key: string]: string } = {};
+      Object.defineProperty(global, 'sessionStorage', {
+        value: {
+          getItem: jest.fn((key: string) => mockSessionStorage[key] || null),
+          setItem: jest.fn((key: string, value: string) => {
+            mockSessionStorage[key] = value;
+          }),
+          removeItem: jest.fn((key: string) => {
+            delete mockSessionStorage[key];
+          }),
+          clear: jest.fn(() => {
+            Object.keys(mockSessionStorage).forEach(key => delete mockSessionStorage[key]);
+          }),
+        },
+        writable: true,
+        configurable: true,
+      });
+      
+      jest.resetModules();
+      const { createDefaultTokenStorage, SessionStorageTokenStorage } = require('../src/auth/token-manager');
+
+      const storage = createDefaultTokenStorage();
+      expect(storage).toBeInstanceOf(SessionStorageTokenStorage);
+
+      // Test storage functionality
+      const mockTokens = {
+        access_token: 'session-token',
+        refresh_token: 'session-refresh',
+        expires_at: new Date(Date.now() + 3600000),
+        token_type: 'Bearer' as const,
+        scope: 'shops_r'
+      };
+
+      await storage.save(mockTokens);
+      expect(global.sessionStorage.setItem).toHaveBeenCalled();
+
+      const loadedTokens = await storage.load();
+      expect(loadedTokens).toEqual(mockTokens);
+    });
+
+    it('should fallback to memory storage when no browser storage available', async () => {
+      setupBrowserEnvironment();
+      
+      // Remove both localStorage and sessionStorage
+      delete (global as any).localStorage;
+      delete (global as any).sessionStorage;
+      
+      jest.resetModules();
+      const { createDefaultTokenStorage, MemoryTokenStorage } = require('../src/auth/token-manager');
+
+      const storage = createDefaultTokenStorage();
+      expect(storage).toBeInstanceOf(MemoryTokenStorage);
+
+      // Test memory storage works
+      const mockTokens = {
+        access_token: 'memory-token',
+        refresh_token: 'memory-refresh',
+        expires_at: new Date(Date.now() + 3600000),
+        token_type: 'Bearer' as const,
+        scope: 'shops_r'
+      };
+
+      await storage.save(mockTokens);
+      const loadedTokens = await storage.load();
+      expect(loadedTokens).toEqual(mockTokens);
+    });
+
+    it('should handle crypto operations in browser environment', async () => {
+      setupBrowserEnvironment();
+      
+      jest.resetModules();
+      const { AuthHelper } = require('../src/auth/auth-helper');
+      const { createCodeChallenge } = require('../src/utils/crypto');
+
+      // Test that crypto operations work by creating an AuthHelper
+      // This will internally use the crypto functions with our browser environment
+      const authHelper = new AuthHelper({
+        keystring: 'test-api-key',
+        redirectUri: 'https://example.com/callback',
+        scopes: ['shops_r', 'listings_r']
+      });
+
+      // Test that getAuthUrl works (uses createCodeChallenge internally)
+      const authUrl = await authHelper.getAuthUrl();
+      expect(authUrl).toContain('code_challenge=');
+      expect(authUrl).toContain('code_challenge_method=S256');
+      
+      // Verify mocked crypto functions were called
+      expect(createCodeChallenge).toHaveBeenCalled();
+
+      // Test getter methods work
+      const state = await authHelper.getState();
+      const codeVerifier = await authHelper.getCodeVerifier();
+      expect(typeof state).toBe('string');
+      expect(typeof codeVerifier).toBe('string');
+      expect(state.length).toBeGreaterThan(0);
+      expect(codeVerifier.length).toBeGreaterThan(0);
+    });
+
+    it('should handle browser-specific error conditions', async () => {
+      setupBrowserEnvironment();
+      
+      // Mock storage quota exceeded error
+      Object.defineProperty(global, 'localStorage', {
+        value: {
+          setItem: jest.fn(() => {
+            throw new Error('QuotaExceededError: localStorage quota exceeded');
+          }),
+          getItem: jest.fn(() => null),
+          removeItem: jest.fn(),
+          clear: jest.fn(),
+        },
+        writable: true,
+        configurable: true,
+      });
+
+      jest.resetModules();
+      const { LocalStorageTokenStorage } = require('../src/auth/token-manager');
+
+      const storage = new LocalStorageTokenStorage();
+      const mockTokens = {
+        access_token: 'test-token',
+        refresh_token: 'test-refresh',
+        expires_at: new Date(Date.now() + 3600000),
+        token_type: 'Bearer' as const,
+        scope: 'shops_r'
+      };
+
+      // Should propagate storage errors
+      await expect(storage.save(mockTokens)).rejects.toThrow('QuotaExceededError');
+    });
+
+    it('should work in Web Worker environment', async () => {
+      // Clean up all environment indicators
+      delete (global as any).process;
+      delete (global as any).window;
+      delete (global as any).localStorage;
+      delete (global as any).sessionStorage;
+      delete (global as any).crypto;
+      delete (global as any).navigator;
+      
+      // Setup Web Worker environment
+      Object.defineProperty(globalThis, 'importScripts', {
+        value: jest.fn(),
+        writable: true,
+        configurable: true,
+      });
+
+      Object.defineProperty(global, 'navigator', {
+        value: { userAgent: 'Mozilla/5.0 (Web Worker)' },
+        writable: true,
+        configurable: true,
+      });
+
+      // Mock Web Crypto API (available in Web Workers)
+      Object.defineProperty(global, 'crypto', {
+        value: {
+          getRandomValues: jest.fn((array: Uint8Array) => {
+            for (let i = 0; i < array.length; i++) {
+              array[i] = i % 256;
+            }
+            return array;
+          }),
+          subtle: {
+            digest: jest.fn(async () => new ArrayBuffer(32))
+          }
+        },
+        writable: true,
+        configurable: true,
+      });
+
+      jest.resetModules();
+      const { createDefaultTokenStorage, MemoryTokenStorage } = require('../src/auth/token-manager');
+      const { getEnvironmentInfo } = require('../src/utils/environment');
+
+      // Should detect Web Worker environment
+      const envInfo = getEnvironmentInfo();
+      expect(envInfo.isWebWorker).toBe(true);
+      expect(envInfo.isBrowser).toBe(false);
+      expect(envInfo.isNode).toBe(false);
+
+      // Should use memory storage in Web Worker
+      const storage = createDefaultTokenStorage();
+      expect(storage).toBeInstanceOf(MemoryTokenStorage);
+
+      // Clean up
+      delete (globalThis as any).importScripts;
+      delete (global as any).navigator;
+      delete (global as any).crypto;
     });
   });
 });

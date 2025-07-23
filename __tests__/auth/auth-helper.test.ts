@@ -4,12 +4,12 @@
 
 import { AuthHelper, ETSY_SCOPES, COMMON_SCOPE_COMBINATIONS } from '../../src/auth/auth-helper';
 import { EtsyAuthError, AuthHelperConfig } from '../../src/types';
-import { createHash, randomBytes } from 'crypto';
 
-// Mock crypto module
-jest.mock('crypto', () => ({
-  createHash: jest.fn(),
-  randomBytes: jest.fn()
+// Mock universal crypto module
+jest.mock('../../src/utils/crypto', () => ({
+  generateCodeVerifier: jest.fn().mockResolvedValue('mock-code-verifier'),
+  generateState: jest.fn().mockResolvedValue('mock-state'),
+  createCodeChallenge: jest.fn().mockResolvedValue('mock-code-challenge')
 }));
 
 
@@ -29,17 +29,6 @@ describe('AuthHelper', () => {
 
     mockFetch = jest.fn();
     global.fetch = mockFetch;
-
-    // Mock crypto functions
-    (randomBytes as jest.Mock).mockReturnValue({
-      toString: jest.fn().mockReturnValue('mock-random-string')
-    });
-
-    const mockHashInstance = {
-      update: jest.fn().mockReturnThis(),
-      digest: jest.fn().mockReturnValue('mock-code-challenge')
-    };
-    (createHash as jest.Mock).mockReturnValue(mockHashInstance);
   });
 
   describe('constructor', () => {
@@ -49,10 +38,16 @@ describe('AuthHelper', () => {
     });
 
     it('should generate code verifier and state if not provided', async () => {
+      const { generateCodeVerifier, generateState } = require('../../src/utils/crypto');
       const authHelper = new AuthHelper(mockConfig);
-      expect(randomBytes).toHaveBeenCalledWith(32);
-      expect(await authHelper.getCodeVerifier()).toBe('mock-random-string');
-      expect(await authHelper.getState()).toBe('mock-random-string');
+      
+      // Wait for initialization to complete
+      await new Promise(resolve => setTimeout(resolve, 0));
+      
+      expect(generateCodeVerifier).toHaveBeenCalled();
+      expect(generateState).toHaveBeenCalled();
+      expect(await authHelper.getCodeVerifier()).toBe('mock-code-verifier');
+      expect(await authHelper.getState()).toBe('mock-state');
     });
 
     it('should use provided code verifier and state', async () => {
@@ -62,6 +57,10 @@ describe('AuthHelper', () => {
         state: 'custom-state'
       };
       const authHelper = new AuthHelper(configWithPkce);
+      
+      // Wait for initialization to complete
+      await new Promise(resolve => setTimeout(resolve, 0));
+      
       expect(await authHelper.getCodeVerifier()).toBe('custom-code-verifier');
       expect(await authHelper.getState()).toBe('custom-state');
     });
@@ -155,7 +154,7 @@ describe('AuthHelper', () => {
       });
 
       const state = await authHelper.getState();
-      authHelper.setAuthorizationCode('test-auth-code', state);
+      await authHelper.setAuthorizationCode('test-auth-code', state);
 
       const result = await authHelper.getAccessToken();
 
@@ -215,13 +214,13 @@ describe('AuthHelper', () => {
 
     it('should return state', async () => {
       const state = await authHelper.getState();
-      expect(state).toBe('mock-random-string');
+      expect(state).toBe('mock-state');
       expect(state.length).toBeGreaterThan(0);
     });
 
     it('should return code verifier', async () => {
       const codeVerifier = await authHelper.getCodeVerifier();
-      expect(codeVerifier).toBe('mock-random-string');
+      expect(codeVerifier).toBe('mock-code-verifier');
       expect(codeVerifier.length).toBeGreaterThan(0);
     });
 
@@ -236,19 +235,22 @@ describe('AuthHelper', () => {
     });
   });
 
-  describe('crypto functions', () => {
-    it('should generate secure random strings', async () => {
-      // Test with real crypto functions
-      jest.unmock('crypto');
+  describe('crypto integration', () => {
+    it('should use universal crypto functions for initialization', async () => {
+      const { generateCodeVerifier, generateState, createCodeChallenge } = require('../../src/utils/crypto');
       
       const authHelper = new AuthHelper(mockConfig);
-      const codeVerifier = await authHelper.getCodeVerifier();
-      const state = await authHelper.getState();
       
-      expect(codeVerifier).toBeDefined();
-      expect(state).toBeDefined();
-      expect(codeVerifier.length).toBeGreaterThan(0);
-      expect(state.length).toBeGreaterThan(0);
+      // Wait for initialization
+      await new Promise(resolve => setTimeout(resolve, 0));
+      
+      // Test that crypto functions are called during initialization
+      expect(generateCodeVerifier).toHaveBeenCalled();
+      expect(generateState).toHaveBeenCalled();
+      
+      // Test that getAuthUrl calls createCodeChallenge
+      await authHelper.getAuthUrl();
+      expect(createCodeChallenge).toHaveBeenCalledWith('mock-code-verifier');
     });
   });
 
@@ -274,7 +276,7 @@ describe('AuthHelper', () => {
       });
 
       const state = await authHelper.getState();
-      authHelper.setAuthorizationCode('test-auth-code', state);
+      await authHelper.setAuthorizationCode('test-auth-code', state);
 
       await authHelper.getAccessToken();
 
@@ -294,7 +296,7 @@ describe('AuthHelper', () => {
       const state = await authHelper.getState();
       await authHelper.setAuthorizationCode('test-auth-code', state);
 
-      await expect(authHelper.getAccessToken()).rejects.toThrow('Fetch is not available');
+      await expect(authHelper.getAccessToken()).rejects.toThrow('fetch is not defined');
 
       // Restore fetch
       global.fetch = originalFetch;

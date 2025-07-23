@@ -1,0 +1,7 @@
+{
+  "access_token": "test",
+  "refresh_token": "test",
+  "expires_at": "2025-07-23T06:43:44.293Z",
+  "token_type": "Bearer",
+  "scope": "test"
+}
