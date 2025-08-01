@@ -12,6 +12,7 @@ import {
   EtsyListing,
   EtsyListingImage,
   EtsyListingInventory,
+  EtsySellerTaxonomyNode,
   ListingParams,
   SearchParams,
   EtsyApiError,
@@ -359,6 +360,29 @@ export class EtsyClient {
     return this.makeRequest<EtsyListingInventory>(`/listings/${listingId}/inventory`);
   }
 
+  // ============================================================================
+  // Taxonomy Methods
+  // ============================================================================
+
+  /**
+   * Get seller taxonomy nodes - returns the full hierarchy tree
+   * Endpoint: GET /v3/application/seller-taxonomy/nodes
+   */
+  public async getSellerTaxonomyNodes(): Promise<EtsySellerTaxonomyNode[]> {
+    const response = await this.makeRequest<EtsyApiResponse<EtsySellerTaxonomyNode>>(
+      '/seller-taxonomy/nodes'
+    );
+    return response.results;
+  }
+
+  /**
+   * Get shops for the authenticated user
+   * Endpoint: GET /v3/application/users/me/shops
+   */
+  public async getUserShops(): Promise<EtsyShop[]> {
+    const response = await this.makeRequest<EtsyApiResponse<EtsyShop>>('/users/me/shops');
+    return response.results || [];
+  }
 
   // ============================================================================
   // Utility Methods

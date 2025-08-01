@@ -79,6 +79,7 @@ export type {
   EtsyListingProduct,
   EtsyListingOffering,
   EtsyListingPropertyValue,
+  EtsySellerTaxonomyNode,
   
   // API Parameters
   ListingParams,
@@ -152,7 +153,7 @@ export default EtsyClient;
 // Library Information
 // ============================================================================
 
-export const VERSION = '1.0.0';
+export const VERSION = '1.0.2';
 export const LIBRARY_NAME = 'etsy-v3-api-client';
 
 /**
@@ -170,7 +171,7 @@ export function getLibraryInfo(): {
     name: LIBRARY_NAME,
     version: VERSION,
     description: 'JavaScript/TypeScript client for the Etsy Open API v3 with OAuth 2.0 authentication',
-    author: 'Henry',
+    author: 'profplum700',
     license: 'MIT',
     homepage: 'https://github.com/ForestHillArtsHouse/etsy-v3-api-client#readme'
   };

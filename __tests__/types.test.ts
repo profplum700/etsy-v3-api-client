@@ -156,7 +156,7 @@ describe('Constants', () => {
 
   describe('VERSION and LIBRARY_NAME', () => {
     it('should have correct version', () => {
-      expect(VERSION).toBe('1.0.0');
+      expect(VERSION).toBe('1.0.2');
       expect(typeof VERSION).toBe('string');
     });
 
@@ -174,9 +174,9 @@ describe('Utility Functions', () => {
       
       expect(info).toEqual({
         name: 'etsy-v3-api-client',
-        version: '1.0.0',
+        version: '1.0.2',
         description: 'JavaScript/TypeScript client for the Etsy Open API v3 with OAuth 2.0 authentication',
-        author: 'Henry',
+        author: 'profplum700',
         license: 'MIT',
         homepage: 'https://github.com/ForestHillArtsHouse/etsy-v3-api-client#readme'
       });

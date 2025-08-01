@@ -271,6 +271,15 @@ export interface EtsyListingPropertyValue {
   values?: string[];
 }
 
+export interface EtsySellerTaxonomyNode {
+  id: number;
+  level: number;
+  name: string;
+  parent_id: number | null;
+  children: EtsySellerTaxonomyNode[];
+  full_path_taxonomy_ids: number[];
+}
+
 
 // ============================================================================
 // API Method Parameters
