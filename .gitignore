@@ -22,6 +22,9 @@ Thumbs.db
 .env.test.local
 .env.production.local
 
+# Authentication tokens
+etsy-tokens.json
+
 # Logs
 *.log
 npm-debug.log*
