@@ -142,9 +142,9 @@ export class TokenManager {
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
+        // Don't include error text as it might contain sensitive information
         throw new EtsyAuthError(
-          `Token refresh failed: ${response.status} ${response.statusText} - ${errorText}`,
+          `Token refresh failed: ${response.status} ${response.statusText}`,
           'TOKEN_REFRESH_FAILED'
         );
       }
@@ -351,6 +351,13 @@ export class SessionStorageTokenStorage implements TokenStorage {
 
 /**
  * File-based token storage for Node.js environments
+ *
+ * SECURITY WARNING:
+ * - Tokens are stored in plaintext (not encrypted)
+ * - File permissions are set to 0o600 (owner read/write only)
+ * - Ensure the file is stored outside web-accessible directories
+ * - For production use, consider implementing encrypted storage
+ * - The file path should never be in version control
  */
 export class FileTokenStorage implements TokenStorage {
   private filePath: string;
@@ -369,7 +376,9 @@ export class FileTokenStorage implements TokenStorage {
     try {
       const data = JSON.stringify(tokens, null, 2);
       await this._writeFile(this.filePath, data);
-    } catch {
+      // Set restrictive file permissions (owner read/write only)
+      await this._setFilePermissions(this.filePath, 0o600);
+    } catch (_error) {
       throw new Error('Failed to save tokens to file');
     }
   }
@@ -410,6 +419,17 @@ export class FileTokenStorage implements TokenStorage {
     if (typeof process === 'undefined') return;
     const fs = await import('fs');
     await fs.promises.writeFile(filePath, data, 'utf8');
+  }
+
+  private async _setFilePermissions(filePath: string, mode: number): Promise<void> {
+    if (typeof process === 'undefined') return;
+    try {
+      const fs = await import('fs');
+      await fs.promises.chmod(filePath, mode);
+    } catch {
+      // Chmod may not be supported on all platforms (e.g., Windows)
+      // Fail silently as the file is still created
+    }
   }
 
   private async _readFile(filePath: string): Promise<string> {

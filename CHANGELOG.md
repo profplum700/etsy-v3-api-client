@@ -11,6 +11,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 This release transforms the client into a **comprehensive, production-ready Etsy v3 SDK** with support for **60+ additional endpoints** covering ALL major Etsy API operations.
 
+### 🔒 Security Improvements
+
+#### **File Permission Security**
+- `FileTokenStorage` now automatically sets restrictive file permissions (0o600 - owner read/write only)
+- Prevents unauthorized access to token files on Unix-like systems
+- Gracefully handles platforms that don't support chmod (e.g., Windows)
+
+#### **Error Message Sanitization**
+- Removed sensitive data from error messages during token refresh
+- Error responses no longer include potentially sensitive API error details
+- Reduces risk of accidental credential exposure in logs
+
+#### **Security Documentation**
+- Added comprehensive `SECURITY.md` with:
+  - Security features overview
+  - Best practices for production deployments
+  - Known security considerations and mitigations
+  - Vulnerability reporting process
+  - Production security checklist
+
+#### **Token Storage Warnings**
+- Added security warnings to `FileTokenStorage` class documentation
+- Clarifies that tokens are stored in plaintext
+- Recommends encrypted storage for production use
+- Emphasizes .gitignore for token files
+
 ### Added
 
 #### **Shop Management Endpoints**
