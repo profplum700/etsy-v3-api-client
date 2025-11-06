@@ -182,6 +182,9 @@ export class BulkOperationManager {
         if (this.onItemComplete) {
           this.onItemComplete(result);
         }
+
+        // Update counters for successful operation
+        onComplete();
       } catch (error) {
         const err = error instanceof Error ? error : new Error(String(error));
         const result: BulkOperationResult<TOutput> = {
@@ -205,14 +208,15 @@ export class BulkOperationManager {
           this.onItemError(bulkError);
         }
 
+        // Update counters for failed operation BEFORE potentially breaking
+        onComplete();
+
         if (this.stopOnError) {
           // Clear the queue to stop processing
           queue.length = 0;
           break;
         }
       }
-
-      onComplete();
     }
   }
 
