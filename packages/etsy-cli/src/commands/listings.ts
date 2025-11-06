@@ -23,17 +23,21 @@ export const listingsCommand = new Command('listings')
             limit: parseInt(options.limit, 10),
           });
 
-          spinner.succeed(`Found ${response.count} listings`);
+          // Handle both array and paginated response
+          const results = Array.isArray(response) ? response : (response as any).results || [];
+          const count = Array.isArray(response) ? response.length : (response as any).count || 0;
+
+          spinner.succeed(`Found ${count} listings`);
 
           if (options.json) {
-            console.log(formatJson(response.results));
+            console.log(formatJson(results));
           } else {
-            if (response.results.length === 0) {
+            if (results.length === 0) {
               console.log(chalk.yellow('\nNo listings found'));
             } else {
               console.log(formatTable(
                 ['Listing ID', 'Title', 'State', 'Price', 'Quantity'],
-                response.results.map(listing => [
+                results.map((listing: any) => [
                   listing.listing_id.toString(),
                   listing.title.substring(0, 40) + (listing.title.length > 40 ? '...' : ''),
                   listing.state,
@@ -42,8 +46,8 @@ export const listingsCommand = new Command('listings')
                 ])
               ));
 
-              if (response.count > response.results.length) {
-                console.log(chalk.gray(`\nShowing ${response.results.length} of ${response.count} listings`));
+              if (count > results.length) {
+                console.log(chalk.gray(`\nShowing ${results.length} of ${count} listings`));
               }
             }
           }

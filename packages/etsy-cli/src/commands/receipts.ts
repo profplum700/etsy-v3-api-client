@@ -22,8 +22,8 @@ export const receiptsCommand = new Command('receipts')
         try {
           const client = await getClient();
           const response = await client.getShopReceipts(shopId, {
-            was_paid: options.paid ? true : options.unpaid ? false : undefined,
-            was_shipped: options.shipped ? true : options.unshipped ? false : undefined,
+            is_paid: options.paid ? true : options.unpaid ? false : undefined,
+            is_shipped: options.shipped ? true : options.unshipped ? false : undefined,
             limit: parseInt(options.limit, 10),
           });
 
@@ -41,8 +41,8 @@ export const receiptsCommand = new Command('receipts')
                   receipt.receipt_id.toString(),
                   receipt.name || 'N/A',
                   `${receipt.grandtotal.amount / receipt.grandtotal.divisor} ${receipt.grandtotal.currency_code}`,
-                  receipt.was_paid ? '✓' : '✗',
-                  receipt.was_shipped ? '✓' : '✗',
+                  receipt.is_paid ? '✓' : '✗',
+                  receipt.is_shipped ? '✓' : '✗',
                   new Date(receipt.create_timestamp * 1000).toLocaleDateString(),
                 ])
               ));
@@ -84,8 +84,8 @@ export const receiptsCommand = new Command('receipts')
                 ['Receipt ID', receipt.receipt_id.toString()],
                 ['Buyer', receipt.name || 'N/A'],
                 ['Total', `${receipt.grandtotal.amount / receipt.grandtotal.divisor} ${receipt.grandtotal.currency_code}`],
-                ['Paid', receipt.was_paid ? 'Yes' : 'No'],
-                ['Shipped', receipt.was_shipped ? 'Yes' : 'No'],
+                ['Paid', receipt.is_paid ? 'Yes' : 'No'],
+                ['Shipped', receipt.is_shipped ? 'Yes' : 'No'],
                 ['Created', new Date(receipt.create_timestamp * 1000).toLocaleString()],
               ]
             ));
