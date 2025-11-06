@@ -2,12 +2,10 @@
  * Unit tests for TokenManager
  */
 
-import { 
-  TokenManager, 
-  MemoryTokenStorage, 
+import {
+  TokenManager,
+  MemoryTokenStorage,
   FileTokenStorage,
-  LocalStorageTokenStorage,
-  SessionStorageTokenStorage,
   createDefaultTokenStorage
 } from '../../src/auth/token-manager';
 import { EtsyAuthError, EtsyClientConfig, EtsyTokens } from '../../src/types';

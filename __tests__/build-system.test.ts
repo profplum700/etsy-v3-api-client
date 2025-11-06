@@ -22,7 +22,7 @@ describe('Build System Tests', () => {
     // Get list of dist files
     try {
       distFiles = await fs.readdir(distPath);
-    } catch (error) {
+    } catch {
       distFiles = [];
     }
   });
