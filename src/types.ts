@@ -72,9 +72,41 @@ export interface TokenStorage {
 // Etsy API Response Types
 // ============================================================================
 
+/**
+ * Pagination metadata from Etsy API responses
+ */
+export interface EtsyPagination {
+  /**
+   * Offset for the next page of results
+   */
+  next_offset?: number;
+
+  /**
+   * Effective limit used for this request
+   */
+  effective_limit?: number;
+
+  /**
+   * Effective offset used for this request
+   */
+  effective_offset?: number;
+}
+
 export interface EtsyApiResponse<T> {
+  /**
+   * Number of items returned in the current page (not total available)
+   */
   count: number;
+
+  /**
+   * Array of result items
+   */
   results: T[];
+
+  /**
+   * Pagination metadata (only present in paginated responses)
+   */
+  pagination?: EtsyPagination;
 }
 
 export interface EtsyUser {

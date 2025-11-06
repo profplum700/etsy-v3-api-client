@@ -134,8 +134,13 @@ export class PaginatedResults<T> implements AsyncIterable<T> {
   }
 
   /**
-   * Get the total count of items (if known)
-   * Returns null if no pages have been fetched yet
+   * Get the count from the last fetched page
+   * NOTE: This is NOT the total available items, but rather the number of items
+   * returned in the most recent page. Etsy's API does not provide total count.
+   * Returns null if no pages have been fetched yet.
+   *
+   * @deprecated This method does not return total count as originally intended.
+   * It will be removed in a future version.
    */
   getTotalCount(): number | null {
     return this.totalCount;
@@ -158,16 +163,29 @@ export class PaginatedResults<T> implements AsyncIterable<T> {
     const response = await this.fetcher(this.options.limit, this.currentOffset);
 
     this.currentPage = response.results;
+    // Note: response.count is the number of items in the current page, not total available
     this.totalCount = response.count;
 
-    // Update offset for next page
-    this.currentOffset += this.options.limit;
-
-    // Check if there are more pages
-    // If we got fewer results than the limit, we've reached the end
-    // OR if the offset is now >= total count
-    this.hasMore = response.results.length === this.options.limit &&
-                   this.currentOffset < this.totalCount;
+    // Determine if there are more pages:
+    // 1. If pagination.next_offset is provided, there are more pages (Etsy API standard)
+    // 2. If pagination exists but next_offset is not present, no more pages
+    // 3. If no pagination metadata, fall back to checking results length
+    if (response.pagination) {
+      if (response.pagination.next_offset !== undefined) {
+        // Etsy provides explicit next_offset - there are more pages
+        this.hasMore = true;
+        this.currentOffset = response.pagination.next_offset;
+      } else {
+        // Pagination exists but no next_offset - we're at the end
+        this.hasMore = false;
+      }
+    } else {
+      // No pagination metadata - fall back to checking page size
+      // If we got fewer results than the limit, we've reached the end
+      this.hasMore = response.results.length === this.options.limit;
+      // Calculate next offset
+      this.currentOffset += this.options.limit;
+    }
 
     return this.currentPage;
   }

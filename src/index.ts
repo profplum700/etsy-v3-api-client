@@ -106,6 +106,7 @@ export type {
 
   // API Response Types
   EtsyApiResponse,
+  EtsyPagination,
   EtsyUser,
   EtsyShop,
   EtsyShopSection,

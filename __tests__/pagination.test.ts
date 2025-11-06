@@ -12,7 +12,7 @@ interface MockListing {
 }
 
 describe('PaginatedResults', () => {
-  // Helper function to create a mock page fetcher
+  // Helper function to create a mock page fetcher that simulates Etsy API pagination
   const createMockFetcher = (totalItems: number): PageFetcher<MockListing> => {
     return async (limit: number, offset: number): Promise<EtsyApiResponse<MockListing>> => {
       const results: MockListing[] = [];
@@ -26,10 +26,25 @@ describe('PaginatedResults', () => {
         });
       }
 
-      return {
-        count: totalItems,
-        results
+      // Simulate Etsy API behavior:
+      // - count is the number of items in the current page, not total
+      // - pagination.next_offset indicates if there are more pages
+      const hasMore = end < totalItems;
+      const response: EtsyApiResponse<MockListing> = {
+        count: results.length, // Current page count, NOT total
+        results,
+        pagination: {
+          effective_limit: limit,
+          effective_offset: offset
+        }
       };
+
+      // Add next_offset only if there are more pages
+      if (hasMore && response.pagination) {
+        response.pagination.next_offset = end;
+      }
+
+      return response;
     };
   };
 
@@ -65,8 +80,8 @@ describe('PaginatedResults', () => {
       }
 
       expect(items.length).toBe(75);
-      expect(items[0].listing_id).toBe(0);
-      expect(items[74].listing_id).toBe(74);
+      expect(items[0]?.listing_id).toBe(0);
+      expect(items[74]?.listing_id).toBe(74);
     });
 
     it('should respect maxPages option', async () => {
@@ -125,7 +140,7 @@ describe('PaginatedResults', () => {
       }
 
       // Should start from item 50
-      expect(items[0].listing_id).toBe(50);
+      expect(items[0]?.listing_id).toBe(50);
       expect(items.length).toBe(50); // Items 50-99
     });
   });
@@ -138,8 +153,8 @@ describe('PaginatedResults', () => {
       const items = await paginated.getAll();
 
       expect(items.length).toBe(60);
-      expect(items[0].listing_id).toBe(0);
-      expect(items[59].listing_id).toBe(59);
+      expect(items[0]?.listing_id).toBe(0);
+      expect(items[59]?.listing_id).toBe(59);
     });
 
     it('should respect maxItems when fetching all', async () => {
@@ -171,7 +186,7 @@ describe('PaginatedResults', () => {
       const page = paginated.getCurrentPage();
 
       expect(page.length).toBe(25);
-      expect(page[0].listing_id).toBe(0);
+      expect(page[0]?.listing_id).toBe(0);
     });
   });
 
@@ -209,11 +224,11 @@ describe('PaginatedResults', () => {
 
       const page1 = await paginated.getNextPage();
       expect(page1.length).toBe(25);
-      expect(page1[0].listing_id).toBe(0);
+      expect(page1[0]?.listing_id).toBe(0);
 
       const page2 = await paginated.getNextPage();
       expect(page2.length).toBe(25);
-      expect(page2[0].listing_id).toBe(25);
+      expect(page2[0]?.listing_id).toBe(25);
     });
 
     it('should return empty array when no more pages', async () => {
@@ -235,13 +250,14 @@ describe('PaginatedResults', () => {
       expect(paginated.getTotalCount()).toBeNull();
     });
 
-    it('should return total count after fetching', async () => {
+    it('should return count from last fetched page (not total)', async () => {
       const fetcher = createMockFetcher(100);
-      const paginated = new PaginatedResults(fetcher);
+      const paginated = new PaginatedResults(fetcher, { limit: 25 });
 
       await paginated.getNextPage();
 
-      expect(paginated.getTotalCount()).toBe(100);
+      // Returns count from current page (25), NOT total available (100)
+      expect(paginated.getTotalCount()).toBe(25);
     });
   });
 
@@ -254,7 +270,8 @@ describe('PaginatedResults', () => {
       await paginated.getNextPage();
       await paginated.getNextPage();
 
-      expect(paginated.getTotalCount()).toBe(100);
+      // Count is from last page fetched (25 items)
+      expect(paginated.getTotalCount()).toBe(25);
 
       // Reset
       paginated.reset();
@@ -265,7 +282,7 @@ describe('PaginatedResults', () => {
 
       // Should be able to fetch from beginning again
       const page = await paginated.getNextPage();
-      expect(page[0].listing_id).toBe(0);
+      expect(page[0]?.listing_id).toBe(0);
     });
   });
 
