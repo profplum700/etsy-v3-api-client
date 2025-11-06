@@ -56,7 +56,7 @@ export interface EtsyWebhookEvent {
   /**
    * Event data payload
    */
-  data: EtsyShopReceipt | EtsyListing | any;
+  data: EtsyShopReceipt | EtsyListing | unknown;
 
   /**
    * Shop ID associated with the event
@@ -72,7 +72,7 @@ export interface EtsyWebhookEvent {
 /**
  * Event handler function type
  */
-export type WebhookEventHandler<T = any> = (data: T) => void | Promise<void>;
+export type WebhookEventHandler<T = unknown> = (data: T) => void | Promise<void>;
 
 /**
  * Webhook handler class for Etsy API webhooks
@@ -106,7 +106,7 @@ export type WebhookEventHandler<T = any> = (data: T) => void | Promise<void>;
 export class EtsyWebhookHandler {
   private config: Required<WebhookConfig>;
   private handlers: Map<EtsyWebhookEventType, Set<WebhookEventHandler>>;
-  private crypto: any;
+  private crypto: typeof import('crypto') | undefined;
 
   constructor(config: WebhookConfig) {
     this.config = {
@@ -121,7 +121,7 @@ export class EtsyWebhookHandler {
     if (isNode) {
       try {
         this.crypto = require('crypto');
-      } catch (error) {
+      } catch {
         console.warn('crypto module not available, signature verification will not work');
       }
     }
@@ -189,14 +189,17 @@ export class EtsyWebhookHandler {
    * @param eventType Type of event to listen for
    * @param handler Function to call when event occurs
    */
-  on<T = any>(
+  on<T = unknown>(
     eventType: EtsyWebhookEventType,
     handler: WebhookEventHandler<T>
   ): void {
     if (!this.handlers.has(eventType)) {
       this.handlers.set(eventType, new Set());
     }
-    this.handlers.get(eventType)!.add(handler as WebhookEventHandler);
+    const handlers = this.handlers.get(eventType);
+    if (handlers) {
+      handlers.add(handler as WebhookEventHandler);
+    }
   }
 
   /**

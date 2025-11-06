@@ -2,7 +2,7 @@
  * Tests for Enhanced Error Recovery (Phase 1)
  */
 
-import { EtsyApiError, EtsyErrorDetails } from '../src/types';
+import { EtsyApiError } from '../src/types';
 
 describe('Enhanced Error Recovery', () => {
   describe('EtsyApiError', () => {

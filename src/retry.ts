@@ -126,8 +126,7 @@ function isRetryableError(error: unknown, config: RetryConfig): boolean {
 function getRetryAfterDelay(error: unknown): number | null {
   if (error instanceof EtsyApiError && error.statusCode === 429) {
     // Try to get Retry-After from response
-    // This would need to be added to the error object when creating it
-    const retryAfter = (error as any).retryAfter;
+    const retryAfter = error.getRetryAfter();
     if (typeof retryAfter === 'number') {
       return retryAfter * 1000; // Convert seconds to milliseconds
     }
@@ -171,7 +170,7 @@ export async function withRetry<T>(
     ...options
   };
 
-  let lastError: Error;
+  let lastError: Error = new Error('Unknown error');
   let attempt = 0;
 
   while (attempt <= config.maxRetries) {
@@ -219,7 +218,7 @@ export async function withRetry<T>(
   }
 
   // This should never be reached, but TypeScript needs it
-  throw lastError!;
+  throw lastError;
 }
 
 /**

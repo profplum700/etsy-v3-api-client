@@ -359,10 +359,10 @@ export class EtsyApiError extends Error {
 
     // Try to extract additional details from response
     if (_response && typeof _response === 'object') {
-      const resp = _response as any;
-      this.details.errorCode = resp.error_code || resp.code;
-      this.details.field = resp.field;
-      this.details.suggestion = resp.suggestion || resp.message;
+      const resp = _response as Record<string, unknown>;
+      this.details.errorCode = (resp.error_code || resp.code) as string | undefined;
+      this.details.field = resp.field as string | undefined;
+      this.details.suggestion = (resp.suggestion || resp.message) as string | undefined;
     }
   }
 
