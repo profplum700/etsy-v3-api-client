@@ -163,18 +163,20 @@ describe('EtsyClient v2.0.0 - New Endpoints', () => {
     });
 
     describe('deleteShopSection', () => {
-      it('should delete a shop section', async () => {
+      it('should delete a shop section with 204 No Content response', async () => {
         mockFetch.mockResolvedValue({
           ok: true,
-          json: jest.fn().mockResolvedValue({})
+          status: 204,
+          headers: new Headers({ 'content-length': '0' })
         });
 
-        await client.deleteShopSection('123', '456');
+        const result = await client.deleteShopSection('123', '456');
 
         expect(mockFetch).toHaveBeenCalledWith(
           'https://api.etsy.com/v3/application/shops/123/sections/456',
           expect.objectContaining({ method: 'DELETE' })
         );
+        expect(result).toBeUndefined(); // 204 responses return undefined
       });
     });
   });
@@ -278,18 +280,20 @@ describe('EtsyClient v2.0.0 - New Endpoints', () => {
     });
 
     describe('deleteListing', () => {
-      it('should delete a listing', async () => {
+      it('should delete a listing with 204 No Content response', async () => {
         mockFetch.mockResolvedValue({
           ok: true,
-          json: jest.fn().mockResolvedValue({})
+          status: 204,
+          headers: new Headers({ 'content-length': '0' })
         });
 
-        await client.deleteListing('789');
+        const result = await client.deleteListing('789');
 
         expect(mockFetch).toHaveBeenCalledWith(
           'https://api.etsy.com/v3/application/listings/789',
           expect.objectContaining({ method: 'DELETE' })
         );
+        expect(result).toBeUndefined(); // 204 responses return undefined
       });
     });
 
@@ -384,18 +388,20 @@ describe('EtsyClient v2.0.0 - New Endpoints', () => {
     });
 
     describe('deleteListingImage', () => {
-      it('should delete a listing image', async () => {
+      it('should delete a listing image with 204 No Content response', async () => {
         mockFetch.mockResolvedValue({
           ok: true,
-          json: jest.fn().mockResolvedValue({})
+          status: 204,
+          headers: new Headers({ 'content-length': '0' })
         });
 
-        await client.deleteListingImage('123', '789', '999');
+        const result = await client.deleteListingImage('123', '789', '999');
 
         expect(mockFetch).toHaveBeenCalledWith(
           'https://api.etsy.com/v3/application/shops/123/listings/789/images/999',
           expect.objectContaining({ method: 'DELETE' })
         );
+        expect(result).toBeUndefined(); // 204 responses return undefined
       });
     });
   });
@@ -610,18 +616,20 @@ describe('EtsyClient v2.0.0 - New Endpoints', () => {
     });
 
     describe('deleteShopShippingProfile', () => {
-      it('should delete a shipping profile', async () => {
+      it('should delete a shipping profile with 204 No Content response', async () => {
         mockFetch.mockResolvedValue({
           ok: true,
-          json: jest.fn().mockResolvedValue({})
+          status: 204,
+          headers: new Headers({ 'content-length': '0' })
         });
 
-        await client.deleteShopShippingProfile('123', '1');
+        const result = await client.deleteShopShippingProfile('123', '1');
 
         expect(mockFetch).toHaveBeenCalledWith(
           'https://api.etsy.com/v3/application/shops/123/shipping-profiles/1',
           expect.objectContaining({ method: 'DELETE' })
         );
+        expect(result).toBeUndefined(); // 204 responses return undefined
       });
     });
 
@@ -664,6 +672,22 @@ describe('EtsyClient v2.0.0 - New Endpoints', () => {
           expect.objectContaining({ method: 'POST' })
         );
         expect(result).toEqual(mockDest);
+      });
+
+      it('should delete a destination with 204 No Content response', async () => {
+        mockFetch.mockResolvedValue({
+          ok: true,
+          status: 204,
+          headers: new Headers({ 'content-length': '0' })
+        });
+
+        const result = await client.deleteShopShippingProfileDestination('123', '1', '999');
+
+        expect(mockFetch).toHaveBeenCalledWith(
+          'https://api.etsy.com/v3/application/shops/123/shipping-profiles/1/destinations/999',
+          expect.objectContaining({ method: 'DELETE' })
+        );
+        expect(result).toBeUndefined(); // 204 responses return undefined
       });
     });
 

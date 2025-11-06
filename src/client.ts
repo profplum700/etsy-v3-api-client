@@ -204,6 +204,18 @@ export class EtsyClient {
         );
       }
 
+      // Handle 204 No Content responses (typically from DELETE operations)
+      // These responses have no body, so calling response.json() would throw SyntaxError
+      if (response.status === 204) {
+        return undefined as T;
+      }
+
+      // Also check for empty content-length if headers are available
+      const contentLength = response.headers?.get?.('content-length');
+      if (contentLength === '0') {
+        return undefined as T;
+      }
+
       const data = await response.json();
       
       // Cache successful GET requests

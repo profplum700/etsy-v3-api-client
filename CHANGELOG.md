@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- **CRITICAL**: Fixed 204 No Content response handling in DELETE operations
+  - DELETE endpoints (`deleteShopSection`, `deleteListing`, `deleteListingImage`, `deleteShopShippingProfile`, `deleteShopShippingProfileDestination`) now properly handle 204 responses without throwing errors
+  - Added defensive checks for empty response bodies and content-length headers
+  - All DELETE operations now return `undefined` for successful 204 responses
+  - Added comprehensive tests for 204 response handling
+  - **Impact**: Previously, successful DELETE operations would fail with "SyntaxError: Unexpected end of JSON input"
+
 ## [2.0.0] - 2025-01-06
 
 ### 🎉 MAJOR RELEASE: Complete Etsy v3 API Support
