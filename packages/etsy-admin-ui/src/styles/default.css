@@ -1,0 +1,196 @@
+/* Default Styles for Etsy Admin UI */
+
+/* Variables */
+:root {
+  --etsy-primary: #f56400;
+  --etsy-secondary: #222222;
+  --etsy-success: #00a651;
+  --etsy-warning: #f9a825;
+  --etsy-danger: #d32f2f;
+  --etsy-info: #2196f3;
+
+  --etsy-bg: #ffffff;
+  --etsy-bg-secondary: #f5f5f5;
+  --etsy-border: #e0e0e0;
+  --etsy-text: #222222;
+  --etsy-text-secondary: #757575;
+
+  --etsy-radius: 4px;
+  --etsy-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  --etsy-shadow-lg: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Layout */
+.etsy-admin-layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.etsy-admin-header {
+  background: var(--etsy-bg);
+  border-bottom: 1px solid var(--etsy-border);
+  padding: 1rem 2rem;
+}
+
+.etsy-admin-main {
+  display: flex;
+  flex: 1;
+}
+
+.etsy-admin-sidebar {
+  width: 250px;
+  background: var(--etsy-bg);
+  border-right: 1px solid var(--etsy-border);
+  padding: 1rem;
+}
+
+.etsy-admin-content {
+  flex: 1;
+  padding: 2rem;
+  background: var(--etsy-bg-secondary);
+}
+
+/* Components */
+.etsy-loading,
+.etsy-error,
+.etsy-empty-state {
+  text-align: center;
+  padding: 2rem;
+}
+
+.etsy-error {
+  color: var(--etsy-danger);
+}
+
+/* Buttons */
+.etsy-btn {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: var(--etsy-radius);
+  background: var(--etsy-primary);
+  color: white;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.etsy-btn:hover {
+  opacity: 0.9;
+}
+
+.etsy-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.etsy-btn-sm {
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+}
+
+.etsy-btn-primary {
+  background: var(--etsy-info);
+}
+
+.etsy-btn-danger {
+  background: var(--etsy-danger);
+}
+
+/* Badges */
+.etsy-badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--etsy-radius);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.etsy-badge-success {
+  background: var(--etsy-success);
+  color: white;
+}
+
+.etsy-badge-warning {
+  background: var(--etsy-warning);
+  color: white;
+}
+
+.etsy-badge-danger {
+  background: var(--etsy-danger);
+  color: white;
+}
+
+/* Cards */
+.etsy-stat-card,
+.etsy-listing-card,
+.etsy-order-card {
+  background: var(--etsy-bg);
+  border-radius: var(--etsy-radius);
+  padding: 1rem;
+  box-shadow: var(--etsy-shadow);
+}
+
+/* Shop Dashboard */
+.etsy-shop-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.etsy-stat-value {
+  font-size: 2rem;
+  font-weight: bold;
+  color: var(--etsy-primary);
+}
+
+.etsy-stat-label {
+  font-size: 0.875rem;
+  color: var(--etsy-text-secondary);
+  margin-top: 0.5rem;
+}
+
+/* Listing Manager */
+.etsy-listing-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.etsy-listing-image img {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  border-radius: var(--etsy-radius);
+}
+
+.etsy-filter-btn {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--etsy-border);
+  background: white;
+  border-radius: var(--etsy-radius);
+  cursor: pointer;
+  margin-right: 0.5rem;
+}
+
+.etsy-filter-btn.active {
+  background: var(--etsy-primary);
+  color: white;
+  border-color: var(--etsy-primary);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .etsy-admin-main {
+    flex-direction: column;
+  }
+
+  .etsy-admin-sidebar {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--etsy-border);
+  }
+}
