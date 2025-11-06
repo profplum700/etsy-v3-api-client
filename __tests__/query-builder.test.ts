@@ -71,7 +71,7 @@ describe('Query Builder', () => {
 
       expect(mockClient.getListingsByShop).toHaveBeenCalledWith('123', {
         sort_on: 'price',
-        sort_order: 'desc'
+        sort_order: 'down' // 'desc' maps to 'down'
       });
     });
 
@@ -91,7 +91,7 @@ describe('Query Builder', () => {
         includes: ['images'],
         limit: 10,
         sort_on: 'created',
-        sort_order: 'desc'
+        sort_order: 'down' // 'desc' maps to 'down'
       });
     });
 
@@ -101,7 +101,7 @@ describe('Query Builder', () => {
         { listing_id: 2, title: 'Test 2', price: { amount: 2000, divisor: 100, currency_code: 'USD' }, url: 'test2' } as any
       ];
 
-      mockClient.getListingsByShop.mockResolvedValue([mockListings[0]]);
+      mockClient.getListingsByShop.mockResolvedValue([mockListings[0]!]);
 
       const query = new ListingQueryBuilder(mockClient, '123');
       const result = await query.first();
@@ -153,7 +153,7 @@ describe('Query Builder', () => {
         limit: 50,
         offset: 10,
         sort_on: 'created',
-        sort_order: 'desc'
+        sort_order: 'down' // 'desc' maps to 'down'
       });
     });
 
@@ -162,7 +162,7 @@ describe('Query Builder', () => {
         { receipt_id: 1 } as any
       ];
 
-      mockClient.getShopReceipts.mockResolvedValue([mockReceipts[0]]);
+      mockClient.getShopReceipts.mockResolvedValue([mockReceipts[0]!]);
 
       const query = new ReceiptQueryBuilder(mockClient, '123');
       const result = await query.first();

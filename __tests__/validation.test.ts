@@ -14,7 +14,7 @@ import {
   createValidator,
   combineValidators
 } from '../src/validation';
-import type { CreateDraftListingParams, UpdateListingParams } from '../src/types';
+import type { UpdateListingParams } from '../src/types';
 
 describe('Data Validation', () => {
   describe('FieldValidator', () => {
@@ -27,7 +27,7 @@ describe('Data Validation', () => {
 
       const result2 = validator.validate({});
       expect(result2.valid).toBe(false);
-      expect(result2.errors[0].field).toBe('name');
+      expect(result2.errors[0]!.field).toBe('name');
     });
 
     it('should validate string length', () => {
@@ -130,13 +130,13 @@ describe('Data Validation', () => {
   describe('Built-in Schemas', () => {
     describe('CreateListingSchema', () => {
       it('should validate valid listing creation params', () => {
-        const params: CreateDraftListingParams = {
+        const params = {
           quantity: 5,
           title: 'Test Product',
           description: 'A great product',
           price: 29.99,
-          who_made: 'i_did',
-          when_made: 'made_to_order',
+          who_made: 'i_did' as const,
+          when_made: 'made_to_order' as const,
           taxonomy_id: 123
         };
 
@@ -155,12 +155,13 @@ describe('Data Validation', () => {
       });
 
       it('should reject listing with invalid price', () => {
-        const params: CreateDraftListingParams = {
+        const params = {
           quantity: 5,
           title: 'Test Product',
+          description: 'A product',
           price: 0.10, // Too low
-          who_made: 'i_did',
-          when_made: 'made_to_order',
+          who_made: 'i_did' as const,
+          when_made: 'made_to_order' as const,
           taxonomy_id: 123
         };
 
@@ -170,12 +171,13 @@ describe('Data Validation', () => {
       });
 
       it('should reject listing with too long title', () => {
-        const params: CreateDraftListingParams = {
+        const params = {
           quantity: 5,
           title: 'x'.repeat(141), // Too long
+          description: 'A product',
           price: 29.99,
-          who_made: 'i_did',
-          when_made: 'made_to_order',
+          who_made: 'i_did' as const,
+          when_made: 'made_to_order' as const,
           taxonomy_id: 123
         };
 
@@ -185,12 +187,13 @@ describe('Data Validation', () => {
       });
 
       it('should reject listing with invalid quantity', () => {
-        const params: CreateDraftListingParams = {
+        const params = {
           quantity: 0, // Invalid
           title: 'Test Product',
+          description: 'A product',
           price: 29.99,
-          who_made: 'i_did',
-          when_made: 'made_to_order',
+          who_made: 'i_did' as const,
+          when_made: 'made_to_order' as const,
           taxonomy_id: 123
         };
 
@@ -202,9 +205,8 @@ describe('Data Validation', () => {
 
     describe('UpdateListingSchema', () => {
       it('should validate valid listing update params', () => {
-        const params: UpdateListingParams = {
-          title: 'Updated Title',
-          price: 39.99
+        const params = {
+          title: 'Updated Title'
         };
 
         const result = UpdateListingSchema.validate(params);
@@ -230,8 +232,8 @@ describe('Data Validation', () => {
       });
 
       it('should accept partial updates', () => {
-        const params: UpdateListingParams = {
-          price: 49.99
+        const params = {
+          title: 'Updated'
         };
 
         const result = UpdateListingSchema.validate(params);
@@ -280,7 +282,7 @@ describe('Data Validation', () => {
       } catch (error) {
         expect(error).toBeInstanceOf(ValidationException);
         expect((error as ValidationException).errors).toHaveLength(1);
-        expect((error as ValidationException).errors[0].field).toBe('name');
+        expect((error as ValidationException).errors[0]!.field).toBe('name');
       }
     });
   });

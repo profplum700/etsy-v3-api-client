@@ -47,7 +47,7 @@ describe('Bulk Operations', () => {
       expect(summary.successful).toBe(4);
       expect(summary.failed).toBe(1);
       expect(summary.errors).toHaveLength(1);
-      expect(summary.errors[0].id).toBe(2); // index 2
+      expect(summary.errors[0]!.id).toBe(2); // index 2
     });
 
     it('should clear queue when stopOnError is true and error occurs', async () => {
@@ -96,13 +96,13 @@ describe('Bulk Operations', () => {
       expect(summary.successful + summary.failed).toBe(5);
       expect(summary.results).toHaveLength(5);
       expect(summary.errors).toHaveLength(1);
-      expect(summary.errors[0].id).toBe(4); // index 4 (item 5)
+      expect(summary.errors[0]!.id).toBe(4); // index 4 (item 5)
     });
 
     it('should track progress with callback', async () => {
       const progressUpdates: number[] = [];
       const manager = new BulkOperationManager({
-        onProgress: (completed, total) => {
+        onProgress: (completed, _total) => {
           progressUpdates.push(completed);
         }
       });

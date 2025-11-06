@@ -98,7 +98,8 @@ export {
   type CacheStrategy,
   type CacheEntry,
   type CacheStats,
-  type RedisConfig
+  type RedisConfig,
+  type RedisClientLike
 } from './advanced-caching';
 
 // ============================================================================

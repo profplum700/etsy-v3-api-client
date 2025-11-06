@@ -6,7 +6,6 @@
 import { EtsyClient } from './client';
 import {
   EtsyListing,
-  EtsyShop,
   EtsyShopReceipt,
   ListingParams,
   GetShopReceiptsParams
@@ -80,8 +79,8 @@ export class ListingQueryBuilder {
    * Sort results
    */
   sortBy(field: ListingSortOn, order: SortOrder = 'asc'): this {
-    this.params.sort_on = field;
-    this.params.sort_order = order;
+    this.params.sort_on = field as typeof this.params.sort_on;
+    this.params.sort_order = (order === 'asc' ? 'up' : 'down') as typeof this.params.sort_order;
     return this;
   }
 
@@ -164,8 +163,8 @@ export class ReceiptQueryBuilder {
    * Sort results
    */
   sortBy(field: 'created' | 'updated', order: SortOrder = 'desc'): this {
-    this.params.sort_on = field;
-    this.params.sort_order = order;
+    this.params.sort_on = field as typeof this.params.sort_on;
+    this.params.sort_order = (order === 'asc' ? 'up' : 'down') as typeof this.params.sort_order;
     return this;
   }
 
@@ -195,7 +194,7 @@ export class ReceiptQueryBuilder {
  */
 export class BatchQueryExecutor {
   private client: EtsyClient;
-  private operations: Array<() => Promise<any>> = [];
+  private operations: Array<() => Promise<unknown>> = [];
 
   constructor(client: EtsyClient) {
     this.client = client;
@@ -236,15 +235,15 @@ export class BatchQueryExecutor {
   /**
    * Execute all queries in parallel
    */
-  async execute(): Promise<any[]> {
+  async execute(): Promise<unknown[]> {
     return Promise.all(this.operations.map(op => op()));
   }
 
   /**
    * Execute all queries sequentially
    */
-  async executeSequential(): Promise<any[]> {
-    const results: any[] = [];
+  async executeSequential(): Promise<unknown[]> {
+    const results: unknown[] = [];
     for (const operation of this.operations) {
       results.push(await operation());
     }

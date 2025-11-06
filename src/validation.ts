@@ -19,14 +19,14 @@ export interface ValidationResult {
 export interface ValidationError {
   field: string;
   message: string;
-  value?: any;
+  value?: unknown;
 }
 
-export interface ValidationSchema<T = any> {
+export interface ValidationSchema<T = unknown> {
   validate(data: T): ValidationResult;
 }
 
-export interface ValidatorFunction<T = any> {
+export interface ValidatorFunction<T = unknown> {
   (data: T): ValidationResult;
 }
 
@@ -37,7 +37,7 @@ export interface ValidatorFunction<T = any> {
 /**
  * Base validator class for building validation schemas
  */
-export class Validator<T = any> implements ValidationSchema<T> {
+export class Validator<T = unknown> implements ValidationSchema<T> {
   private validators: Array<(data: T) => ValidationError | null> = [];
 
   /**
@@ -85,9 +85,10 @@ export class FieldValidator {
   /**
    * Check if field is required
    */
-  required(message?: string): (data: any) => ValidationError | null {
-    return (data: any) => {
-      const value = data[this.field];
+  required(message?: string): (data: unknown) => ValidationError | null {
+    return (data: unknown) => {
+      if (typeof data !== 'object' || data === null) return null;
+      const value = (data as Record<string, unknown>)[this.field];
       if (value === undefined || value === null || value === '') {
         return {
           field: this.field,
@@ -107,9 +108,10 @@ export class FieldValidator {
     max?: number;
     pattern?: RegExp;
     message?: string;
-  }): (data: any) => ValidationError | null {
-    return (data: any) => {
-      const value = data[this.field];
+  }): (data: unknown) => ValidationError | null {
+    return (data: unknown) => {
+      if (typeof data !== 'object' || data === null) return null;
+      const value = (data as Record<string, unknown>)[this.field];
       if (value === undefined || value === null) return null;
 
       if (typeof value !== 'string') {
@@ -157,9 +159,10 @@ export class FieldValidator {
     integer?: boolean;
     positive?: boolean;
     message?: string;
-  }): (data: any) => ValidationError | null {
-    return (data: any) => {
-      const value = data[this.field];
+  }): (data: unknown) => ValidationError | null {
+    return (data: unknown) => {
+      if (typeof data !== 'object' || data === null) return null;
+      const value = (data as Record<string, unknown>)[this.field];
       if (value === undefined || value === null) return null;
 
       if (typeof value !== 'number' || isNaN(value)) {
@@ -209,12 +212,13 @@ export class FieldValidator {
   /**
    * Check if field is one of allowed values
    */
-  enum<T>(allowedValues: T[], message?: string): (data: any) => ValidationError | null {
-    return (data: any) => {
-      const value = data[this.field];
+  enum<T>(allowedValues: T[], message?: string): (data: unknown) => ValidationError | null {
+    return (data: unknown) => {
+      if (typeof data !== 'object' || data === null) return null;
+      const value = (data as Record<string, unknown>)[this.field];
       if (value === undefined || value === null) return null;
 
-      if (!allowedValues.includes(value)) {
+      if (!allowedValues.includes(value as T)) {
         return {
           field: this.field,
           message: message || `${this.field} must be one of: ${allowedValues.join(', ')}`,
@@ -232,11 +236,12 @@ export class FieldValidator {
   array(options: {
     min?: number;
     max?: number;
-    itemValidator?: (item: any) => boolean;
+    itemValidator?: (item: unknown) => boolean;
     message?: string;
-  }): (data: any) => ValidationError | null {
-    return (data: any) => {
-      const value = data[this.field];
+  }): (data: unknown) => ValidationError | null {
+    return (data: unknown) => {
+      if (typeof data !== 'object' || data === null) return null;
+      const value = (data as Record<string, unknown>)[this.field];
       if (value === undefined || value === null) return null;
 
       if (!Array.isArray(value)) {
@@ -330,14 +335,14 @@ export const CreateListingSchema = new Validator<CreateDraftListingParams>()
  * Listing update validation schema
  */
 export const UpdateListingSchema = new Validator<UpdateListingParams>()
-  .rule((data) => {
-    if (data.title !== undefined) {
+  .rule((data: unknown) => {
+    if (typeof data === 'object' && data !== null && 'title' in data && (data as UpdateListingParams).title !== undefined) {
       return field('title').string({ min: 1, max: 140, message: 'title must be 1-140 characters' })(data);
     }
     return null;
   })
-  .rule((data) => {
-    if (data.description !== undefined) {
+  .rule((data: unknown) => {
+    if (typeof data === 'object' && data !== null && 'description' in data && (data as UpdateListingParams).description !== undefined) {
       return field('description').string({ max: 65535, message: 'description must be less than 65535 characters' })(data);
     }
     return null;
@@ -359,14 +364,14 @@ export const UpdateListingSchema = new Validator<UpdateListingParams>()
  * Shop update validation schema
  */
 export const UpdateShopSchema = new Validator()
-  .rule((data) => {
-    if (data.title !== undefined) {
+  .rule((data: unknown) => {
+    if (typeof data === 'object' && data !== null && 'title' in data && (data as { title?: unknown }).title !== undefined) {
       return field('title').string({ min: 1, max: 55, message: 'shop title must be 1-55 characters' })(data);
     }
     return null;
   })
-  .rule((data) => {
-    if (data.announcement !== undefined) {
+  .rule((data: unknown) => {
+    if (typeof data === 'object' && data !== null && 'announcement' in data && (data as { announcement?: unknown }).announcement !== undefined) {
       return field('announcement').string({ max: 5000, message: 'announcement must be less than 5000 characters' })(data);
     }
     return null;

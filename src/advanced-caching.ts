@@ -428,9 +428,9 @@ export class CacheWithInvalidation implements CacheStorage {
 
   /**
    * Invalidate cache entries matching a pattern
-   * @param pattern Glob-style pattern (e.g., 'shops/*', 'listings/123/*')
+   * @param _pattern Glob-style pattern (e.g., 'shops/*', 'listings/123/*')
    */
-  async invalidatePattern(pattern: string): Promise<void> {
+  async invalidatePattern(_pattern: string): Promise<void> {
     // For simple memory cache, we would need to iterate through keys
     // For production, this would be implemented based on the cache backend
     // For now, we just clear the entire cache
@@ -490,14 +490,24 @@ export interface RedisConfig {
  * This is an interface/stub for Redis integration
  * Actual Redis client would be provided by the user to avoid dependencies
  */
+/**
+ * Redis client interface type (to avoid any)
+ * Users should provide a client that implements this interface
+ */
+export interface RedisClientLike {
+  get(key: string): Promise<string | null>;
+  setex(key: string, ttl: number, value: string): Promise<void>;
+  del(...keys: string[]): Promise<void>;
+  keys(pattern: string): Promise<string[]>;
+}
+
 export class RedisCacheStorage implements CacheStorage {
   private config: RedisConfig;
-  private client: any; // Would be Redis client instance
+  private client: RedisClientLike;
   private keyPrefix: string;
 
-  constructor(config: RedisConfig, client?: any) {
+  constructor(config: RedisConfig, client: RedisClientLike) {
     this.config = config;
-    this.client = client;
     this.keyPrefix = config.keyPrefix || 'etsy:';
 
     if (!client) {
@@ -505,11 +515,11 @@ export class RedisCacheStorage implements CacheStorage {
         'Redis client must be provided. Install a Redis client library (e.g., ioredis) and pass the client instance.'
       );
     }
+
+    this.client = client;
   }
 
   async get(key: string): Promise<string | null> {
-    if (!this.client) return null;
-
     try {
       const value = await this.client.get(this.keyPrefix + key);
       return value;
@@ -520,8 +530,6 @@ export class RedisCacheStorage implements CacheStorage {
   }
 
   async set(key: string, value: string, ttl: number = 3600): Promise<void> {
-    if (!this.client) return;
-
     try {
       await this.client.setex(this.keyPrefix + key, ttl, value);
     } catch (error) {
@@ -530,8 +538,6 @@ export class RedisCacheStorage implements CacheStorage {
   }
 
   async delete(key: string): Promise<void> {
-    if (!this.client) return;
-
     try {
       await this.client.del(this.keyPrefix + key);
     } catch (error) {
@@ -540,8 +546,6 @@ export class RedisCacheStorage implements CacheStorage {
   }
 
   async clear(): Promise<void> {
-    if (!this.client) return;
-
     try {
       // Delete all keys with the prefix
       const keys = await this.client.keys(this.keyPrefix + '*');
@@ -556,7 +560,7 @@ export class RedisCacheStorage implements CacheStorage {
   /**
    * Get Redis client instance
    */
-  getClient(): any {
+  getClient(): RedisClientLike {
     return this.client;
   }
 }
@@ -597,6 +601,6 @@ export function createCacheWithInvalidation(
 /**
  * Create a Redis cache storage
  */
-export function createRedisCacheStorage(config: RedisConfig, client: any): RedisCacheStorage {
+export function createRedisCacheStorage(config: RedisConfig, client: RedisClientLike): RedisCacheStorage {
   return new RedisCacheStorage(config, client);
 }
