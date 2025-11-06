@@ -428,3 +428,627 @@ export const ETSY_WHEN_MADE_VALUES = [
   '1700s',
   'before_1700'
 ] as const;
+
+// ============================================================================
+// Shop Management Types
+// ============================================================================
+
+export interface UpdateShopParams {
+  title?: string;
+  announcement?: string;
+  sale_message?: string;
+  digital_sale_message?: string;
+}
+
+export interface CreateShopSectionParams {
+  title: string;
+}
+
+export interface UpdateShopSectionParams {
+  title: string;
+}
+
+// ============================================================================
+// Shop Receipts/Orders Types
+// ============================================================================
+
+export interface EtsyShopReceipt {
+  receipt_id: number;
+  receipt_type: number;
+  seller_user_id: number;
+  seller_email: string;
+  buyer_user_id: number;
+  buyer_email: string;
+  name: string;
+  first_line: string;
+  second_line?: string;
+  city: string;
+  state?: string;
+  zip: string;
+  status: 'open' | 'completed' | 'payment-processing' | 'canceled';
+  formatted_address: string;
+  country_iso: string;
+  payment_method: string;
+  payment_email?: string;
+  message_from_seller?: string;
+  message_from_buyer?: string;
+  message_from_payment?: string;
+  is_paid: boolean;
+  is_shipped: boolean;
+  create_timestamp: number;
+  created_timestamp: number;
+  update_timestamp: number;
+  updated_timestamp: number;
+  is_gift: boolean;
+  gift_message?: string;
+  grandtotal: {
+    amount: number;
+    divisor: number;
+    currency_code: string;
+  };
+  subtotal: {
+    amount: number;
+    divisor: number;
+    currency_code: string;
+  };
+  total_price: {
+    amount: number;
+    divisor: number;
+    currency_code: string;
+  };
+  total_shipping_cost: {
+    amount: number;
+    divisor: number;
+    currency_code: string;
+  };
+  total_tax_cost: {
+    amount: number;
+    divisor: number;
+    currency_code: string;
+  };
+  total_vat_cost: {
+    amount: number;
+    divisor: number;
+    currency_code: string;
+  };
+  discount_amt: {
+    amount: number;
+    divisor: number;
+    currency_code: string;
+  };
+  gift_wrap_price: {
+    amount: number;
+    divisor: number;
+    currency_code: string;
+  };
+  shipments?: EtsyShopReceiptShipment[];
+  transactions?: EtsyShopReceiptTransaction[];
+  refunds?: EtsyShopRefund[];
+}
+
+export interface EtsyShopReceiptTransaction {
+  transaction_id: number;
+  title: string;
+  description: string;
+  seller_user_id: number;
+  buyer_user_id: number;
+  create_timestamp: number;
+  created_timestamp: number;
+  paid_timestamp: number;
+  shipped_timestamp: number;
+  quantity: number;
+  listing_image_id?: number;
+  receipt_id: number;
+  is_digital: boolean;
+  file_data: string;
+  listing_id: number;
+  transaction_type: string;
+  product_id?: number;
+  sku?: string;
+  price: {
+    amount: number;
+    divisor: number;
+    currency_code: string;
+  };
+  shipping_cost: {
+    amount: number;
+    divisor: number;
+    currency_code: string;
+  };
+  variations?: EtsyTransactionVariation[];
+  product_data?: EtsyListingProduct[];
+  shipping_profile_id?: number;
+  min_processing_days?: number;
+  max_processing_days?: number;
+  shipping_method?: string;
+  shipping_upgrade?: string;
+  expected_ship_date?: number;
+  buyer_coupon?: number;
+  shop_coupon?: number;
+}
+
+export interface EtsyTransactionVariation {
+  property_id: number;
+  value_id: number;
+  formatted_name: string;
+  formatted_value: string;
+}
+
+export interface EtsyShopReceiptShipment {
+  receipt_shipping_id: number;
+  shipment_notification_timestamp: number;
+  carrier_name: string;
+  tracking_code: string;
+}
+
+export interface EtsyShopRefund {
+  amount: {
+    amount: number;
+    divisor: number;
+    currency_code: string;
+  };
+  created_timestamp: number;
+  reason?: string;
+  note_from_issuer?: string;
+  status: string;
+}
+
+export interface GetShopReceiptsParams {
+  limit?: number;
+  offset?: number;
+  sort_on?: 'created' | 'updated' | 'paid';
+  sort_order?: 'up' | 'down';
+  min_created?: number;
+  max_created?: number;
+  min_last_modified?: number;
+  max_last_modified?: number;
+  was_paid?: boolean;
+  was_shipped?: boolean;
+  was_delivered?: boolean;
+}
+
+export interface UpdateShopReceiptParams {
+  was_shipped?: boolean;
+  was_paid?: boolean;
+  message_from_seller?: string;
+}
+
+// ============================================================================
+// Shipping Profile Types
+// ============================================================================
+
+export interface EtsyShippingProfile {
+  shipping_profile_id: number;
+  title: string;
+  user_id: number;
+  min_processing_days: number;
+  max_processing_days: number;
+  processing_days_display_label: string;
+  origin_country_iso: string;
+  origin_postal_code?: string;
+  profile_type: 'manual' | 'calculated';
+  domestic_handling_fee?: number;
+  international_handling_fee?: number;
+  shipping_profile_destinations?: EtsyShippingProfileDestination[];
+  shipping_profile_upgrades?: EtsyShippingProfileUpgrade[];
+}
+
+export interface EtsyShippingProfileDestination {
+  shipping_profile_destination_id: number;
+  shipping_profile_id: number;
+  origin_country_iso: string;
+  destination_country_iso?: string;
+  destination_region: string;
+  primary_cost: {
+    amount: number;
+    divisor: number;
+    currency_code: string;
+  };
+  secondary_cost: {
+    amount: number;
+    divisor: number;
+    currency_code: string;
+  };
+  shipping_carrier_id?: number;
+  mail_class?: string;
+  min_delivery_days?: number;
+  max_delivery_days?: number;
+}
+
+export interface EtsyShippingProfileUpgrade {
+  shipping_profile_id: number;
+  upgrade_id: number;
+  upgrade_name: string;
+  type: string;
+  rank: number;
+  language: string;
+  price: {
+    amount: number;
+    divisor: number;
+    currency_code: string;
+  };
+  secondary_price: {
+    amount: number;
+    divisor: number;
+    currency_code: string;
+  };
+  shipping_carrier_id: number;
+  mail_class?: string;
+  min_delivery_days?: number;
+  max_delivery_days?: number;
+}
+
+export interface CreateShippingProfileParams {
+  title: string;
+  origin_country_iso: string;
+  primary_cost: number;
+  secondary_cost: number;
+  min_processing_days: number;
+  max_processing_days: number;
+  processing_days_display_label?: string;
+  origin_postal_code?: string;
+  destination_country_iso?: string;
+  destination_region?: string;
+  mail_class?: string;
+  min_delivery_days?: number;
+  max_delivery_days?: number;
+}
+
+export interface UpdateShippingProfileParams {
+  title?: string;
+  origin_country_iso?: string;
+  min_processing_days?: number;
+  max_processing_days?: number;
+  processing_days_display_label?: string;
+  origin_postal_code?: string;
+}
+
+export interface CreateShippingProfileDestinationParams {
+  primary_cost: number;
+  secondary_cost: number;
+  destination_country_iso?: string;
+  destination_region?: string;
+  mail_class?: string;
+  min_delivery_days?: number;
+  max_delivery_days?: number;
+}
+
+export interface UpdateShippingProfileDestinationParams {
+  primary_cost?: number;
+  secondary_cost?: number;
+  destination_country_iso?: string;
+  destination_region?: string;
+  mail_class?: string;
+  min_delivery_days?: number;
+  max_delivery_days?: number;
+}
+
+export interface CreateReceiptShipmentParams {
+  tracking_code: string;
+  carrier_name: string;
+  send_bcc?: boolean;
+  note_to_buyer?: string;
+}
+
+// ============================================================================
+// Payment & Ledger Types
+// ============================================================================
+
+export interface EtsyPaymentAccountLedgerEntry {
+  entry_id: number;
+  ledger_id: number;
+  sequence_number: number;
+  amount: {
+    amount: number;
+    divisor: number;
+    currency_code: string;
+  };
+  currency: string;
+  description: string;
+  balance: {
+    amount: number;
+    divisor: number;
+    currency_code: string;
+  };
+  create_date: number;
+  created_timestamp: number;
+  ledger_type: string;
+  entry_type: string;
+  reference_type?: string;
+  reference_id?: string;
+  payment_adjustments?: EtsyPaymentAdjustment[];
+}
+
+export interface EtsyPaymentAdjustment {
+  payment_adjustment_id: number;
+  payment_id: number;
+  status: string;
+  is_success: boolean;
+  user_id: number;
+  reason_code: string;
+  total_adjustment_amount: {
+    amount: number;
+    divisor: number;
+    currency_code: string;
+  };
+  shop_total_adjustment_amount: {
+    amount: number;
+    divisor: number;
+    currency_code: string;
+  };
+  buyer_total_adjustment_amount: {
+    amount: number;
+    divisor: number;
+    currency_code: string;
+  };
+  total_fee_adjustment_amount: {
+    amount: number;
+    divisor: number;
+    currency_code: string;
+  };
+  create_timestamp: number;
+  created_timestamp: number;
+  update_timestamp: number;
+  updated_timestamp: number;
+}
+
+export interface EtsyPayment {
+  payment_id: number;
+  buyer_user_id: number;
+  shop_id: number;
+  receipt_id: number;
+  amount_gross: {
+    amount: number;
+    divisor: number;
+    currency_code: string;
+  };
+  amount_fees: {
+    amount: number;
+    divisor: number;
+    currency_code: string;
+  };
+  amount_net: {
+    amount: number;
+    divisor: number;
+    currency_code: string;
+  };
+  posted_gross: {
+    amount: number;
+    divisor: number;
+    currency_code: string;
+  };
+  posted_fees: {
+    amount: number;
+    divisor: number;
+    currency_code: string;
+  };
+  posted_net: {
+    amount: number;
+    divisor: number;
+    currency_code: string;
+  };
+  adjusted_gross: {
+    amount: number;
+    divisor: number;
+    currency_code: string;
+  };
+  adjusted_fees: {
+    amount: number;
+    divisor: number;
+    currency_code: string;
+  };
+  adjusted_net: {
+    amount: number;
+    divisor: number;
+    currency_code: string;
+  };
+  currency: string;
+  shop_currency: string;
+  buyer_currency: string;
+  shipping_user_id?: number;
+  shipping_address_id?: number;
+  billing_address_id: number;
+  status: string;
+  shipped_timestamp?: number;
+  create_timestamp: number;
+  created_timestamp: number;
+  update_timestamp: number;
+  updated_timestamp: number;
+  payment_adjustments?: EtsyPaymentAdjustment[];
+}
+
+export interface GetPaymentAccountLedgerEntriesParams {
+  min_created: number;
+  max_created: number;
+  limit?: number;
+  offset?: number;
+}
+
+// ============================================================================
+// Listing Write Operations Types
+// ============================================================================
+
+export interface CreateDraftListingParams {
+  quantity: number;
+  title: string;
+  description: string;
+  price: number;
+  who_made: 'i_did' | 'someone_else' | 'collective';
+  when_made: typeof ETSY_WHEN_MADE_VALUES[number] | 'made_to_order';
+  taxonomy_id: number;
+  shipping_profile_id?: number;
+  return_policy_id?: number;
+  materials?: string[];
+  shop_section_id?: number;
+  processing_min?: number;
+  processing_max?: number;
+  tags?: string[];
+  styles?: string[];
+  item_weight?: number;
+  item_length?: number;
+  item_width?: number;
+  item_height?: number;
+  item_weight_unit?: 'oz' | 'lb' | 'g' | 'kg';
+  item_dimensions_unit?: 'in' | 'ft' | 'mm' | 'cm' | 'm' | 'yd' | 'inches';
+  is_personalizable?: boolean;
+  personalization_is_required?: boolean;
+  personalization_char_count_max?: number;
+  personalization_instructions?: string;
+  production_partner_ids?: number[];
+  image_ids?: number[];
+  is_supply?: boolean;
+  is_customizable?: boolean;
+  is_taxable?: boolean;
+  type?: 'physical' | 'download' | 'both';
+}
+
+export interface UpdateListingParams {
+  image_ids?: number[];
+  title?: string;
+  description?: string;
+  materials?: string[];
+  should_auto_renew?: boolean;
+  shipping_profile_id?: number;
+  return_policy_id?: number;
+  shop_section_id?: number;
+  item_weight?: number;
+  item_length?: number;
+  item_width?: number;
+  item_height?: number;
+  item_weight_unit?: 'oz' | 'lb' | 'g' | 'kg';
+  item_dimensions_unit?: 'in' | 'ft' | 'mm' | 'cm' | 'm' | 'yd' | 'inches';
+  is_taxable?: boolean;
+  taxonomy_id?: number;
+  tags?: string[];
+  who_made?: 'i_did' | 'someone_else' | 'collective';
+  when_made?: typeof ETSY_WHEN_MADE_VALUES[number] | 'made_to_order';
+  featured_rank?: number;
+  is_personalizable?: boolean;
+  personalization_is_required?: boolean;
+  personalization_char_count_max?: number;
+  personalization_instructions?: string;
+  state?: 'active' | 'inactive' | 'draft';
+  is_supply?: boolean;
+  production_partner_ids?: number[];
+  type?: 'physical' | 'download' | 'both';
+  styles?: string[];
+  processing_min?: number;
+  processing_max?: number;
+}
+
+export interface UpdateListingInventoryParams {
+  products: Array<{
+    sku?: string;
+    property_values?: Array<{
+      property_id: number;
+      property_name?: string;
+      scale_id?: number;
+      scale_name?: string;
+      value_ids?: number[];
+      values?: string[];
+    }>;
+    offerings: Array<{
+      offering_id?: number;
+      price: number;
+      quantity: number;
+      is_enabled: boolean;
+    }>;
+  }>;
+  price_on_property?: number[];
+  quantity_on_property?: number[];
+  sku_on_property?: number[];
+}
+
+// ============================================================================
+// Listing Property Types
+// ============================================================================
+
+export interface EtsyListingProperty {
+  property_id: number;
+  name: string;
+  display_name: string;
+  scales?: EtsyListingPropertyScale[];
+  possible_values?: EtsyListingPropertyValue[];
+  selected_values?: EtsyListingPropertyValue[];
+  supports_attributes?: boolean;
+  supports_variations?: boolean;
+  is_multivalued?: boolean;
+  is_required?: boolean;
+  max_values_allowed?: number;
+}
+
+export interface EtsyListingPropertyScale {
+  scale_id: number;
+  display_name: string;
+  description?: string;
+}
+
+// ============================================================================
+// Taxonomy Types (Extended)
+// ============================================================================
+
+export interface EtsyBuyerTaxonomyNode {
+  id: number;
+  level: number;
+  name: string;
+  parent_id: number | null;
+  children: EtsyBuyerTaxonomyNode[];
+  full_path_taxonomy_ids: number[];
+}
+
+export interface EtsyBuyerTaxonomyPropertyScale {
+  scale_id: number;
+  display_name: string;
+  description?: string;
+}
+
+export interface EtsyBuyerTaxonomyPropertyValue {
+  value_id: number;
+  name: string;
+  scale_id?: number;
+  equal_to?: number[];
+}
+
+export interface EtsyBuyerTaxonomyProperty {
+  property_id: number;
+  name: string;
+  display_name: string;
+  scales?: EtsyBuyerTaxonomyPropertyScale[];
+  possible_values?: EtsyBuyerTaxonomyPropertyValue[];
+  selected_values?: EtsyBuyerTaxonomyPropertyValue[];
+  supports_attributes: boolean;
+  supports_variations: boolean;
+  is_multivalued: boolean;
+  is_required: boolean;
+  max_values_allowed?: number;
+}
+
+// ============================================================================
+// Shop Production Partner Types
+// ============================================================================
+
+export interface EtsyShopProductionPartner {
+  production_partner_id: number;
+  partner_name: string;
+  location: string;
+}
+
+// ============================================================================
+// File Upload Types
+// ============================================================================
+
+export interface UploadListingImageParams {
+  image: File | Blob | Buffer;
+  listing_id: number;
+  rank?: number;
+  overwrite?: boolean;
+  is_watermarked?: boolean;
+  alt_text?: string;
+}
+
+export interface UploadListingFileParams {
+  file: File | Blob | Buffer;
+  listing_id: number;
+  name?: string;
+  rank?: number;
+}
