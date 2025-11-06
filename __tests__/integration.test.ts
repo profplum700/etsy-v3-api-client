@@ -436,7 +436,7 @@ describe('Integration Tests', () => {
       expect(user.user_id).toBe(123);
       expect(user.shop_id).toBe(456);
       expect(listings).toHaveLength(1);
-      expect(listings[0].title).toBe('Vintage Botanical Print');
+      expect(listings[0]?.title).toBe('Vintage Botanical Print');
 
       // Verify all API calls were made
       expect(mockFetch).toHaveBeenCalledTimes(3);
