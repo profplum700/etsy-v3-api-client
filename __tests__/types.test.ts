@@ -147,8 +147,8 @@ describe('Constants', () => {
       const decades = ETSY_WHEN_MADE_VALUES.filter(v => v.includes('s') && v !== 'before_1700');
       
       for (let i = 0; i < decades.length - 1; i++) {
-        const current = parseInt(decades[i]);
-        const next = parseInt(decades[i + 1]);
+        const current = parseInt(decades[i]!);
+        const next = parseInt(decades[i + 1]!);
         expect(current).toBeGreaterThan(next);
       }
     });

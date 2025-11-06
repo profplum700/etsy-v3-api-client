@@ -2,20 +2,6 @@
  * Tests for environment detection utilities
  */
 
-import {
-  isBrowser,
-  isNode,
-  isWebWorker,
-  hasFetch,
-  hasWebCrypto,
-  hasLocalStorage,
-  hasSessionStorage,
-  getEnvironmentInfo,
-  assertCryptoSupport,
-  assertFetchSupport,
-  getAvailableStorage,
-} from '../../src/utils/environment';
-
 describe('Environment Detection', () => {
   let originalProcess: any;
   let originalWindow: any;
