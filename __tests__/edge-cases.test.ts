@@ -5,7 +5,7 @@
 
 import { EtsyClient } from '../src/client';
 import { AuthHelper } from '../src/auth/auth-helper';
-import { TokenManager, MemoryTokenStorage } from '../src/auth/token-manager';
+import { TokenManager } from '../src/auth/token-manager';
 import { EtsyApiError, EtsyAuthError, EtsyRateLimitError } from '../src/types';
 import { generateCodeVerifier, generateState, createCodeChallenge } from '../src/utils/crypto';
 

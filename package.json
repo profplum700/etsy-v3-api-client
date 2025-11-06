@@ -1,6 +1,6 @@
 {
   "name": "@profplum700/etsy-v3-api-client",
-  "version": "1.0.2",
+  "version": "2.0.0",
   "type": "module",
   "description": "JavaScript/TypeScript client for the Etsy Open API v3 with OAuth 2.0 authentication",
   "main": "dist/index.cjs",
@@ -73,6 +73,7 @@
     "@typescript-eslint/eslint-plugin": "^8.38.0",
     "@typescript-eslint/parser": "^8.38.0",
     "eslint": "^9.31.0",
+    "globals": "^16.5.0",
     "jest": "^30.0.5",
     "jest-environment-jsdom": "^30.0.5",
     "rollup": "^4.45.1",

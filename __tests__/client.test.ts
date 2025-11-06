@@ -327,14 +327,14 @@ describe('EtsyClient', () => {
         limit: 10,
         offset: 0,
         sort_on: 'created' as const,
-        sort_order: 'desc' as const,
+        sort_order: 'down' as const,
         includes: ['images']
       };
 
       const result = await client.getListingsByShop('456', params);
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'https://api.etsy.com/v3/application/shops/456/listings?state=draft&limit=10&offset=0&sort_on=created&sort_order=desc&includes=images',
+        'https://api.etsy.com/v3/application/shops/456/listings?state=draft&limit=10&offset=0&sort_on=created&sort_order=down&includes=images',
         expect.any(Object)
       );
       expect(result).toEqual(mockListings);

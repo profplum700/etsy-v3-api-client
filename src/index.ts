@@ -61,13 +61,13 @@ export type {
   // Configuration Types
   EtsyClientConfig,
   AuthHelperConfig,
-  
+
   // Authentication Types
   EtsyTokens,
   EtsyTokenResponse,
   TokenRefreshCallback,
   TokenStorage,
-  
+
   // API Response Types
   EtsyApiResponse,
   EtsyUser,
@@ -80,15 +80,67 @@ export type {
   EtsyListingOffering,
   EtsyListingPropertyValue,
   EtsySellerTaxonomyNode,
-  
+
+  // Shop Management Types
+  UpdateShopParams,
+  CreateShopSectionParams,
+  UpdateShopSectionParams,
+
+  // Shop Receipts/Orders Types
+  EtsyShopReceipt,
+  EtsyShopReceiptTransaction,
+  EtsyShopReceiptShipment,
+  EtsyShopRefund,
+  EtsyTransactionVariation,
+  GetShopReceiptsParams,
+  UpdateShopReceiptParams,
+
+  // Shipping Profile Types
+  EtsyShippingProfile,
+  EtsyShippingProfileDestination,
+  EtsyShippingProfileUpgrade,
+  CreateShippingProfileParams,
+  UpdateShippingProfileParams,
+  CreateShippingProfileDestinationParams,
+  UpdateShippingProfileDestinationParams,
+  CreateReceiptShipmentParams,
+
+  // Payment & Ledger Types
+  EtsyPaymentAccountLedgerEntry,
+  EtsyPaymentAdjustment,
+  EtsyPayment,
+  GetPaymentAccountLedgerEntriesParams,
+
+  // Listing Write Operations Types
+  CreateDraftListingParams,
+  UpdateListingParams,
+  UpdateListingInventoryParams,
+
+  // Listing Property Types
+  EtsyListingProperty,
+  EtsyListingPropertyScale,
+
+  // Extended Taxonomy Types
+  EtsyBuyerTaxonomyNode,
+  EtsyBuyerTaxonomyProperty,
+  EtsyBuyerTaxonomyPropertyScale,
+  EtsyBuyerTaxonomyPropertyValue,
+
+  // Shop Production Partner Types
+  EtsyShopProductionPartner,
+
+  // File Upload Types
+  UploadListingImageParams,
+  UploadListingFileParams,
+
   // API Parameters
   ListingParams,
   SearchParams,
-  
+
   // Rate Limiting Types
   RateLimitConfig,
   RateLimitStatus,
-  
+
   // Utility Types
   CacheStorage,
   LoggerInterface
@@ -153,7 +205,7 @@ export default EtsyClient;
 // Library Information
 // ============================================================================
 
-export const VERSION = '1.0.2';
+export const VERSION = '2.0.0';
 export const LIBRARY_NAME = 'etsy-v3-api-client';
 
 /**

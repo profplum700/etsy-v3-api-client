@@ -22,7 +22,7 @@ describe('Build System Tests', () => {
     // Get list of dist files
     try {
       distFiles = await fs.readdir(distPath);
-    } catch (error) {
+    } catch {
       distFiles = [];
     }
   });
@@ -288,8 +288,8 @@ describe('Build System Tests', () => {
         const content = await fs.readFile(filePath, 'utf8');
         
         const matches = Array.from(content.matchAll(exportRegex));
-        const exports = matches.flatMap(match => 
-          match[1].split(',').map(exp => exp.trim().replace(/\s+as\s+\w+/, ''))
+        const exports = matches.flatMap(match =>
+          match[1]?.split(',').map(exp => exp.trim().replace(/\s+as\s+\w+/, '')) ?? []
         );
         exportPatterns.push(exports);
       }

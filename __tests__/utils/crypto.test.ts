@@ -392,10 +392,9 @@ describe('Universal Crypto Module', () => {
 
   describe('High-level Functions', () => {
     let cryptoModule: any;
-    let mockWebCrypto: any;
 
     beforeEach(() => {
-      mockWebCrypto = createBrowserEnvironment();
+      createBrowserEnvironment();
       jest.resetModules();
       jest.clearAllMocks();
       cryptoModule = require('../../src/utils/crypto');
