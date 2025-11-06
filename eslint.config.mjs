@@ -6,18 +6,20 @@ import eslintRecommended from "@eslint/js";
 export default [
   {
     ignores: [
-      "dist/",
-      "node_modules/",
-      ".rollup.cache/",
-      "coverage/",
-      "eslint.config.js",
-      "jest.config.cjs",
-      "rollup.config.js",
+      "**/dist/**",
+      "**/node_modules/**",
+      "**/.rollup.cache/**",
+      "**/coverage/**",
+      "**/eslint.config.js",
+      "**/jest.config.cjs",
+      "**/rollup.config.js",
+      "**/*.d.ts", // Ignore TypeScript declaration files
     ],
   },
   eslintRecommended.configs.recommended,
   {
     files: ["**/*.ts", "**/*.tsx"],
+    ignores: ["**/__tests__/**", "**/*.test.*", "**/*.spec.*"],
     languageOptions: {
       parser: tsParser,
       parserOptions: {
@@ -59,8 +61,9 @@ export default [
     languageOptions: {
       parser: tsParser,
       parserOptions: {
-        project: true,
-        tsconfigRootDir: import.meta.dirname,
+        // Don't use project references for test files to avoid tsconfig issues
+        ecmaVersion: 2022,
+        sourceType: "module",
       },
       globals: {
         ...globals.jest,
@@ -71,6 +74,8 @@ export default [
       "@typescript-eslint": tseslint,
     },
     rules: {
+      "no-unused-vars": "off", // Disable base rule
+      "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
       "@typescript-eslint/no-non-null-assertion": "off",
       "@typescript-eslint/no-explicit-any": "off", // Allow any in test mocks
       "@typescript-eslint/explicit-function-return-type": "off", // Allow implicit return types in tests
