@@ -1,6 +1,6 @@
 {
   "name": "@profplum700/etsy-v3-api-client",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "type": "module",
   "description": "JavaScript/TypeScript client for the Etsy Open API v3 with OAuth 2.0 authentication",
   "main": "dist/index.cjs",
@@ -12,17 +12,22 @@
     "CHANGELOG.md"
   ],
   "scripts": {
-    "build": "rollup -c",
+    "build": "pnpm run build:core && pnpm run build:packages",
+    "build:core": "rollup -c",
+    "build:packages": "pnpm --filter './packages/*' run build",
     "build:watch": "rollup -c --watch",
-    "test": "jest",
+    "test": "jest && pnpm --filter './packages/*' run test",
+    "test:core": "jest",
+    "test:packages": "pnpm --filter './packages/*' run test",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "lint": "eslint --config eslint.config.mjs .",
-    "lint:fix": "eslint --fix --config eslint.config.mjs .",
-    "type-check": "tsc --noEmit",
+    "lint": "eslint --config eslint.config.mjs . && pnpm --filter './packages/*' run lint",
+    "lint:fix": "eslint --fix --config eslint.config.mjs . && pnpm --filter './packages/*' run lint:fix",
+    "type-check": "tsc --noEmit && pnpm --filter './packages/*' run type-check",
     "dev": "rollup -c --watch",
+    "clean": "rm -rf dist && pnpm --filter './packages/*' exec rm -rf dist",
     "prepublishOnly": "npm run build && npm run test",
-    "prepare": "npm run build"
+    "prepare": "npm run build:core"
   },
   "keywords": [
     "etsy",

@@ -1,0 +1,79 @@
+{
+  "name": "@profplum700/etsy-cli",
+  "version": "2.3.0",
+  "type": "module",
+  "description": "Command-line tool for Etsy v3 API",
+  "main": "dist/index.cjs",
+  "module": "dist/index.esm.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "etsy": "./dist/cli.js"
+  },
+  "files": [
+    "dist/**/*",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "rollup -c",
+    "build:watch": "rollup -c --watch",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint --config ../../eslint.config.mjs .",
+    "lint:fix": "eslint --fix --config ../../eslint.config.mjs .",
+    "type-check": "tsc --noEmit",
+    "prepublishOnly": "npm run build && npm run test"
+  },
+  "keywords": [
+    "etsy",
+    "api",
+    "v3",
+    "cli",
+    "command-line",
+    "typescript",
+    "javascript"
+  ],
+  "author": {
+    "name": "profplum700",
+    "email": "profplum700@users.noreply.github.com"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/profplum700/etsy-v3-api-client.git",
+    "directory": "packages/etsy-cli"
+  },
+  "bugs": {
+    "url": "https://github.com/profplum700/etsy-v3-api-client/issues"
+  },
+  "homepage": "https://github.com/profplum700/etsy-v3-api-client/tree/main/packages/etsy-cli#readme",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "@profplum700/etsy-v3-api-client": "^2.0.0",
+    "commander": "^12.1.0",
+    "chalk": "^5.3.0",
+    "ora": "^8.1.2",
+    "inquirer": "^12.4.0",
+    "table": "^6.9.0"
+  },
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^28.0.6",
+    "@rollup/plugin-json": "^6.1.0",
+    "@rollup/plugin-node-resolve": "^16.0.1",
+    "@rollup/plugin-typescript": "^12.1.4",
+    "@types/inquirer": "^9.0.7",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^24.1.0",
+    "jest": "^30.0.5",
+    "rollup": "^4.45.1",
+    "rollup-plugin-dts": "^6.1.1",
+    "rollup-plugin-preserve-shebang": "^1.0.1",
+    "ts-jest": "^29.4.0",
+    "typescript": "^5.5.3"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
