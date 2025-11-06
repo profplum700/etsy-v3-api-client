@@ -13,7 +13,7 @@ interface ReceiptsOptions {
   min_last_modified?: number;
   max_last_modified?: number;
   sort_on?: 'created' | 'updated';
-  sort_order?: 'asc' | 'desc';
+  sort_order?: 'up' | 'down';
 }
 
 export function useReceipts(
@@ -37,9 +37,9 @@ export function useReceipts(
       offset,
     });
 
-    // Update pagination state
-    const results = response.results || [];
-    const count = response.count || 0;
+    // Handle both array response and paginated response
+    const results = Array.isArray(response) ? response : (response as any).results || [];
+    const count = Array.isArray(response) ? response.length : (response as any).count || 0;
     const totalPagesCalc = Math.ceil(count / limit);
 
     setTotalPages(totalPagesCalc);

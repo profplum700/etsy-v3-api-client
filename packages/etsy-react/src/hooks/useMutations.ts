@@ -67,13 +67,13 @@ export function useUpdateInventory(
 
 // Image mutations
 export function useUploadListingImage(
-  options?: UseMutationOptions<any, { shopId: string; listingId: string; image: File | Buffer; rank?: number; overwrite?: boolean }>
-): UseMutationResult<any, { shopId: string; listingId: string; image: File | Buffer; rank?: number; overwrite?: boolean }> {
+  options?: UseMutationOptions<any, { shopId: string; listingId: string; image: File | Buffer; rank?: number }>
+): UseMutationResult<any, { shopId: string; listingId: string; image: File | Buffer; rank?: number }> {
   const client = useEtsyClient();
 
   const mutationFn = useCallback(
-    async ({ shopId, listingId, image, rank, overwrite }: { shopId: string; listingId: string; image: File | Buffer; rank?: number; overwrite?: boolean }) => {
-      return await client.uploadListingImage(shopId, listingId, image, rank, overwrite);
+    async ({ shopId, listingId, image, rank }: { shopId: string; listingId: string; image: File | Buffer; rank?: number }) => {
+      return await client.uploadListingImage(shopId, listingId, image, rank ? { rank } : undefined);
     },
     [client]
   );
@@ -114,13 +114,13 @@ export function useUpdateReceipt(
 
 // Shipping mutations
 export function useCreateShippingProfile(
-  options?: UseMutationOptions<any, { params: any }>
-): UseMutationResult<any, { params: any }> {
+  options?: UseMutationOptions<any, { shopId: string; params: any }>
+): UseMutationResult<any, { shopId: string; params: any }> {
   const client = useEtsyClient();
 
   const mutationFn = useCallback(
-    async ({ params }: { params: any }) => {
-      return await client.createShopShippingProfile(params);
+    async ({ shopId, params }: { shopId: string; params: any }) => {
+      return await client.createShopShippingProfile(shopId, params);
     },
     [client]
   );

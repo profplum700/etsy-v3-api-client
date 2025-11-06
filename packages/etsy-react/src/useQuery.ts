@@ -17,7 +17,7 @@ export function useQuery<T>(
   const [loading, setLoading] = useState<boolean>(enabled);
   const [error, setError] = useState<Error | null>(null);
   const isMounted = useRef(true);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchData = useCallback(async () => {
     if (!enabled) return;
@@ -62,26 +62,28 @@ export function useQuery<T>(
         fetchData();
       }, refetchInterval);
 
-      return () => {
+      return (): void => {
         if (intervalRef.current) {
           clearInterval(intervalRef.current);
         }
       };
     }
+    return undefined;
   }, [refetchInterval, enabled, fetchData]);
 
   // Refetch on window focus
   useEffect(() => {
     if (refetchOnWindowFocus && enabled) {
-      const handleFocus = () => {
+      const handleFocus = (): void => {
         fetchData();
       };
 
       window.addEventListener('focus', handleFocus);
-      return () => {
+      return (): void => {
         window.removeEventListener('focus', handleFocus);
       };
     }
+    return undefined;
   }, [refetchOnWindowFocus, enabled, fetchData]);
 
   const refetch = useCallback(async () => {

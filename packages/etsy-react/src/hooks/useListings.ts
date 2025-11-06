@@ -7,8 +7,8 @@ interface ListingsOptions {
   state?: 'active' | 'inactive' | 'draft' | 'expired';
   limit?: number;
   offset?: number;
-  sort_on?: 'created' | 'updated' | 'price';
-  sort_order?: 'asc' | 'desc';
+  sort_on?: 'created' | 'price';
+  sort_order?: 'up' | 'down';
 }
 
 export function useListings(
@@ -32,9 +32,9 @@ export function useListings(
       offset,
     });
 
-    // Update pagination state
-    const results = response.results || [];
-    const count = response.count || 0;
+    // Handle both array response and paginated response
+    const results = Array.isArray(response) ? response : (response as any).results || [];
+    const count = Array.isArray(response) ? response.length : (response as any).count || 0;
     const totalPagesCalc = Math.ceil(count / limit);
 
     setTotalPages(totalPagesCalc);
