@@ -15,6 +15,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added comprehensive tests for 204 response handling
   - **Impact**: Previously, successful DELETE operations would fail with "SyntaxError: Unexpected end of JSON input"
 
+- Fixed GitHub Actions CI workflow to use pnpm instead of npm
+  - Added `pnpm/action-setup@v4` to install pnpm
+  - Changed cache from "npm" to "pnpm"
+  - Updated all commands to use pnpm
+  - Resolves lock file mismatch errors in CI pipeline
+
+### Changed
+- **Code Quality**: Fixed all 205 ESLint errors and warnings
+  - Removed unused imports and variables across test files
+  - Updated ESLint config to allow `any` types and implicit return types in test files
+  - Added `globals@16.5.0` as dev dependency
+  - Zero linting issues remaining
+
 ## [2.0.0] - 2025-01-06
 
 ### 🎉 MAJOR RELEASE: Complete Etsy v3 API Support
