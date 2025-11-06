@@ -378,7 +378,7 @@ export class FileTokenStorage implements TokenStorage {
       await this._writeFile(this.filePath, data);
       // Set restrictive file permissions (owner read/write only)
       await this._setFilePermissions(this.filePath, 0o600);
-    } catch (_error) {
+    } catch {
       throw new Error('Failed to save tokens to file');
     }
   }
