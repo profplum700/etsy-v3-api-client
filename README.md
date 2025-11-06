@@ -660,6 +660,34 @@ function useEtsyClient(tokens) {
 }
 ```
 
+## 📚 Documentation
+
+Comprehensive documentation and examples are available in the `docs/` directory:
+
+### Guides
+
+- [Getting Started](docs/guides/getting-started.md) - Quick start guide and basic usage
+- [Authentication](docs/guides/authentication.md) - Complete OAuth 2.0 authentication guide
+- [Listing Management](docs/guides/listing-management.md) - Creating and managing listings
+- [Order Fulfillment](docs/guides/order-fulfillment.md) - Processing orders and shipments
+- [Shipping Profiles](docs/guides/shipping-profiles.md) - Managing shipping profiles
+- [Webhooks](docs/guides/webhooks.md) - Real-time event notifications
+
+### Troubleshooting
+
+- [Common Issues](docs/troubleshooting/common-issues.md) - Solutions to common problems
+
+### Example Applications
+
+Complete, working example applications demonstrating various use cases:
+
+- [Simple Shop Manager](examples/simple-shop-manager/) - Basic CLI shop management
+- [Bulk Listing Updater](examples/bulk-listing-updater/) - Batch operations on listings
+- [Order Fulfillment App](examples/order-fulfillment-app/) - Automated order processing
+- [Inventory Sync](examples/inventory-sync/) - Real-time inventory synchronization
+- [Analytics Dashboard](examples/analytics-dashboard/) - Shop metrics and reporting
+- [Production Template](examples/production-template/) - Production-ready deployment template
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please read our [Contributing Guidelines](CONTRIBUTING.md) for details.
