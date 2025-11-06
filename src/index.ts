@@ -67,6 +67,83 @@ export {
 } from './webhooks';
 
 // ============================================================================
+// Bulk Operations Exports (Phase 2)
+// ============================================================================
+
+export {
+  BulkOperationManager,
+  createBulkOperationManager,
+  executeBulkOperation,
+  type BulkOperationConfig,
+  type BulkOperationResult,
+  type BulkOperationError,
+  type BulkUpdateListingOperation,
+  type BulkImageUploadOperation,
+  type BulkOperationSummary
+} from './bulk-operations';
+
+// ============================================================================
+// Advanced Caching Exports (Phase 2)
+// ============================================================================
+
+export {
+  LRUCache,
+  LFUCache,
+  CacheWithInvalidation,
+  RedisCacheStorage,
+  createCacheStorage,
+  createCacheWithInvalidation,
+  createRedisCacheStorage,
+  type AdvancedCachingConfig,
+  type CacheStrategy,
+  type CacheEntry,
+  type CacheStats,
+  type RedisConfig,
+  type RedisClientLike
+} from './advanced-caching';
+
+// ============================================================================
+// Query Builder Exports (Phase 2)
+// ============================================================================
+
+export {
+  ListingQueryBuilder,
+  ReceiptQueryBuilder,
+  BatchQueryExecutor,
+  withQueryBuilder,
+  createListingQuery,
+  createReceiptQuery,
+  createBatchQuery,
+  type EtsyClientWithQueryBuilder,
+  type SortOrder,
+  type ListingState,
+  type ListingSortOn
+} from './query-builder';
+
+// ============================================================================
+// Validation Exports (Phase 2)
+// ============================================================================
+
+export {
+  Validator,
+  FieldValidator,
+  ValidationException,
+  field,
+  CreateListingSchema,
+  UpdateListingSchema,
+  UpdateShopSchema,
+  validateOrThrow,
+  validate,
+  createValidator,
+  combineValidators,
+  type ValidationResult,
+  type ValidationError,
+  type ValidationSchema,
+  type ValidatorFunction,
+  type ValidationOptions
+} from './validation';
+
+// ============================================================================
 // Utility Exports
 // ============================================================================
 
@@ -245,7 +322,7 @@ export default EtsyClient;
 // Library Information
 // ============================================================================
 
-export const VERSION = '2.1.0';
+export const VERSION = '2.2.0';
 export const LIBRARY_NAME = 'etsy-v3-api-client';
 
 /**

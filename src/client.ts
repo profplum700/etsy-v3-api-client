@@ -51,6 +51,20 @@ import {
 import { TokenManager } from './auth/token-manager';
 import { EtsyRateLimiter } from './rate-limiting';
 import { assertFetchSupport, isNode } from './utils/environment';
+import {
+  BulkOperationManager,
+  BulkOperationConfig,
+  BulkOperationSummary,
+  BulkUpdateListingOperation,
+  BulkImageUploadOperation
+} from './bulk-operations';
+import {
+  ValidationOptions,
+  CreateListingSchema,
+  UpdateListingSchema,
+  UpdateShopSchema,
+  validateOrThrow
+} from './validation';
 
 /**
  * Default logger implementation
@@ -123,6 +137,7 @@ export class EtsyClient {
   private cache?: CacheStorage;
   private cacheTtl!: number;
   private keystring: string;
+  private bulkOperationManager: BulkOperationManager;
 
   constructor(config: EtsyClientConfig) {
     this.tokenManager = new TokenManager(config);
@@ -146,6 +161,12 @@ export class EtsyClient {
       this.cache = config.caching?.storage || new MemoryCache();
       this.cacheTtl = config.caching?.ttl || 3600;
     }
+
+    // Set up bulk operations manager
+    this.bulkOperationManager = new BulkOperationManager({
+      concurrency: 5,
+      stopOnError: false
+    });
   }
 
   /**
@@ -431,7 +452,22 @@ export class EtsyClient {
    * Endpoint: PUT /v3/application/shops/{shop_id}
    * Scopes: shops_r, shops_w
    */
-  public async updateShop(shopId: string, params: UpdateShopParams): Promise<EtsyShop> {
+  public async updateShop(shopId: string, params: UpdateShopParams, options?: ValidationOptions): Promise<EtsyShop> {
+    // Validate request if enabled
+    if (options?.validate) {
+      const schema = options.validateSchema || UpdateShopSchema;
+      const throwOnError = options.throwOnValidationError !== false;
+
+      if (throwOnError) {
+        validateOrThrow(params, schema, 'Invalid shop update parameters');
+      } else {
+        const result = schema.validate(params);
+        if (!result.valid) {
+          this.logger.warn('Shop update validation failed', result.errors);
+        }
+      }
+    }
+
     return this.makeRequest<EtsyShop>(
       `/shops/${shopId}`,
       {
@@ -500,7 +536,26 @@ export class EtsyClient {
    * Endpoint: POST /v3/application/shops/{shop_id}/listings
    * Scopes: listings_w
    */
-  public async createDraftListing(shopId: string, params: CreateDraftListingParams): Promise<EtsyListing> {
+  public async createDraftListing(
+    shopId: string,
+    params: CreateDraftListingParams,
+    options?: ValidationOptions
+  ): Promise<EtsyListing> {
+    // Validate request if enabled
+    if (options?.validate) {
+      const schema = options.validateSchema || CreateListingSchema;
+      const throwOnError = options.throwOnValidationError !== false;
+
+      if (throwOnError) {
+        validateOrThrow(params, schema, 'Invalid listing parameters');
+      } else {
+        const result = schema.validate(params);
+        if (!result.valid) {
+          this.logger.warn('Listing validation failed', result.errors);
+        }
+      }
+    }
+
     return this.makeRequest<EtsyListing>(
       `/shops/${shopId}/listings`,
       {
@@ -519,8 +574,24 @@ export class EtsyClient {
   public async updateListing(
     shopId: string,
     listingId: string,
-    params: UpdateListingParams
+    params: UpdateListingParams,
+    options?: ValidationOptions
   ): Promise<EtsyListing> {
+    // Validate request if enabled
+    if (options?.validate) {
+      const schema = options.validateSchema || UpdateListingSchema;
+      const throwOnError = options.throwOnValidationError !== false;
+
+      if (throwOnError) {
+        validateOrThrow(params, schema, 'Invalid listing update parameters');
+      } else {
+        const result = schema.validate(params);
+        if (!result.valid) {
+          this.logger.warn('Listing update validation failed', result.errors);
+        }
+      }
+    }
+
     return this.makeRequest<EtsyListing>(
       `/shops/${shopId}/listings/${listingId}`,
       {
@@ -642,6 +713,103 @@ export class EtsyClient {
       { method: 'DELETE' },
       false
     );
+  }
+
+  // ============================================================================
+  // Bulk Operations (Phase 2)
+  // ============================================================================
+
+  /**
+   * Bulk update multiple listings
+   * Processes updates with concurrency control and progress tracking
+   *
+   * @param shopId Shop ID
+   * @param operations Array of listing update operations
+   * @param config Optional bulk operation configuration
+   * @returns Summary of bulk operation results
+   *
+   * @example
+   * ```typescript
+   * const results = await client.bulkUpdateListings('123', [
+   *   { listingId: '456', updates: { title: 'New Title 1' } },
+   *   { listingId: '789', updates: { title: 'New Title 2' } }
+   * ], {
+   *   concurrency: 5,
+   *   onProgress: (completed, total) => {
+   *     console.log(`${completed}/${total} completed`);
+   *   }
+   * });
+   * ```
+   */
+  public async bulkUpdateListings(
+    shopId: string,
+    operations: BulkUpdateListingOperation[],
+    config?: BulkOperationConfig
+  ): Promise<BulkOperationSummary<EtsyListing>> {
+    const manager = config ? new BulkOperationManager(config) : this.bulkOperationManager;
+
+    return manager.executeBulk(
+      operations,
+      async (operation) => {
+        return this.updateListing(
+          shopId,
+          operation.listingId.toString(),
+          operation.updates
+        );
+      },
+      (operation) => operation.listingId
+    );
+  }
+
+  /**
+   * Bulk upload images to a listing
+   * Processes uploads with concurrency control and progress tracking
+   *
+   * @param shopId Shop ID
+   * @param listingId Listing ID
+   * @param images Array of image upload operations
+   * @param config Optional bulk operation configuration
+   * @returns Summary of bulk operation results
+   *
+   * @example
+   * ```typescript
+   * const results = await client.bulkUploadImages('123', '456', [
+   *   { file: image1, rank: 1, altText: 'Front view' },
+   *   { file: image2, rank: 2, altText: 'Side view' },
+   *   { file: image3, rank: 3, altText: 'Detail' }
+   * ]);
+   * ```
+   */
+  public async bulkUploadImages(
+    shopId: string,
+    listingId: string,
+    images: BulkImageUploadOperation[],
+    config?: BulkOperationConfig
+  ): Promise<BulkOperationSummary<EtsyListingImage>> {
+    const manager = config ? new BulkOperationManager(config) : this.bulkOperationManager;
+
+    return manager.executeBulk(
+      images,
+      async (image) => {
+        return this.uploadListingImage(
+          shopId,
+          listingId,
+          image.file as Blob | Buffer,
+          {
+            rank: image.rank,
+            alt_text: image.altText
+          }
+        );
+      }
+    );
+  }
+
+  /**
+   * Set concurrency for bulk operations
+   * @param concurrency Number of concurrent operations (1-10)
+   */
+  public setBulkOperationConcurrency(concurrency: number): void {
+    this.bulkOperationManager.setConcurrency(Math.max(1, Math.min(10, concurrency)));
   }
 
   // ============================================================================
