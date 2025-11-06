@@ -328,14 +328,42 @@ export interface RateLimitStatus {
 // Error Types
 // ============================================================================
 
+/**
+ * Structured error details from Etsy API
+ */
+export interface EtsyErrorDetails {
+  statusCode: number;
+  errorCode?: string;
+  field?: string;
+  suggestion?: string;
+  retryAfter?: number;
+}
+
 export class EtsyApiError extends Error {
+  public details: EtsyErrorDetails;
+
   constructor(
     message: string,
     public _statusCode?: number,
-    public _response?: unknown
+    public _response?: unknown,
+    public _retryAfter?: number
   ) {
     super(message);
     this.name = 'EtsyApiError';
+
+    // Initialize structured error details
+    this.details = {
+      statusCode: _statusCode || 0,
+      retryAfter: _retryAfter
+    };
+
+    // Try to extract additional details from response
+    if (_response && typeof _response === 'object') {
+      const resp = _response as any;
+      this.details.errorCode = resp.error_code || resp.code;
+      this.details.field = resp.field;
+      this.details.suggestion = resp.suggestion || resp.message;
+    }
   }
 
   /**
@@ -350,6 +378,79 @@ export class EtsyApiError extends Error {
    */
   get response(): unknown | undefined {
     return this._response;
+  }
+
+  /**
+   * Check if this error is retryable
+   * @returns true if the error indicates a transient failure that can be retried
+   */
+  isRetryable(): boolean {
+    if (!this._statusCode) {
+      return false;
+    }
+
+    // Rate limiting errors are retryable
+    if (this._statusCode === 429) {
+      return true;
+    }
+
+    // Server errors (5xx) are generally retryable
+    if (this._statusCode >= 500 && this._statusCode < 600) {
+      return true;
+    }
+
+    // Specific retryable client errors
+    const retryableClientErrors = [408, 409, 423, 425];
+    if (retryableClientErrors.includes(this._statusCode)) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Get the retry-after value in seconds (for rate limit errors)
+   * @returns Number of seconds to wait before retrying, or null if not specified
+   */
+  getRetryAfter(): number | null {
+    return this._retryAfter || null;
+  }
+
+  /**
+   * Get the rate limit reset time (for rate limit errors)
+   * @returns Date when the rate limit resets, or null if not a rate limit error
+   */
+  getRateLimitReset(): Date | null {
+    if (this._statusCode !== 429 || !this._retryAfter) {
+      return null;
+    }
+
+    // Calculate reset time based on retry-after
+    return new Date(Date.now() + this._retryAfter * 1000);
+  }
+
+  /**
+   * Get a user-friendly error message with suggestions
+   */
+  getUserFriendlyMessage(): string {
+    let message = this.message;
+
+    // Add suggestion if available
+    if (this.details.suggestion) {
+      message += `\nSuggestion: ${this.details.suggestion}`;
+    }
+
+    // Add retry information
+    if (this.isRetryable()) {
+      const retryAfter = this.getRetryAfter();
+      if (retryAfter) {
+        message += `\nRetry after ${retryAfter} seconds.`;
+      } else {
+        message += '\nThis error can be retried.';
+      }
+    }
+
+    return message;
   }
 }
 

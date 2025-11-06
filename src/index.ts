@@ -31,6 +31,42 @@ export {
 export { EtsyRateLimiter, defaultRateLimiter } from './rate-limiting';
 
 // ============================================================================
+// Pagination Exports (Phase 1)
+// ============================================================================
+
+export {
+  PaginatedResults,
+  createPaginatedResults,
+  type PaginationOptions,
+  type PageFetcher
+} from './pagination';
+
+// ============================================================================
+// Retry Logic Exports (Phase 1)
+// ============================================================================
+
+export {
+  RetryManager,
+  withRetry,
+  DEFAULT_RETRY_CONFIG,
+  type RetryConfig,
+  type RetryOptions
+} from './retry';
+
+// ============================================================================
+// Webhook Support Exports (Phase 1)
+// ============================================================================
+
+export {
+  EtsyWebhookHandler,
+  createWebhookHandler,
+  type WebhookConfig,
+  type EtsyWebhookEventType,
+  type EtsyWebhookEvent,
+  type WebhookEventHandler
+} from './webhooks';
+
+// ============================================================================
 // Utility Exports
 // ============================================================================
 
@@ -141,6 +177,9 @@ export type {
   RateLimitConfig,
   RateLimitStatus,
 
+  // Error Types (Phase 1)
+  EtsyErrorDetails,
+
   // Utility Types
   CacheStorage,
   LoggerInterface
@@ -205,7 +244,7 @@ export default EtsyClient;
 // Library Information
 // ============================================================================
 
-export const VERSION = '2.0.0';
+export const VERSION = '2.1.0';
 export const LIBRARY_NAME = 'etsy-v3-api-client';
 
 /**
