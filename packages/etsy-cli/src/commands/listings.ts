@@ -80,9 +80,8 @@ export const listingsCommand = new Command('listings')
               ['Property', 'Value'],
               [
                 ['Listing ID', listing.listing_id.toString()],
-                ['State', listing.state],
+                ['State', listing.state || 'N/A'],
                 ['Price', `${listing.price.amount / listing.price.divisor} ${listing.price.currency_code}`],
-                ['Quantity', listing.quantity?.toString() || '0'],
                 ['Views', listing.views?.toString() || '0'],
                 ['Num Favorers', listing.num_favorers?.toString() || '0'],
               ]

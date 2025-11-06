@@ -45,34 +45,36 @@ export async function getClient(): Promise<EtsyClient> {
     process.exit(1);
   }
 
-  const tokenStorage = {
-    async load(): Promise<unknown> {
-      try {
-        const data = await fs.readFile(TOKENS_FILE, 'utf-8');
-        return JSON.parse(data);
-      } catch {
-        return null;
-      }
-    },
-    async save(tokens: Record<string, unknown>): Promise<void> {
-      await ensureConfigDir();
-      await fs.writeFile(TOKENS_FILE, JSON.stringify(tokens, null, 2));
-    },
-    async clear(): Promise<void> {
-      try {
-        await fs.unlink(TOKENS_FILE);
-      } catch {
-        // File might not exist
-      }
-    },
+  // Load tokens from storage
+  let tokens: Record<string, unknown> | null = null;
+  try {
+    const data = await fs.readFile(TOKENS_FILE, 'utf-8');
+    tokens = JSON.parse(data);
+  } catch {
+    // No tokens yet
+  }
+
+  if (!tokens || !tokens.accessToken) {
+    console.error(chalk.red('Error: No access token found'));
+    console.log(chalk.yellow('Please authenticate first using `etsy auth login`'));
+    process.exit(1);
+  }
+
+  // Save tokens callback
+  const refreshSave = async (accessToken: string, refreshToken: string, expiresAt: Date): Promise<void> => {
+    await ensureConfigDir();
+    await fs.writeFile(TOKENS_FILE, JSON.stringify({
+      accessToken,
+      refreshToken,
+      expiresAt: expiresAt.toISOString(),
+    }, null, 2));
   };
 
-  return new EtsyClient(
-    {
-      apiKey: config.apiKey,
-      redirectUri: config.redirectUri || '',
-      scopes: config.scopes || [],
-    },
-    tokenStorage
-  );
+  return new EtsyClient({
+    keystring: config.apiKey,
+    accessToken: tokens.accessToken as string,
+    refreshToken: tokens.refreshToken as string,
+    expiresAt: new Date(tokens.expiresAt as string),
+    refreshSave,
+  });
 }

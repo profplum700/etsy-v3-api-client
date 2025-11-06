@@ -21,23 +21,23 @@ export const receiptsCommand = new Command('receipts')
 
         try {
           const client = await getClient();
-          const response = await client.getShopReceipts(shopId, {
-            is_paid: options.paid ? true : options.unpaid ? false : undefined,
-            is_shipped: options.shipped ? true : options.unshipped ? false : undefined,
+          const receipts = await client.getShopReceipts(shopId, {
+            was_paid: options.paid ? true : options.unpaid ? false : undefined,
+            was_shipped: options.shipped ? true : options.unshipped ? false : undefined,
             limit: parseInt(options.limit, 10),
           });
 
-          spinner.succeed(`Found ${response.count} receipts`);
+          spinner.succeed(`Found ${receipts.length} receipts`);
 
           if (options.json) {
-            console.log(formatJson(response.results));
+            console.log(formatJson(receipts));
           } else {
-            if (response.results.length === 0) {
+            if (receipts.length === 0) {
               console.log(chalk.yellow('\nNo receipts found'));
             } else {
               console.log(formatTable(
                 ['Receipt ID', 'Buyer', 'Total', 'Paid', 'Shipped', 'Created'],
-                response.results.map(receipt => [
+                receipts.map((receipt) => [
                   receipt.receipt_id.toString(),
                   receipt.name || 'N/A',
                   `${receipt.grandtotal.amount / receipt.grandtotal.divisor} ${receipt.grandtotal.currency_code}`,
@@ -46,10 +46,6 @@ export const receiptsCommand = new Command('receipts')
                   new Date(receipt.create_timestamp * 1000).toLocaleDateString(),
                 ])
               ));
-
-              if (response.count > response.results.length) {
-                console.log(chalk.gray(`\nShowing ${response.results.length} of ${response.count} receipts`));
-              }
             }
           }
         } catch (error) {

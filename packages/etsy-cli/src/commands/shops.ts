@@ -29,10 +29,10 @@ export const shopsCommand = new Command('shops')
               [
                 ['Shop ID', shop.shop_id.toString()],
                 ['Name', shop.shop_name],
-                ['Title', shop.title],
+                ['Title', shop.title || 'N/A'],
                 ['URL', shop.url],
                 ['Currency', shop.currency_code],
-                ['Listings', shop.listing_active_count?.toString() || '0'],
+                ['Listings', shop.listing_active_count.toString()],
               ]
             ));
 

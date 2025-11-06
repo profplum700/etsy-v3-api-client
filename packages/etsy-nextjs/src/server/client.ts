@@ -33,51 +33,51 @@ export async function getEtsyServerClient(): Promise<EtsyClient> {
 
   // Create a new client instance if needed
   if (!serverClientInstance) {
-    const { apiKey, redirectUri, scopes } = serverClientConfig;
+    const { apiKey } = serverClientConfig;
 
-    // Create storage that reads from cookies
-    const tokenStorage = {
-      async load(): Promise<unknown> {
-        const cookieStore = await cookies();
-        const cookieName = serverClientConfig?.cookieName || 'etsy-tokens';
-        const tokenData = cookieStore.get(cookieName);
-        if (!tokenData) return null;
+    // Load tokens from cookies
+    const cookieStore = await cookies();
+    const cookieName = serverClientConfig.cookieName || 'etsy-tokens';
+    const tokenData = cookieStore.get(cookieName);
 
-        try {
-          return JSON.parse(tokenData.value);
-        } catch {
-          return null;
+    if (!tokenData) {
+      throw new Error('No authentication tokens found in cookies');
+    }
+
+    let tokens: { accessToken: string; refreshToken: string; expiresAt: string };
+    try {
+      tokens = JSON.parse(tokenData.value);
+    } catch {
+      throw new Error('Invalid token data in cookies');
+    }
+
+    // Save tokens callback
+    const refreshSave = async (accessToken: string, refreshToken: string, expiresAt: Date): Promise<void> => {
+      const cookieStore = await cookies();
+      const cookieName = serverClientConfig?.cookieName || 'etsy-tokens';
+      cookieStore.set(
+        cookieName,
+        JSON.stringify({
+          accessToken,
+          refreshToken,
+          expiresAt: expiresAt.toISOString(),
+        }),
+        {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          maxAge: 60 * 60 * 24 * 90, // 90 days
         }
-      },
-      async save(tokens: Record<string, unknown>): Promise<void> {
-        const cookieStore = await cookies();
-        const cookieName = serverClientConfig?.cookieName || 'etsy-tokens';
-        cookieStore.set(
-          cookieName,
-          JSON.stringify(tokens),
-          {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            maxAge: 60 * 60 * 24 * 90, // 90 days
-          }
-        );
-      },
-      async clear(): Promise<void> {
-        const cookieStore = await cookies();
-        const cookieName = serverClientConfig?.cookieName || 'etsy-tokens';
-        cookieStore.delete(cookieName);
-      },
+      );
     };
 
-    serverClientInstance = new EtsyClient(
-      {
-        apiKey,
-        redirectUri: redirectUri || '',
-        scopes: scopes || [],
-      },
-      tokenStorage
-    );
+    serverClientInstance = new EtsyClient({
+      keystring: apiKey,
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      expiresAt: new Date(tokens.expiresAt),
+      refreshSave,
+    });
   }
 
   return serverClientInstance;
@@ -87,46 +87,49 @@ export async function getEtsyServerClient(): Promise<EtsyClient> {
  * Create a new Etsy client instance with custom configuration
  * Useful when you need multiple clients or custom settings
  */
-export function createEtsyServerClient(config: EtsyServerClientConfig): EtsyClient {
-  const { apiKey, redirectUri, scopes, cookieName } = config;
+export async function createEtsyServerClient(config: EtsyServerClientConfig): Promise<EtsyClient> {
+  const { apiKey, cookieName } = config;
 
-  const tokenStorage = {
-    async load(): Promise<unknown> {
-      const cookieStore = await cookies();
-      const tokenData = cookieStore.get(cookieName || 'etsy-tokens');
-      if (!tokenData) return null;
+  // Load tokens from cookies
+  const cookieStore = await cookies();
+  const tokenCookieName = cookieName || 'etsy-tokens';
+  const tokenData = cookieStore.get(tokenCookieName);
 
-      try {
-        return JSON.parse(tokenData.value);
-      } catch {
-        return null;
+  if (!tokenData) {
+    throw new Error('No authentication tokens found in cookies');
+  }
+
+  let tokens: { accessToken: string; refreshToken: string; expiresAt: string };
+  try {
+    tokens = JSON.parse(tokenData.value);
+  } catch {
+    throw new Error('Invalid token data in cookies');
+  }
+
+  // Save tokens callback
+  const refreshSave = async (accessToken: string, refreshToken: string, expiresAt: Date): Promise<void> => {
+    const cookieStore = await cookies();
+    cookieStore.set(
+      tokenCookieName,
+      JSON.stringify({
+        accessToken,
+        refreshToken,
+        expiresAt: expiresAt.toISOString(),
+      }),
+      {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24 * 90, // 90 days
       }
-    },
-    async save(tokens: Record<string, unknown>): Promise<void> {
-      const cookieStore = await cookies();
-      cookieStore.set(
-        cookieName || 'etsy-tokens',
-        JSON.stringify(tokens),
-        {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax',
-          maxAge: 60 * 60 * 24 * 90, // 90 days
-        }
-      );
-    },
-    async clear(): Promise<void> {
-      const cookieStore = await cookies();
-      cookieStore.delete(cookieName || 'etsy-tokens');
-    },
+    );
   };
 
-  return new EtsyClient(
-    {
-      apiKey,
-      redirectUri: redirectUri || '',
-      scopes: scopes || [],
-    },
-    tokenStorage
-  );
+  return new EtsyClient({
+    keystring: apiKey,
+    accessToken: tokens.accessToken,
+    refreshToken: tokens.refreshToken,
+    expiresAt: new Date(tokens.expiresAt),
+    refreshSave,
+  });
 }

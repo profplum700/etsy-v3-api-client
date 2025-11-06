@@ -34,7 +34,7 @@ export function OrderFulfillment({
     },
   });
 
-  if (loading && !receipts.length) {
+  if (loading && (!receipts || !receipts.length)) {
     return (
       <div className={`etsy-order-fulfillment ${className}`}>
         <div className="etsy-loading">Loading orders...</div>
@@ -46,6 +46,16 @@ export function OrderFulfillment({
     return (
       <div className={`etsy-order-fulfillment ${className}`}>
         <div className="etsy-error">Error: {error.message}</div>
+      </div>
+    );
+  }
+
+  if (!receipts) {
+    return (
+      <div className={`etsy-order-fulfillment ${className}`}>
+        <div className="etsy-empty-state">
+          <p>No orders available</p>
+        </div>
       </div>
     );
   }

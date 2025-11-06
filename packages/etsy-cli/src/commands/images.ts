@@ -27,8 +27,10 @@ export const imagesCommand = new Command('images')
             shopId,
             listingId,
             imageBuffer,
-            parseInt(options.rank, 10),
-            options.overwrite
+            {
+              rank: parseInt(options.rank, 10),
+              overwrite: options.overwrite
+            }
           );
 
           spinner.succeed('Image uploaded');

@@ -17,7 +17,7 @@ export function InventoryTracker({
     limit: 100,
   });
 
-  if (loading && !listings.length) {
+  if (loading && (!listings || !listings.length)) {
     return (
       <div className={`etsy-inventory-tracker ${className}`}>
         <div className="etsy-loading">Loading inventory...</div>
@@ -29,6 +29,16 @@ export function InventoryTracker({
     return (
       <div className={`etsy-inventory-tracker ${className}`}>
         <div className="etsy-error">Error: {error.message}</div>
+      </div>
+    );
+  }
+
+  if (!listings) {
+    return (
+      <div className={`etsy-inventory-tracker ${className}`}>
+        <div className="etsy-empty-state">
+          <p>No listings available</p>
+        </div>
       </div>
     );
   }

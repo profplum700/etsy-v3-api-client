@@ -32,7 +32,7 @@ export function ListingManager({
     },
   });
 
-  if (loading && !listings.length) {
+  if (loading && (!listings || !listings.length)) {
     return (
       <div className={`etsy-listing-manager ${className}`}>
         <div className="etsy-loading">Loading listings...</div>
@@ -44,6 +44,16 @@ export function ListingManager({
     return (
       <div className={`etsy-listing-manager ${className}`}>
         <div className="etsy-error">Error: {error.message}</div>
+      </div>
+    );
+  }
+
+  if (!listings) {
+    return (
+      <div className={`etsy-listing-manager ${className}`}>
+        <div className="etsy-empty-state">
+          <p>No listings available</p>
+        </div>
       </div>
     );
   }
