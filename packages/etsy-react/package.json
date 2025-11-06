@@ -57,7 +57,6 @@
     "@rollup/plugin-node-resolve": "^16.0.1",
     "@rollup/plugin-typescript": "^12.1.4",
     "@testing-library/react": "^16.1.0",
-    "@testing-library/react-hooks": "^8.0.1",
     "@types/jest": "^30.0.0",
     "@types/react": "^18.3.18",
     "jest": "^30.0.5",
