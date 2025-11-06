@@ -59,7 +59,10 @@ describe('Encryption Utilities', () => {
       // Tamper with the ciphertext by modifying the binary data
       const ciphertextBuffer = Buffer.from(encrypted.ciphertext, 'base64');
       if (ciphertextBuffer.length > 0) {
-        ciphertextBuffer[0] = ciphertextBuffer[0] ^ 0xFF; // Flip all bits of first byte
+        const firstByte = ciphertextBuffer[0];
+        if (firstByte !== undefined) {
+          ciphertextBuffer[0] = firstByte ^ 0xFF; // Flip all bits of first byte
+        }
       }
 
       const tampered = {
