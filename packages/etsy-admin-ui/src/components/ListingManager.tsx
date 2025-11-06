@@ -4,7 +4,7 @@ import { useListings, useUpdateListing, useDeleteListing } from '@profplum700/et
 export interface ListingManagerProps {
   shopId: string;
   className?: string;
-  onListingUpdate?: (listing: any) => void;
+  onListingUpdate?: (listing: unknown) => void;
   onListingDelete?: (listingId: string) => void;
 }
 
@@ -13,7 +13,7 @@ export function ListingManager({
   className = '',
   onListingUpdate,
   onListingDelete,
-}: ListingManagerProps) {
+}: ListingManagerProps): React.JSX.Element {
   const [filter, setFilter] = useState<'active' | 'inactive' | 'draft' | 'expired'>('active');
   const { data: listings, loading, error, hasMore, loadMore } = useListings(shopId, {
     state: filter,

@@ -26,7 +26,12 @@ const rateLimitStore = new Map<string, RateLimitEntry>();
  * Create API route handlers for Etsy API
  * Provides automatic rate limiting, caching, and error handling
  */
-export function createEtsyApiRoute(config: EtsyApiRouteConfig) {
+export function createEtsyApiRoute(config: EtsyApiRouteConfig): {
+  GET: (request: NextRequest) => Promise<NextResponse>;
+  POST: (request: NextRequest) => Promise<NextResponse>;
+  PUT: (request: NextRequest) => Promise<NextResponse>;
+  DELETE: (request: NextRequest) => Promise<NextResponse>;
+} {
   const { rateLimit, cache } = config;
 
   // Rate limiting helper
@@ -103,8 +108,8 @@ export function createEtsyApiRoute(config: EtsyApiRouteConfig) {
   }
 
   return {
-    GET: async (request: NextRequest) => {
-      return handleRequest(request, async (client) => {
+    GET: async (request: NextRequest): Promise<NextResponse> => {
+      return handleRequest(request, async (_client): Promise<unknown> => {
         const { searchParams } = new URL(request.url);
         const endpoint = searchParams.get('endpoint');
 
@@ -127,8 +132,8 @@ export function createEtsyApiRoute(config: EtsyApiRouteConfig) {
       });
     },
 
-    POST: async (request: NextRequest) => {
-      return handleRequest(request, async (client) => {
+    POST: async (request: NextRequest): Promise<NextResponse> => {
+      return handleRequest(request, async (_client): Promise<unknown> => {
         const body = await request.json();
         const { endpoint, data } = body;
 
@@ -141,8 +146,8 @@ export function createEtsyApiRoute(config: EtsyApiRouteConfig) {
       });
     },
 
-    PUT: async (request: NextRequest) => {
-      return handleRequest(request, async (client) => {
+    PUT: async (request: NextRequest): Promise<NextResponse> => {
+      return handleRequest(request, async (_client): Promise<unknown> => {
         const body = await request.json();
         const { endpoint, data } = body;
 
@@ -155,8 +160,8 @@ export function createEtsyApiRoute(config: EtsyApiRouteConfig) {
       });
     },
 
-    DELETE: async (request: NextRequest) => {
-      return handleRequest(request, async (client) => {
+    DELETE: async (request: NextRequest): Promise<NextResponse> => {
+      return handleRequest(request, async (_client): Promise<unknown> => {
         const { searchParams } = new URL(request.url);
         const endpoint = searchParams.get('endpoint');
 

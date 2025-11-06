@@ -8,7 +8,7 @@ export interface LayoutProps {
   footer?: ReactNode;
 }
 
-export function Layout({ children, className = '', sidebar, header, footer }: LayoutProps) {
+export function Layout({ children, className = '', sidebar, header, footer }: LayoutProps): React.JSX.Element {
   return (
     <div className={`etsy-admin-layout ${className}`}>
       {header && <header className="etsy-admin-header">{header}</header>}
@@ -28,7 +28,7 @@ export interface SidebarProps {
   className?: string;
 }
 
-export function Sidebar({ children, className = '' }: SidebarProps) {
+export function Sidebar({ children, className = '' }: SidebarProps): React.JSX.Element {
   return <div className={`etsy-sidebar ${className}`}>{children}</div>;
 }
 
@@ -48,7 +48,7 @@ export function SidebarItem({
   onClick,
   href,
   className = '',
-}: SidebarItemProps) {
+}: SidebarItemProps): React.JSX.Element {
   const classes = `etsy-sidebar-item ${active ? 'active' : ''} ${className}`;
 
   if (href) {
@@ -74,7 +74,7 @@ export interface HeaderProps {
   className?: string;
 }
 
-export function Header({ title, children, className = '' }: HeaderProps) {
+export function Header({ title, children, className = '' }: HeaderProps): React.JSX.Element {
   return (
     <div className={`etsy-header ${className}`}>
       {title && <h1 className="etsy-header-title">{title}</h1>}

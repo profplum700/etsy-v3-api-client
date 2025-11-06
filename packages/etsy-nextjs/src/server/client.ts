@@ -37,9 +37,10 @@ export async function getEtsyServerClient(): Promise<EtsyClient> {
 
     // Create storage that reads from cookies
     const tokenStorage = {
-      async load() {
+      async load(): Promise<unknown> {
         const cookieStore = await cookies();
-        const tokenData = cookieStore.get(serverClientConfig!.cookieName || 'etsy-tokens');
+        const cookieName = serverClientConfig?.cookieName || 'etsy-tokens';
+        const tokenData = cookieStore.get(cookieName);
         if (!tokenData) return null;
 
         try {
@@ -48,10 +49,11 @@ export async function getEtsyServerClient(): Promise<EtsyClient> {
           return null;
         }
       },
-      async save(tokens: any) {
+      async save(tokens: Record<string, unknown>): Promise<void> {
         const cookieStore = await cookies();
+        const cookieName = serverClientConfig?.cookieName || 'etsy-tokens';
         cookieStore.set(
-          serverClientConfig!.cookieName || 'etsy-tokens',
+          cookieName,
           JSON.stringify(tokens),
           {
             httpOnly: true,
@@ -61,9 +63,10 @@ export async function getEtsyServerClient(): Promise<EtsyClient> {
           }
         );
       },
-      async clear() {
+      async clear(): Promise<void> {
         const cookieStore = await cookies();
-        cookieStore.delete(serverClientConfig!.cookieName || 'etsy-tokens');
+        const cookieName = serverClientConfig?.cookieName || 'etsy-tokens';
+        cookieStore.delete(cookieName);
       },
     };
 
@@ -88,7 +91,7 @@ export function createEtsyServerClient(config: EtsyServerClientConfig): EtsyClie
   const { apiKey, redirectUri, scopes, cookieName } = config;
 
   const tokenStorage = {
-    async load() {
+    async load(): Promise<unknown> {
       const cookieStore = await cookies();
       const tokenData = cookieStore.get(cookieName || 'etsy-tokens');
       if (!tokenData) return null;
@@ -99,7 +102,7 @@ export function createEtsyServerClient(config: EtsyServerClientConfig): EtsyClie
         return null;
       }
     },
-    async save(tokens: any) {
+    async save(tokens: Record<string, unknown>): Promise<void> {
       const cookieStore = await cookies();
       cookieStore.set(
         cookieName || 'etsy-tokens',
@@ -112,7 +115,7 @@ export function createEtsyServerClient(config: EtsyServerClientConfig): EtsyClie
         }
       );
     },
-    async clear() {
+    async clear(): Promise<void> {
       const cookieStore = await cookies();
       cookieStore.delete(cookieName || 'etsy-tokens');
     },

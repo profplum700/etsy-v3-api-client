@@ -44,7 +44,7 @@ export function useQuery<T>(
 
   useEffect(() => {
     isMounted.current = true;
-    return () => {
+    return (): void => {
       isMounted.current = false;
     };
   }, []);

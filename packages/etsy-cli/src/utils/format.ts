@@ -24,7 +24,7 @@ export function formatTable(headers: string[], rows: string[][]): string {
   });
 }
 
-export function formatJson(data: any): string {
+export function formatJson(data: unknown): string {
   return JSON.stringify(data, null, 2);
 }
 

@@ -11,7 +11,7 @@ export function InventoryTracker({
   shopId,
   className = '',
   lowStockThreshold = 5,
-}: InventoryTrackerProps) {
+}: InventoryTrackerProps): React.JSX.Element {
   const { data: listings, loading, error } = useListings(shopId, {
     state: 'active',
     limit: 100,

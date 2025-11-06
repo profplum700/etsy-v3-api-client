@@ -24,7 +24,7 @@ export function EtsyNextClientProvider({
   client,
   apiEndpoint,
   children
-}: EtsyNextClientProviderProps) {
+}: EtsyNextClientProviderProps): React.JSX.Element {
   return (
     <EtsyNextClientContext.Provider value={{ client, apiEndpoint }}>
       {children}

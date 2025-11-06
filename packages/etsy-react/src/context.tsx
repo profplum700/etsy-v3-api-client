@@ -12,7 +12,7 @@ interface EtsyProviderProps {
   children: ReactNode;
 }
 
-export function EtsyProvider({ client, children }: EtsyProviderProps) {
+export function EtsyProvider({ client, children }: EtsyProviderProps): React.JSX.Element {
   return (
     <EtsyContext.Provider value={{ client }}>
       {children}

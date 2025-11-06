@@ -17,7 +17,7 @@ export interface CliConfig {
 export async function ensureConfigDir(): Promise<void> {
   try {
     await fs.mkdir(CONFIG_DIR, { recursive: true });
-  } catch (error) {
+  } catch {
     // Directory might already exist
   }
 }
@@ -46,7 +46,7 @@ export async function getClient(): Promise<EtsyClient> {
   }
 
   const tokenStorage = {
-    async load() {
+    async load(): Promise<unknown> {
       try {
         const data = await fs.readFile(TOKENS_FILE, 'utf-8');
         return JSON.parse(data);
@@ -54,11 +54,11 @@ export async function getClient(): Promise<EtsyClient> {
         return null;
       }
     },
-    async save(tokens: any) {
+    async save(tokens: Record<string, unknown>): Promise<void> {
       await ensureConfigDir();
       await fs.writeFile(TOKENS_FILE, JSON.stringify(tokens, null, 2));
     },
-    async clear() {
+    async clear(): Promise<void> {
       try {
         await fs.unlink(TOKENS_FILE);
       } catch {

@@ -55,7 +55,7 @@ export default [
     },
   },
   {
-    files: ["__tests__/**/*.ts"],
+    files: ["**/__tests__/**/*.{ts,tsx}", "**/*.test.{ts,tsx}", "**/*.spec.{ts,tsx}"],
     languageOptions: {
       parser: tsParser,
       parserOptions: {
@@ -64,6 +64,7 @@ export default [
       },
       globals: {
         ...globals.jest,
+        ...globals.node,
       },
     },
     plugins: {

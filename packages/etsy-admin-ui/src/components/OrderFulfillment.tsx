@@ -4,17 +4,17 @@ import { useReceipts, useUpdateReceipt } from '@profplum700/etsy-react';
 export interface OrderFulfillmentProps {
   shopId: string;
   className?: string;
-  onOrderUpdate?: (receipt: any) => void;
+  onOrderUpdate?: (receipt: unknown) => void;
 }
 
 export function OrderFulfillment({
   shopId,
   className = '',
   onOrderUpdate,
-}: OrderFulfillmentProps) {
+}: OrderFulfillmentProps): React.JSX.Element {
   const [filter, setFilter] = useState<'all' | 'unpaid' | 'unshipped'>('unshipped');
 
-  const receiptsOptions: any = {};
+  const receiptsOptions: Record<string, boolean> = {};
   if (filter === 'unpaid') {
     receiptsOptions.was_paid = false;
   } else if (filter === 'unshipped') {

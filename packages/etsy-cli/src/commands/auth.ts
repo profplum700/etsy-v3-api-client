@@ -20,7 +20,7 @@ export const authCommand = new Command('auth')
             name: 'apiKey',
             message: 'Enter your Etsy API key:',
             default: config.apiKey,
-            validate: (input) => input.length > 0 || 'API key is required',
+            validate: (input): boolean | string => input.length > 0 || 'API key is required',
           },
           {
             type: 'input',
@@ -33,7 +33,7 @@ export const authCommand = new Command('auth')
             name: 'scopes',
             message: 'Enter scopes (comma-separated):',
             default: config.scopes?.join(',') || 'listings_r,shops_r',
-            filter: (input: string) => input.split(',').map(s => s.trim()),
+            filter: (input: string): string[] => input.split(',').map(s => s.trim()),
           },
         ]);
 

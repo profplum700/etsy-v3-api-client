@@ -7,9 +7,9 @@ export interface ShopDashboardProps {
   onError?: (error: Error) => void;
 }
 
-export function ShopDashboard({ shopId, className = '', onError }: ShopDashboardProps) {
+export function ShopDashboard({ shopId, className = '', onError }: ShopDashboardProps): React.JSX.Element | null {
   const { data: shop, loading, error } = useShop(shopId, {
-    onError: onError || (() => {}),
+    onError: onError || ((): void => {}),
   });
 
   if (loading) {
