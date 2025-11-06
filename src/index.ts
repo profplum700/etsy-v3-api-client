@@ -144,6 +144,29 @@ export {
 } from './validation';
 
 // ============================================================================
+// Security Exports (Phase 5)
+// ============================================================================
+
+export {
+  // Encryption utilities
+  encryptAES256GCM,
+  decryptAES256GCM,
+  generateEncryptionKey,
+  deriveKeyFromPassword,
+  validateEncryptionKey,
+  type EncryptedData,
+
+  // Encrypted storage
+  EncryptedFileTokenStorage,
+  type EncryptedStorageConfig,
+
+  // Webhook security
+  WebhookSecurity,
+  createWebhookSecurity,
+  type WebhookSecurityConfig
+} from './security';
+
+// ============================================================================
 // Utility Exports
 // ============================================================================
 
@@ -179,7 +202,9 @@ export type {
   EtsyTokens,
   EtsyTokenResponse,
   TokenRefreshCallback,
+  TokenRotationCallback,
   TokenStorage,
+  TokenRotationConfig,
 
   // API Response Types
   EtsyApiResponse,

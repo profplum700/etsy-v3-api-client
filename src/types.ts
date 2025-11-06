@@ -58,14 +58,51 @@ export interface EtsyTokenResponse {
 }
 
 // Token Management Types
- 
+
 export type TokenRefreshCallback = (_accessToken: string, _refreshToken: string, _expiresAt: Date) => void;
 
+export type TokenRotationCallback = (oldTokens: EtsyTokens, newTokens: EtsyTokens) => void | Promise<void>;
+
 export interface TokenStorage {
-   
+
   save(_tokens: EtsyTokens): Promise<void>;
   load(): Promise<EtsyTokens | null>;
   clear(): Promise<void>;
+}
+
+/**
+ * Configuration for proactive token rotation
+ */
+export interface TokenRotationConfig {
+  /**
+   * Enable automatic proactive token rotation
+   * @default false
+   */
+  enabled: boolean;
+
+  /**
+   * Rotate tokens this many milliseconds before they expire
+   * @default 900000 (15 minutes)
+   */
+  rotateBeforeExpiry: number;
+
+  /**
+   * Callback function called when tokens are rotated
+   * Useful for notifying other services or logging
+   */
+  onRotation?: TokenRotationCallback;
+
+  /**
+   * Automatically schedule background rotation checks
+   * @default false
+   */
+  autoSchedule?: boolean;
+
+  /**
+   * Interval in milliseconds for checking if rotation is needed (only when autoSchedule is true)
+   * @default 60000 (1 minute)
+   */
+  checkInterval?: number;
 }
 
 // ============================================================================
