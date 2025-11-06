@@ -14,6 +14,7 @@ export default [
       "**/jest.config.cjs",
       "**/rollup.config.js",
       "**/*.d.ts", // Ignore TypeScript declaration files
+      "**/examples/**", // Ignore example applications
     ],
   },
   eslintRecommended.configs.recommended,
