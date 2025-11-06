@@ -1,6 +1,6 @@
 {
   "name": "@profplum700/etsy-v3-api-client",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "type": "module",
   "description": "JavaScript/TypeScript client for the Etsy Open API v3 with OAuth 2.0 authentication",
   "main": "dist/index.cjs",
