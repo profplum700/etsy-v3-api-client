@@ -3,7 +3,6 @@
  */
 
 import { WebhookSecurity, createWebhookSecurity } from '../../src/security/webhook-security';
-import * as crypto from 'crypto';
 
 describe('WebhookSecurity', () => {
   const secret = 'test-webhook-secret';

@@ -43,7 +43,7 @@ export class TokenManager {
   private storage?: TokenStorage;
   private refreshPromise?: Promise<EtsyTokens>;
   private rotationConfig?: TokenRotationConfig;
-  private rotationTimer?: NodeJS.Timeout;
+  private rotationTimer?: ReturnType<typeof setInterval>;
 
   constructor(config: EtsyClientConfig, storage?: TokenStorage, rotationConfig?: TokenRotationConfig) {
     this.keystring = config.keystring;
