@@ -584,10 +584,10 @@ const client = new EtsyClient({
 
 ### 🔐 Phase 5: Advanced Security (v2.5.0)
 
-**Priority**: MEDIUM | **Timeframe**: Ongoing
+**Priority**: MEDIUM | **Timeframe**: Ongoing | **Status**: ✅ COMPLETED
 
 #### 1. Token Encryption at Rest
-**Status**: Not Implemented
+**Status**: ✅ Implemented
 **Impact**: High - Security enhancement
 
 ```typescript
@@ -658,7 +658,7 @@ const client = new EtsyClient(config, storage);
 - AES-256-GCM authenticated encryption
 
 #### 2. OAuth Token Rotation
-**Status**: Implemented (basic)
+**Status**: ✅ Enhanced (proactive rotation implemented)
 **Impact**: Medium
 
 ```typescript
@@ -677,7 +677,7 @@ const client = new EtsyClient({
 ```
 
 #### 3. Request Signing
-**Status**: Not Implemented
+**Status**: ✅ Implemented
 **Impact**: Low - Advanced security
 
 ```typescript
@@ -863,10 +863,12 @@ const listing = await client.getListing('123', {
 1. ✅ **Pagination helpers** - High impact, medium effort (Phase 1)
 2. ✅ **Retry logic** - Medium impact, low effort (Phase 1)
 3. ✅ **React hooks** - High impact, medium effort (Phase 3)
-4. ✅ **Encrypted storage** - High impact, medium effort (Phase 2)
+4. ✅ **Encrypted storage** - High impact, medium effort (Phase 5)
 5. ✅ **Next.js integration** - High impact, medium effort (Phase 3)
 6. ✅ **CLI tool** - Medium impact, medium effort (Phase 3)
 7. ✅ **Admin UI components** - High impact, high effort (Phase 3)
+8. ✅ **Token encryption at rest** - High impact, medium effort (Phase 5)
+9. ✅ **Proactive token rotation** - Medium impact, low effort (Phase 5)
 
 ### Long-term Investments
 1. **Bulk operations** - High complexity, high value
@@ -936,5 +938,5 @@ Track these metrics to measure progress:
 ---
 
 **Last Updated**: 2025-01-06
-**Version**: 2.3.0
-**Next Planned Release**: v2.4.0 (Q2 2025) - Analytics & Monitoring
+**Version**: 2.5.0
+**Next Planned Release**: v2.6.0 (Q2 2025) - Analytics & Monitoring

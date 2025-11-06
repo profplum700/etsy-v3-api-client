@@ -1,9 +1,17 @@
 /**
  * Token Management and Refresh Logic
- * Handles automatic token refresh and storage
+ * Handles automatic token refresh and storage with proactive rotation support
  */
 
-import { EtsyTokens, EtsyTokenResponse, EtsyAuthError, EtsyClientConfig, TokenRefreshCallback, TokenStorage } from '../types';
+import {
+  EtsyTokens,
+  EtsyTokenResponse,
+  EtsyAuthError,
+  EtsyClientConfig,
+  TokenRefreshCallback,
+  TokenStorage,
+  TokenRotationConfig
+} from '../types';
 import { isNode, hasLocalStorage, hasSessionStorage, assertFetchSupport } from '../utils/environment';
 
 /**
@@ -26,7 +34,7 @@ export class MemoryTokenStorage implements TokenStorage {
 }
 
 /**
- * Token manager handles token lifecycle and refresh
+ * Token manager handles token lifecycle, refresh, and proactive rotation
  */
 export class TokenManager {
   private keystring: string;
@@ -34,12 +42,15 @@ export class TokenManager {
   private refreshCallback?: TokenRefreshCallback;
   private storage?: TokenStorage;
   private refreshPromise?: Promise<EtsyTokens>;
+  private rotationConfig?: TokenRotationConfig;
+  private rotationTimer?: NodeJS.Timeout;
 
-  constructor(config: EtsyClientConfig, storage?: TokenStorage) {
+  constructor(config: EtsyClientConfig, storage?: TokenStorage, rotationConfig?: TokenRotationConfig) {
     this.keystring = config.keystring;
     this.refreshCallback = config.refreshSave;
     this.storage = storage;
-    
+    this.rotationConfig = rotationConfig;
+
     // Initialize with provided tokens
     this.currentTokens = {
       access_token: config.accessToken,
@@ -48,6 +59,11 @@ export class TokenManager {
       token_type: 'Bearer',
       scope: ''
     };
+
+    // Start proactive rotation if enabled and autoSchedule is true
+    if (this.rotationConfig?.enabled && this.rotationConfig?.autoSchedule) {
+      this.startRotationScheduler();
+    }
   }
 
   /**
@@ -233,6 +249,116 @@ export class TokenManager {
     const now = new Date();
     const expiresAt = new Date(this.currentTokens.expires_at);
     return expiresAt.getTime() - now.getTime();
+  }
+
+  /**
+   * Check if token needs proactive rotation
+   * @returns true if token should be rotated proactively
+   */
+  public needsProactiveRotation(): boolean {
+    if (!this.rotationConfig?.enabled || !this.currentTokens) {
+      return false;
+    }
+
+    const timeUntilExpiration = this.getTimeUntilExpiration();
+    if (timeUntilExpiration === null) {
+      return false;
+    }
+
+    const rotateBeforeExpiry = this.rotationConfig.rotateBeforeExpiry || 15 * 60 * 1000; // 15 minutes default
+    return timeUntilExpiration <= rotateBeforeExpiry;
+  }
+
+  /**
+   * Perform proactive token rotation
+   * This will rotate the token even if it hasn't expired yet
+   *
+   * @returns New tokens after rotation
+   */
+  public async rotateToken(): Promise<EtsyTokens> {
+    if (!this.currentTokens) {
+      throw new EtsyAuthError('No tokens available to rotate', 'NO_TOKENS');
+    }
+
+    const oldTokens = { ...this.currentTokens };
+
+    // Perform token refresh
+    const newTokens = await this.refreshToken();
+
+    // Call rotation callback if provided
+    if (this.rotationConfig?.onRotation) {
+      try {
+        await Promise.resolve(this.rotationConfig.onRotation(oldTokens, newTokens));
+      } catch (error) {
+        console.error('Token rotation callback failed:', error);
+      }
+    }
+
+    return newTokens;
+  }
+
+  /**
+   * Start automatic rotation scheduler
+   * This will check periodically if tokens need rotation and rotate them proactively
+   */
+  public startRotationScheduler(): void {
+    if (!this.rotationConfig?.enabled) {
+      throw new Error('Token rotation is not enabled');
+    }
+
+    // Stop existing scheduler if running
+    this.stopRotationScheduler();
+
+    const checkInterval = this.rotationConfig.checkInterval || 60 * 1000; // 1 minute default
+
+    this.rotationTimer = setInterval(async () => {
+      try {
+        if (this.needsProactiveRotation()) {
+          console.log('Proactively rotating token before expiration');
+          await this.rotateToken();
+        }
+      } catch (error) {
+        console.error('Failed to proactively rotate token:', error);
+      }
+    }, checkInterval);
+
+    // Prevent timer from keeping process alive in Node.js
+    if (this.rotationTimer.unref) {
+      this.rotationTimer.unref();
+    }
+  }
+
+  /**
+   * Stop automatic rotation scheduler
+   */
+  public stopRotationScheduler(): void {
+    if (this.rotationTimer) {
+      clearInterval(this.rotationTimer);
+      this.rotationTimer = undefined;
+    }
+  }
+
+  /**
+   * Update rotation configuration
+   * @param config New rotation configuration
+   */
+  public updateRotationConfig(config: TokenRotationConfig): void {
+    const wasAutoScheduleEnabled = this.rotationConfig?.autoSchedule;
+    this.rotationConfig = config;
+
+    // Handle auto-schedule changes
+    if (config.enabled && config.autoSchedule && !wasAutoScheduleEnabled) {
+      this.startRotationScheduler();
+    } else if (!config.enabled || !config.autoSchedule) {
+      this.stopRotationScheduler();
+    }
+  }
+
+  /**
+   * Get current rotation configuration
+   */
+  public getRotationConfig(): TokenRotationConfig | undefined {
+    return this.rotationConfig ? { ...this.rotationConfig } : undefined;
   }
 
   /**
