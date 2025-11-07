@@ -210,6 +210,68 @@ describe('GlobalRequestQueue', () => {
 
       expect(fastRequest).toHaveBeenCalled();
     });
+
+    it('should timeout long-running request during execution', async () => {
+      const queue = GlobalRequestQueue.getInstance();
+
+      // Create a request that runs for 200ms
+      const longRunningRequest = () => new Promise(resolve => {
+        setTimeout(() => resolve('completed'), 200);
+      });
+
+      // Set timeout to 100ms - should timeout during execution, not in queue
+      const promise = queue.enqueue(longRunningRequest, { timeout: 100 });
+
+      // Should reject with timeout error
+      await expect(promise).rejects.toThrow(/Request timeout after 100ms \(exceeded during execution\)/);
+    });
+
+    it('should continue processing queue after request timeout', async () => {
+      const queue = GlobalRequestQueue.getInstance();
+
+      // First request: hangs for 500ms
+      const hangingRequest = () => new Promise(resolve => {
+        setTimeout(() => resolve('hanging'), 500);
+      });
+
+      // Second request: completes quickly
+      const fastRequest = jest.fn().mockResolvedValue('fast');
+
+      // Enqueue hanging request with 50ms timeout
+      const hangingPromise = queue.enqueue(hangingRequest, { timeout: 50 });
+
+      // Enqueue fast request (should still process after timeout)
+      const fastPromise = queue.enqueue(fastRequest);
+
+      // First request should timeout
+      await expect(hangingPromise).rejects.toThrow(/Request timeout/);
+
+      // Second request should still succeed
+      await expect(fastPromise).resolves.toBe('fast');
+      expect(fastRequest).toHaveBeenCalled();
+    });
+
+    it('should calculate remaining timeout after queue wait time', async () => {
+      const queue = GlobalRequestQueue.getInstance();
+
+      // Block the queue with a slow request
+      const blockingRequest = () => new Promise(resolve => {
+        setTimeout(() => resolve('blocking'), 100);
+      });
+
+      queue.enqueue(blockingRequest);
+
+      // Add request with 150ms timeout
+      // After waiting 100ms in queue, only 50ms remains for execution
+      const timedRequest = () => new Promise(resolve => {
+        setTimeout(() => resolve('completed'), 60); // Takes 60ms to execute
+      });
+
+      const promise = queue.enqueue(timedRequest, { timeout: 150 });
+
+      // Should timeout because execution (60ms) exceeds remaining time (~50ms)
+      await expect(promise).rejects.toThrow(/Request timeout/);
+    });
   });
 
   describe('Rate Limit Handling', () => {

@@ -227,16 +227,34 @@ export class GlobalRequestQueue {
           break;
         }
 
-        // Check timeout
+        // Check if already timed out while waiting in queue
         const elapsed = Date.now() - item.addedAt;
         if (item.timeout && elapsed > item.timeout) {
-          item.reject(new Error(`Request timeout after ${elapsed}ms`));
+          item.reject(new Error(`Request timeout after ${elapsed}ms (exceeded while waiting in queue)`));
           continue;
         }
 
-        // Execute request
+        // Execute request with timeout
         try {
-          const result = await item.request();
+          let result: unknown;
+
+          if (item.timeout) {
+            // Calculate remaining timeout (total timeout minus time already spent in queue)
+            const remainingTimeout = item.timeout - elapsed;
+
+            // Race the request against the timeout
+            const timeoutPromise = new Promise<never>((_, reject) => {
+              setTimeout(() => {
+                reject(new Error(`Request timeout after ${item.timeout}ms (exceeded during execution)`));
+              }, remainingTimeout);
+            });
+
+            result = await Promise.race([item.request(), timeoutPromise]);
+          } else {
+            // No timeout specified
+            result = await item.request();
+          }
+
           item.resolve(result);
           this.requestCount++;
           this.lastRequestTime = Date.now();
