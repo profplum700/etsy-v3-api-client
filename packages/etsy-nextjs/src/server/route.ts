@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getEtsyServerClient } from './client';
+import type { EtsyClient } from '@profplum700/etsy-v3-api-client';
 
 export interface EtsyApiRouteConfig {
   apiKey: string;
@@ -59,8 +60,7 @@ export function createEtsyApiRoute(config: EtsyApiRouteConfig): {
 
   async function handleRequest(
     request: NextRequest,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    handler: (client: any, request: NextRequest) => Promise<any>
+    handler: (client: EtsyClient, request: NextRequest) => Promise<unknown>
   ): Promise<NextResponse> {
     try {
       // Rate limiting
@@ -119,8 +119,7 @@ export function createEtsyApiRoute(config: EtsyApiRouteConfig): {
         }
 
         // Parse additional parameters
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const params: Record<string, any> = {};
+        const params: Record<string, unknown> = {};
         searchParams.forEach((value, key) => {
           if (key !== 'endpoint') {
             params[key] = value;

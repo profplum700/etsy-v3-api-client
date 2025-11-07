@@ -3,6 +3,7 @@ import ora from 'ora';
 import chalk from 'chalk';
 import { getClient } from '../utils/client.js';
 import { formatTable, formatJson, formatError, formatSuccess } from '../utils/format.js';
+import type { EtsyApiResponse, EtsyListing } from '@profplum700/etsy-v3-api-client';
 
 export const listingsCommand = new Command('listings')
   .description('Manage listings')
@@ -24,10 +25,8 @@ export const listingsCommand = new Command('listings')
           });
 
           // Handle both array and paginated response
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const results = Array.isArray(response) ? response : (response as any).results || [];
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const count = Array.isArray(response) ? response.length : (response as any).count || 0;
+          const results = Array.isArray(response) ? response : (response as EtsyApiResponse<EtsyListing>).results || [];
+          const count = Array.isArray(response) ? response.length : (response as EtsyApiResponse<EtsyListing>).count || 0;
 
           spinner.succeed(`Found ${count} listings`);
 
@@ -39,13 +38,13 @@ export const listingsCommand = new Command('listings')
             } else {
               console.log(formatTable(
                 ['Listing ID', 'Title', 'State', 'Price', 'Quantity'],
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                results.map((listing: any) => [
+                results.map((listing: EtsyListing) => [
                   listing.listing_id.toString(),
                   listing.title.substring(0, 40) + (listing.title.length > 40 ? '...' : ''),
-                  listing.state,
+                  listing.state || 'N/A',
                   `${listing.price.amount / listing.price.divisor} ${listing.price.currency_code}`,
-                  listing.quantity?.toString() || '0',
+                  // Note: quantity is not directly on EtsyListing type but may be returned by API
+                  (listing as EtsyListing & { quantity?: number }).quantity?.toString() || 'N/A',
                 ])
               ));
 

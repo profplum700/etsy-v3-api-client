@@ -2,13 +2,12 @@ import { useCallback } from 'react';
 import { useEtsyClient } from '../context';
 import { useQuery } from '../useQuery';
 import type { UseQueryOptions, UseQueryResult } from '../types';
+import type { EtsyShop, EtsyShopSection } from '@profplum700/etsy-v3-api-client';
 
 export function useShop(
   shopId: string,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  options: UseQueryOptions<any> = {}
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-): UseQueryResult<any> {
+  options: UseQueryOptions<EtsyShop> = {}
+): UseQueryResult<EtsyShop> {
   const client = useEtsyClient();
 
   const queryFn = useCallback(async () => {
@@ -20,10 +19,8 @@ export function useShop(
 
 export function useShopSections(
   shopId: string,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  options: UseQueryOptions<any[]> = {}
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-): UseQueryResult<any[]> {
+  options: UseQueryOptions<EtsyShopSection[]> = {}
+): UseQueryResult<EtsyShopSection[]> {
   const client = useEtsyClient();
 
   const queryFn = useCallback(async () => {
