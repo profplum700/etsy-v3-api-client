@@ -41,9 +41,10 @@ export const listingsCommand = new Command('listings')
                 results.map((listing: EtsyListing) => [
                   listing.listing_id.toString(),
                   listing.title.substring(0, 40) + (listing.title.length > 40 ? '...' : ''),
-                  listing.state,
+                  listing.state || 'N/A',
                   `${listing.price.amount / listing.price.divisor} ${listing.price.currency_code}`,
-                  listing.quantity?.toString() || '0',
+                  // Note: quantity is not directly on EtsyListing type but may be returned by API
+                  (listing as EtsyListing & { quantity?: number }).quantity?.toString() || 'N/A',
                 ])
               ));
 

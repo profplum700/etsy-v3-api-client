@@ -108,7 +108,9 @@ export function ListingManager({
                 <span className="etsy-listing-price">
                   {listing.price.currency_code} {listing.price.amount / listing.price.divisor}
                 </span>
-                <span className="etsy-listing-quantity">Qty: {listing.quantity || 0}</span>
+                <span className="etsy-listing-quantity">
+                  Qty: {(listing as typeof listing & { quantity?: number }).quantity || 0}
+                </span>
                 <span className={`etsy-listing-state etsy-state-${listing.state}`}>
                   {listing.state}
                 </span>
