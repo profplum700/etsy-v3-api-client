@@ -112,11 +112,11 @@ export function OrderFulfillment({
                 {receipt.grandtotal.amount / receipt.grandtotal.divisor}
               </div>
               <div className="etsy-order-status">
-                <span className={`etsy-badge ${receipt.was_paid ? 'etsy-badge-success' : 'etsy-badge-warning'}`}>
-                  {receipt.was_paid ? 'Paid' : 'Unpaid'}
+                <span className={`etsy-badge ${receipt.is_paid ? 'etsy-badge-success' : 'etsy-badge-warning'}`}>
+                  {receipt.is_paid ? 'Paid' : 'Unpaid'}
                 </span>
-                <span className={`etsy-badge ${receipt.was_shipped ? 'etsy-badge-success' : 'etsy-badge-warning'}`}>
-                  {receipt.was_shipped ? 'Shipped' : 'Unshipped'}
+                <span className={`etsy-badge ${receipt.is_shipped ? 'etsy-badge-success' : 'etsy-badge-warning'}`}>
+                  {receipt.is_shipped ? 'Shipped' : 'Unshipped'}
                 </span>
               </div>
             </div>
@@ -129,7 +129,7 @@ export function OrderFulfillment({
             )}
 
             <div className="etsy-order-actions">
-              {!receipt.was_paid && (
+              {!receipt.is_paid && (
                 <button
                   className="etsy-btn etsy-btn-sm"
                   onClick={() => {
@@ -143,7 +143,7 @@ export function OrderFulfillment({
                   Mark as Paid
                 </button>
               )}
-              {receipt.was_paid && !receipt.was_shipped && (
+              {receipt.is_paid && !receipt.is_shipped && (
                 <button
                   className="etsy-btn etsy-btn-sm etsy-btn-primary"
                   onClick={() => {

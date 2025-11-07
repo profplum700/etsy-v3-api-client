@@ -1,7 +1,8 @@
 import { useState, useCallback } from 'react';
 import { useEtsyClient } from '../context';
 import { useQuery } from '../useQuery';
-import type { UseQueryOptions, UsePaginatedQueryResult } from '../types';
+import type { UseQueryOptions, UsePaginatedQueryResult, UseQueryResult } from '../types';
+import type { EtsyApiResponse, EtsyListing } from '@profplum700/etsy-v3-api-client';
 
 interface ListingsOptions {
   state?: 'active' | 'inactive' | 'draft' | 'expired';
@@ -14,11 +15,11 @@ interface ListingsOptions {
 export function useListings(
   shopId: string,
   listingsOptions: ListingsOptions = {},
-  queryOptions: UseQueryOptions<any[]> = {}
-): UsePaginatedQueryResult<any> {
+  queryOptions: UseQueryOptions<EtsyListing[]> = {}
+): UsePaginatedQueryResult<EtsyListing> {
   const client = useEtsyClient();
   const [currentPage, setCurrentPage] = useState(0);
-  const [allData, setAllData] = useState<any[]>([]);
+  const [allData, setAllData] = useState<EtsyListing[]>([]);
   const [hasMore, setHasMore] = useState(true);
   const [totalPages, setTotalPages] = useState<number | null>(null);
 
@@ -33,8 +34,8 @@ export function useListings(
     });
 
     // Handle both array response and paginated response
-    const results = Array.isArray(response) ? response : (response as any).results || [];
-    const count = Array.isArray(response) ? response.length : (response as any).count || 0;
+    const results = Array.isArray(response) ? response : (response as EtsyApiResponse<EtsyListing>).results || [];
+    const count = Array.isArray(response) ? response.length : (response as EtsyApiResponse<EtsyListing>).count || 0;
     const totalPagesCalc = Math.ceil(count / limit);
 
     setTotalPages(totalPagesCalc);
@@ -70,8 +71,8 @@ export function useListings(
 
 export function useListing(
   listingId: string,
-  options: UseQueryOptions<any> = {}
-): any {
+  options: UseQueryOptions<EtsyListing> = {}
+): UseQueryResult<EtsyListing> {
   const client = useEtsyClient();
 
   const queryFn = useCallback(async () => {

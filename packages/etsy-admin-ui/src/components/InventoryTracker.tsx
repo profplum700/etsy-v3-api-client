@@ -1,5 +1,6 @@
 import React from 'react';
 import { useListings } from '@profplum700/etsy-react';
+import type { EtsyListing } from '@profplum700/etsy-v3-api-client';
 
 export interface InventoryTrackerProps {
   shopId: string;
@@ -43,13 +44,18 @@ export function InventoryTracker({
     );
   }
 
-  const lowStockItems = listings.filter(
-    (listing) => (listing.quantity || 0) <= lowStockThreshold && (listing.quantity || 0) > 0
-  );
-  const outOfStockItems = listings.filter((listing) => (listing.quantity || 0) === 0);
-  const inStockItems = listings.filter((listing) => (listing.quantity || 0) > lowStockThreshold);
+  // Note: quantity is not directly on EtsyListing type but may be returned by API
+  const getQuantity = (listing: EtsyListing): number => {
+    return (listing as EtsyListing & { quantity?: number }).quantity || 0;
+  };
 
-  const totalInventory = listings.reduce((sum, listing) => sum + (listing.quantity || 0), 0);
+  const lowStockItems = listings.filter(
+    (listing) => getQuantity(listing) <= lowStockThreshold && getQuantity(listing) > 0
+  );
+  const outOfStockItems = listings.filter((listing) => getQuantity(listing) === 0);
+  const inStockItems = listings.filter((listing) => getQuantity(listing) > lowStockThreshold);
+
+  const totalInventory = listings.reduce((sum, listing) => sum + getQuantity(listing), 0);
 
   return (
     <div className={`etsy-inventory-tracker ${className}`}>
@@ -107,7 +113,7 @@ export function InventoryTracker({
                 </div>
                 <div className="etsy-item-quantity">
                   <span className="etsy-quantity-badge etsy-badge-warning">
-                    {listing.quantity}
+                    {getQuantity(listing)}
                   </span>
                 </div>
               </div>
