@@ -30,6 +30,7 @@ const nodePlugins = [
     tsconfig: './tsconfig.json',
     declaration: false,
     declarationMap: false,
+    outputToFilesystem: true,
     compilerOptions: {
       skipLibCheck: true,
       target: 'ES2020',
@@ -73,6 +74,7 @@ const browserPlugins = [
     tsconfig: './tsconfig.json',
     declaration: false,
     declarationMap: false,
+    outputToFilesystem: true,
     compilerOptions: {
       skipLibCheck: true,
       target: 'ES2020',
@@ -89,7 +91,7 @@ const onwarn = (warning, warn) => {
     return;
   }
   // Suppress Node.js built-in warnings for browser builds
-  if (warning.code === 'UNRESOLVED_IMPORT' && ['fs', 'crypto', 'buffer', 'util'].includes(warning.source)) {
+  if (warning.code === 'UNRESOLVED_IMPORT' && ['fs', 'crypto', 'buffer', 'util'].includes(warning.exporter)) {
     return;
   }
   // Suppress other expected warnings

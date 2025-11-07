@@ -4,7 +4,9 @@
     "outDir": "./dist",
     "rootDir": "./",
     "module": "ESNext",
-    "moduleResolution": "node"
+    "moduleResolution": "node",
+    "declaration": false,
+    "declarationMap": false
   },
   "include": ["src/**/*", "__tests__/**/*"],
   "exclude": ["node_modules", "dist"]

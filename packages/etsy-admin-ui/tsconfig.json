@@ -4,14 +4,11 @@
     "outDir": "./dist",
     "rootDir": "./",
     "jsx": "react",
-    "composite": true,
-    "declaration": true,
-    "declarationMap": true,
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
     "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
   "include": ["src/**/*", "jest.setup.ts"],
-  "exclude": ["node_modules", "dist", "__tests__"],
-  "references": [
-    { "path": "../etsy-react" }
-  ]
+  "exclude": ["node_modules", "dist", "__tests__"]
 }

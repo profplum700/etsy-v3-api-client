@@ -29,8 +29,8 @@
     "type-check": "pnpm run build && tsc --noEmit && pnpm --filter './packages/*' run type-check",
     "dev": "rollup -c --watch",
     "clean": "rm -rf dist && pnpm --filter './packages/*' exec rm -rf dist",
-    "prepublishOnly": "npm run build && npm run test",
-    "prepare": "npm run build:core",
+    "prepublishOnly": "pnpm run build && pnpm run test",
+    "prepare": "pnpm run build:core",
     "release": "pnpm run build && pnpm run test && pnpm publish -r --filter . --filter './packages/*' --access public",
     "release:dry": "pnpm publish -r --filter . --filter './packages/*' --access public --dry-run"
   },

@@ -34,6 +34,7 @@ export default [
       typescript({
         tsconfig: './tsconfig.json',
         declaration: false,
+        outputToFilesystem: true,
       }),
     ],
   },
@@ -71,6 +72,7 @@ export default [
       typescript({
         tsconfig: './tsconfig.json',
         declaration: false,
+        outputToFilesystem: true,
       }),
     ],
   },
