@@ -34,8 +34,8 @@ describe('Enhanced EtsyApiError', () => {
 
       expect(error.details.validationErrors).toBeDefined();
       expect(error.details.validationErrors).toHaveLength(2);
-      expect(error.details.validationErrors![0].field).toBe('title');
-      expect(error.details.validationErrors![0].message).toBe('Title is required');
+      expect(error.details.validationErrors?.[0]?.field).toBe('title');
+      expect(error.details.validationErrors?.[0]?.message).toBe('Title is required');
     });
 
     it('should handle malformed validation errors gracefully', () => {

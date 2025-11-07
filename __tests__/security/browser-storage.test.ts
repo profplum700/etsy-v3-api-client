@@ -66,7 +66,7 @@ describe('SecureTokenStorage', () => {
       location: {
         hostname: 'localhost',
       },
-    } as typeof global.window;
+    } as unknown as typeof global.window;
 
     // Mock global localStorage and sessionStorage
     Object.defineProperty(global, 'localStorage', {
@@ -515,6 +515,7 @@ describe('SecureTokenStorage', () => {
 
       expect(isSecureStorageSupported()).toBe(false);
 
+      // @ts-expect-error - Restore subtle property
       global.window.crypto.subtle = originalSubtle;
     });
 

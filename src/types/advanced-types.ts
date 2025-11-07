@@ -265,17 +265,25 @@ export type EtsyScope = `${ScopeCategory}_${ScopeAction}`;
 export const ETSY_OAUTH_SCOPES: Record<EtsyScope, string> = {
   'shops_r': 'Read shop information',
   'shops_w': 'Write shop information',
+  'shops_d': 'Delete shop information',
   'listings_r': 'Read listings',
   'listings_w': 'Write listings',
   'listings_d': 'Delete listings',
   'transactions_r': 'Read transactions',
   'transactions_w': 'Write transactions',
+  'transactions_d': 'Delete transactions',
   'profile_r': 'Read user profile',
   'profile_w': 'Write user profile',
+  'profile_d': 'Delete user profile',
   'email_r': 'Read user email',
+  'email_w': 'Write user email',
+  'email_d': 'Delete user email',
   'recommend_r': 'Read recommendations',
   'recommend_w': 'Write recommendations',
+  'recommend_d': 'Delete recommendations',
   'feedback_r': 'Read feedback',
+  'feedback_w': 'Write feedback',
+  'feedback_d': 'Delete feedback',
 };
 
 /**
