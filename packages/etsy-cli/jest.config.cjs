@@ -1,24 +1,20 @@
 module.exports = {
-  preset: 'ts-jest/presets/default-esm',
   testEnvironment: 'node',
   roots: ['<rootDir>/src', '<rootDir>/__tests__'],
   testMatch: ['**/__tests__/**/*.ts', '**/?(*.)+(spec|test).ts'],
   moduleFileExtensions: ['ts', 'js'],
-  extensionsToTreatAsEsm: ['.ts'],
-  moduleNameMapper: {
-    '^(\\.{1,2}/.*)\\.js$': '$1',
-  },
   transform: {
-    '^.+\\.ts$': [
-      'ts-jest',
-      {
-        useESM: true,
-      },
-    ],
+    '^.+\\.ts$': ['ts-jest', {
+      tsconfig: {
+        module: 'commonjs',
+        esModuleInterop: true,
+      }
+    }],
   },
-  transformIgnorePatterns: [
-    'node_modules/(?!(chalk|table|.*\\.mjs$))',
-  ],
+  moduleNameMapper: {
+    '^chalk$': '<rootDir>/__mocks__/chalk.js',
+    '^table$': '<rootDir>/__mocks__/table.js',
+  },
   collectCoverageFrom: [
     'src/**/*.ts',
     '!src/**/*.d.ts',

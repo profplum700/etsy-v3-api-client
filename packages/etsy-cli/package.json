@@ -16,7 +16,7 @@
   "scripts": {
     "build": "rollup -c",
     "build:watch": "rollup -c --watch",
-    "test": "echo 'Skipping CLI tests (ESM issues with Jest)' && exit 0",
+    "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "lint": "eslint --config ../../eslint.config.mjs .",
