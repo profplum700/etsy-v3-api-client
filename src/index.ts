@@ -179,6 +179,27 @@ export {
 } from './security';
 
 // ============================================================================
+// Plugin System Exports
+// ============================================================================
+
+export {
+  PluginManager,
+  createAnalyticsPlugin,
+  createRetryPlugin,
+  createLoggingPlugin,
+  createCachingPlugin,
+  createRateLimitPlugin,
+  type EtsyPlugin,
+  type PluginRequestConfig,
+  type PluginResponse,
+  type AnalyticsPluginConfig,
+  type RetryPluginConfig,
+  type LoggingPluginConfig,
+  type CachingPluginConfig,
+  type RateLimitPluginConfig,
+} from './plugins';
+
+// ============================================================================
 // Utility Exports
 // ============================================================================
 
