@@ -30,3 +30,8 @@ export {
 } from './webhook-security';
 
 export type { WebhookSecurityConfig } from './webhook-security';
+
+// Browser secure storage
+export { SecureTokenStorage, isSecureStorageSupported } from './browser-storage';
+
+export type { SecureTokenStorageConfig } from './browser-storage';
