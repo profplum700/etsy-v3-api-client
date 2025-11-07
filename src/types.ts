@@ -406,24 +406,39 @@ export interface EtsyErrorDetails {
   field?: string;
   suggestion?: string;
   retryAfter?: number;
+  endpoint?: string;
+  timestamp?: Date;
+  validationErrors?: Array<{
+    field: string;
+    message: string;
+  }>;
 }
 
 export class EtsyApiError extends Error {
   public details: EtsyErrorDetails;
+  public readonly endpoint?: string;
+  public readonly suggestions: string[];
+  public readonly docsUrl: string;
+  public readonly timestamp: Date;
 
   constructor(
     message: string,
     public _statusCode?: number,
     public _response?: unknown,
-    public _retryAfter?: number
+    public _retryAfter?: number,
+    endpoint?: string
   ) {
     super(message);
     this.name = 'EtsyApiError';
+    this.endpoint = endpoint;
+    this.timestamp = new Date();
 
     // Initialize structured error details
     this.details = {
       statusCode: _statusCode || 0,
-      retryAfter: _retryAfter
+      retryAfter: _retryAfter,
+      endpoint,
+      timestamp: this.timestamp
     };
 
     // Try to extract additional details from response
@@ -432,7 +447,27 @@ export class EtsyApiError extends Error {
       this.details.errorCode = (resp.error_code || resp.code) as string | undefined;
       this.details.field = resp.field as string | undefined;
       this.details.suggestion = (resp.suggestion || resp.message) as string | undefined;
+
+      // Extract validation errors if present
+      if (Array.isArray(resp.errors)) {
+        this.details.validationErrors = resp.errors.map((err: unknown) => {
+          if (err && typeof err === 'object') {
+            const e = err as Record<string, unknown>;
+            return {
+              field: String(e.field || 'unknown'),
+              message: String(e.message || 'Validation error')
+            };
+          }
+          return { field: 'unknown', message: String(err) };
+        });
+      }
     }
+
+    // Generate actionable suggestions based on error type
+    this.suggestions = this.generateSuggestions();
+
+    // Generate documentation URL
+    this.docsUrl = this.generateDocsUrl();
   }
 
   /**
@@ -499,6 +534,139 @@ export class EtsyApiError extends Error {
   }
 
   /**
+   * Generate actionable suggestions based on error type
+   */
+  private generateSuggestions(): string[] {
+    const suggestions: string[] = [];
+
+    if (!this._statusCode) {
+      return ['Check your network connection and try again'];
+    }
+
+    switch (this._statusCode) {
+      case 400: // Bad Request
+        suggestions.push('Review the Etsy API documentation for this endpoint');
+        suggestions.push('Check all required parameters are provided');
+        suggestions.push('Validate parameter formats and types');
+
+        if (this.details.validationErrors && this.details.validationErrors.length > 0) {
+          suggestions.push('\nValidation errors:');
+          this.details.validationErrors.forEach(err => {
+            suggestions.push(`  • ${err.field}: ${err.message}`);
+          });
+        }
+
+        if (this.details.field) {
+          suggestions.push(`Field causing issue: ${this.details.field}`);
+        }
+        break;
+
+      case 401: // Unauthorized
+        suggestions.push('Verify your access token is valid and not expired');
+        suggestions.push('Check if you need to refresh the token');
+        suggestions.push('Ensure you completed the OAuth flow correctly');
+
+        if (this.endpoint?.includes('/shops/')) {
+          suggestions.push('Verify the shop_id matches the authenticated user');
+        }
+        break;
+
+      case 403: // Forbidden
+        suggestions.push('Check if your OAuth app has the required scopes:');
+
+        if (this.endpoint?.includes('/listings')) {
+          suggestions.push('  • listings_r (for reading listings)');
+          suggestions.push('  • listings_w (for creating/updating listings)');
+        }
+
+        if (this.endpoint?.includes('/receipts') || this.endpoint?.includes('/transactions')) {
+          suggestions.push('  • transactions_r (for reading orders)');
+        }
+
+        if (this.endpoint?.includes('/shops')) {
+          suggestions.push('  • shops_r (for reading shop data)');
+          suggestions.push('  • shops_w (for updating shop data)');
+        }
+
+        suggestions.push('Verify your app is approved for production access');
+        suggestions.push('Check if the resource belongs to the authenticated user');
+        break;
+
+      case 404: // Not Found
+        suggestions.push('Verify the resource ID exists and is spelled correctly');
+
+        if (this.endpoint?.includes('/listings/')) {
+          suggestions.push('Check if the listing is active and not deleted');
+          suggestions.push('Ensure the listing belongs to the authenticated shop');
+        }
+
+        if (this.endpoint?.includes('/shops/')) {
+          suggestions.push('Verify the shop ID is correct');
+        }
+
+        if (this.endpoint?.includes('/receipts/')) {
+          suggestions.push('Check if the receipt ID is valid');
+          suggestions.push('Ensure you have access to this shop\'s receipts');
+        }
+        break;
+
+      case 409: // Conflict
+        suggestions.push('Resource state conflict detected');
+        suggestions.push('Check if the resource was modified by another process');
+        suggestions.push('Try fetching the latest resource state before updating');
+        break;
+
+      case 429: { // Rate Limited
+        const resetTime = this.getRateLimitReset();
+        const resetTimeStr = resetTime
+          ? resetTime.toLocaleTimeString()
+          : 'shortly';
+
+        suggestions.push(`Rate limit exceeded. Resets at ${resetTimeStr}`);
+        suggestions.push('Implement exponential backoff retry logic');
+        suggestions.push('Consider caching responses to reduce API calls');
+        suggestions.push('Check if you can batch multiple operations');
+
+        if (this._retryAfter) {
+          suggestions.push(`Wait ${this._retryAfter} seconds before retrying`);
+        }
+        break;
+      }
+
+      case 500:
+      case 502:
+      case 503:
+      case 504: // Server Errors
+        suggestions.push('This is an Etsy server error, not your code');
+        suggestions.push('Retry the request after a short delay (exponential backoff)');
+        suggestions.push('Check Etsy API status: https://status.etsy.com');
+
+        if (this.isRetryable()) {
+          suggestions.push('This error is retryable - the request can be safely retried');
+        }
+        break;
+
+      default:
+        suggestions.push('Check the Etsy API documentation for this endpoint');
+        suggestions.push('Review your request parameters and format');
+
+        if (this.details.suggestion) {
+          suggestions.push(`Etsy suggestion: ${this.details.suggestion}`);
+        }
+    }
+
+    return suggestions;
+  }
+
+  /**
+   * Generate documentation URL for this error
+   */
+  private generateDocsUrl(): string {
+    const errorCode = this.details.errorCode?.toLowerCase() || this._statusCode?.toString() || 'unknown';
+    return `https://github.com/profplum700/etsy-v3-api-client/blob/main/docs/troubleshooting/ERROR_CODES.md#${errorCode}`;
+  }
+
+  /**
    * Get a user-friendly error message with suggestions
    */
   getUserFriendlyMessage(): string {
@@ -520,6 +688,60 @@ export class EtsyApiError extends Error {
     }
 
     return message;
+  }
+
+  /**
+   * Get formatted error with all context and suggestions
+   */
+  override toString(): string {
+    const parts = [
+      `EtsyApiError: ${this.message}`,
+      `Status Code: ${this._statusCode || 'Unknown'}`,
+    ];
+
+    if (this.details.errorCode) {
+      parts.push(`Error Code: ${this.details.errorCode}`);
+    }
+
+    if (this.endpoint) {
+      parts.push(`Endpoint: ${this.endpoint}`);
+    }
+
+    parts.push(`Timestamp: ${this.timestamp.toISOString()}`);
+
+    if (this.suggestions.length > 0) {
+      parts.push('\nSuggestions:');
+      this.suggestions.forEach(s => {
+        // Only add bullet if not already part of nested validation errors
+        if (!s.startsWith('  •')) {
+          parts.push(`  • ${s}`);
+        } else {
+          parts.push(s);
+        }
+      });
+    }
+
+    parts.push(`\nDocumentation: ${this.docsUrl}`);
+
+    return parts.join('\n');
+  }
+
+  /**
+   * Get JSON representation of error
+   */
+  toJSON(): Record<string, unknown> {
+    return {
+      name: this.name,
+      message: this.message,
+      statusCode: this._statusCode,
+      errorCode: this.details.errorCode,
+      endpoint: this.endpoint,
+      suggestions: this.suggestions,
+      docsUrl: this.docsUrl,
+      timestamp: this.timestamp.toISOString(),
+      details: this.details,
+      isRetryable: this.isRetryable(),
+    };
   }
 }
 

@@ -31,6 +31,13 @@ export {
 export { EtsyRateLimiter, defaultRateLimiter } from './rate-limiting';
 
 // ============================================================================
+// Request Queue Exports
+// ============================================================================
+
+export { GlobalRequestQueue, getGlobalQueue, withQueue } from './request-queue';
+export type { RequestPriority, QueueOptions } from './request-queue';
+
+// ============================================================================
 // Pagination Exports (Phase 1)
 // ============================================================================
 
@@ -160,11 +167,37 @@ export {
   EncryptedFileTokenStorage,
   type EncryptedStorageConfig,
 
+  // Browser secure storage
+  SecureTokenStorage,
+  isSecureStorageSupported,
+  type SecureTokenStorageConfig,
+
   // Webhook security
   WebhookSecurity,
   createWebhookSecurity,
   type WebhookSecurityConfig
 } from './security';
+
+// ============================================================================
+// Plugin System Exports
+// ============================================================================
+
+export {
+  PluginManager,
+  createAnalyticsPlugin,
+  createRetryPlugin,
+  createLoggingPlugin,
+  createCachingPlugin,
+  createRateLimitPlugin,
+  type EtsyPlugin,
+  type PluginRequestConfig,
+  type PluginResponse,
+  type AnalyticsPluginConfig,
+  type RetryPluginConfig,
+  type LoggingPluginConfig,
+  type CachingPluginConfig,
+  type RateLimitPluginConfig,
+} from './plugins';
 
 // ============================================================================
 // Utility Exports
