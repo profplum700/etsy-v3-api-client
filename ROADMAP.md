@@ -307,7 +307,7 @@ const listing = await client.getListing('123', {
 
 ---
 
-### 🎨 Phase 3: Ecosystem Integration (v2.3.0)
+### 🎨 Phase 3: Ecosystem Integration (v2.3.1)
 
 **Priority**: MEDIUM | **Timeframe**: 3-4 months | **Status**: ✅ COMPLETED
 

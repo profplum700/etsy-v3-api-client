@@ -1,6 +1,25 @@
 # Publishing Guide - Etsy v3 API Client
 
-This guide covers everything you need to publish your package to npm.
+This guide covers everything you need to publish your package(s) to npm.
+
+## Workspace packages
+
+| Package | Path | Notes |
+| --- | --- | --- |
+| `@profplum700/etsy-v3-api-client` | `/` | Core SDK (“the core”) used everywhere—publish whenever it changes |
+| `@profplum700/etsy-react` | `packages/etsy-react` | React hooks built on top of the core |
+| `@profplum700/etsy-cli` | `packages/etsy-cli` | CLI that shells the core |
+| `@profplum700/etsy-nextjs` | `packages/etsy-nextjs` | Next.js bindings |
+| `@profplum700/etsy-admin-ui` | `packages/etsy-admin-ui` | Prebuilt dashboard components |
+
+All packages share the same version (currently `2.3.1`). When one changes, bump the rest so consumers don’t get mismatched peer ranges.
+
+### Quick release commands
+
+- `pnpm run release:dry` &mdash; shows which packages would publish.
+- `pnpm run release` &mdash; builds/tests everything and publishes the root plus every package under `packages/` in one go (skips packages whose versions didn’t change).
+
+Behind the scenes this runs `pnpm publish -r ...` so you only need a single command per release cycle.
 
 ## 📋 Pre-Publication Checklist
 

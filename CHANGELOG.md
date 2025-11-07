@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.1] - 2025-11-07
+
+### Fixed
+- **@profplum700/etsy-react**: replaced `@testing-library/react-hooks` with `@testing-library/react` in tests to remove stale React 16/17 peer dependency warnings.
+- **@profplum700/etsy-react**: introduced a dedicated build tsconfig and Rollup configuration tweaks to eliminate TypeScript plugin warnings during bundling.
+
+### Changed
+- Bumped the root workspace plus `@profplum700/etsy-react`, `@profplum700/etsy-admin-ui`, `@profplum700/etsy-nextjs`, and `@profplum700/etsy-cli` to version `2.3.1` to publish the fix consistently across the monorepo.
+
 ## [2.3.0] - 2025-01-06
 
 ### 🎉 PHASE 3: Ecosystem Integration

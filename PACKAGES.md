@@ -269,7 +269,7 @@ All packages follow semantic versioning:
 - **Core package**: `@profplum700/etsy-v3-api-client`
 - **Integration packages**: Follow the same major version as core
 
-Current version: **2.3.0** (Phase 3 - Ecosystem Integration)
+Current version: **2.3.1** (Phase 3 - Ecosystem Integration)
 
 ## Package Dependencies
 

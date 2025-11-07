@@ -12,7 +12,7 @@ const program = new Command();
 program
   .name('etsy')
   .description('CLI tool for Etsy v3 API')
-  .version('2.3.0');
+  .version('2.3.1');
 
 // Add commands
 program.addCommand(authCommand);
