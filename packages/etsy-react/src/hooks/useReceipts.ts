@@ -1,7 +1,8 @@
 import { useState, useCallback } from 'react';
 import { useEtsyClient } from '../context';
 import { useQuery } from '../useQuery';
-import type { UseQueryOptions, UsePaginatedQueryResult } from '../types';
+import type { UseQueryOptions, UsePaginatedQueryResult, UseQueryResult } from '../types';
+import type { EtsyApiResponse, EtsyShopReceipt } from '@profplum700/etsy-v3-api-client';
 
 interface ReceiptsOptions {
   was_paid?: boolean;
@@ -19,11 +20,11 @@ interface ReceiptsOptions {
 export function useReceipts(
   shopId: string,
   receiptsOptions: ReceiptsOptions = {},
-  queryOptions: UseQueryOptions<any[]> = {}
-): UsePaginatedQueryResult<any> {
+  queryOptions: UseQueryOptions<EtsyShopReceipt[]> = {}
+): UsePaginatedQueryResult<EtsyShopReceipt> {
   const client = useEtsyClient();
   const [currentPage, setCurrentPage] = useState(0);
-  const [allData, setAllData] = useState<any[]>([]);
+  const [allData, setAllData] = useState<EtsyShopReceipt[]>([]);
   const [hasMore, setHasMore] = useState(true);
   const [totalPages, setTotalPages] = useState<number | null>(null);
 
@@ -38,8 +39,8 @@ export function useReceipts(
     });
 
     // Handle both array response and paginated response
-    const results = Array.isArray(response) ? response : (response as any).results || [];
-    const count = Array.isArray(response) ? response.length : (response as any).count || 0;
+    const results = Array.isArray(response) ? response : (response as EtsyApiResponse<EtsyShopReceipt>).results || [];
+    const count = Array.isArray(response) ? response.length : (response as EtsyApiResponse<EtsyShopReceipt>).count || 0;
     const totalPagesCalc = Math.ceil(count / limit);
 
     setTotalPages(totalPagesCalc);
@@ -76,8 +77,8 @@ export function useReceipts(
 export function useReceipt(
   shopId: string,
   receiptId: string,
-  options: UseQueryOptions<any> = {}
-): any {
+  options: UseQueryOptions<EtsyShopReceipt> = {}
+): UseQueryResult<EtsyShopReceipt> {
   const client = useEtsyClient();
 
   const queryFn = useCallback(async () => {

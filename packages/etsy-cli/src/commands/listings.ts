@@ -3,6 +3,7 @@ import ora from 'ora';
 import chalk from 'chalk';
 import { getClient } from '../utils/client.js';
 import { formatTable, formatJson, formatError, formatSuccess } from '../utils/format.js';
+import type { EtsyApiResponse, EtsyListing } from '@profplum700/etsy-v3-api-client';
 
 export const listingsCommand = new Command('listings')
   .description('Manage listings')
@@ -24,8 +25,8 @@ export const listingsCommand = new Command('listings')
           });
 
           // Handle both array and paginated response
-          const results = Array.isArray(response) ? response : (response as any).results || [];
-          const count = Array.isArray(response) ? response.length : (response as any).count || 0;
+          const results = Array.isArray(response) ? response : (response as EtsyApiResponse<EtsyListing>).results || [];
+          const count = Array.isArray(response) ? response.length : (response as EtsyApiResponse<EtsyListing>).count || 0;
 
           spinner.succeed(`Found ${count} listings`);
 
@@ -37,7 +38,7 @@ export const listingsCommand = new Command('listings')
             } else {
               console.log(formatTable(
                 ['Listing ID', 'Title', 'State', 'Price', 'Quantity'],
-                results.map((listing: any) => [
+                results.map((listing: EtsyListing) => [
                   listing.listing_id.toString(),
                   listing.title.substring(0, 40) + (listing.title.length > 40 ? '...' : ''),
                   listing.state,
