@@ -66,7 +66,7 @@ describe('SecureTokenStorage', () => {
       location: {
         hostname: 'localhost',
       },
-    } as unknown as Window & typeof globalThis;
+    } as typeof global.window;
 
     // Mock global localStorage and sessionStorage
     Object.defineProperty(global, 'localStorage', {
@@ -249,11 +249,7 @@ describe('SecureTokenStorage', () => {
       await storage.save(tokens);
       const stored2 = mockLocalStorage.getItem('etsy_token');
 
-      // IVs should be different
-      const parsed1 = JSON.parse(stored1!);
-      const parsed2 = JSON.parse(stored2!);
-
-      // Random IV means encrypted data will be different
+      // Random IV means encrypted data will be different each time
       expect(stored1).not.toBe(stored2);
     });
   });

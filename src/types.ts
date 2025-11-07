@@ -616,7 +616,7 @@ export class EtsyApiError extends Error {
         suggestions.push('Try fetching the latest resource state before updating');
         break;
 
-      case 429: // Rate Limited
+      case 429: { // Rate Limited
         const resetTime = this.getRateLimitReset();
         const resetTimeStr = resetTime
           ? resetTime.toLocaleTimeString()
@@ -631,6 +631,7 @@ export class EtsyApiError extends Error {
           suggestions.push(`Wait ${this._retryAfter} seconds before retrying`);
         }
         break;
+      }
 
       case 500:
       case 502:

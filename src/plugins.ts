@@ -100,7 +100,10 @@ export class PluginManager {
       return false;
     }
 
-    const plugin = this.plugins[index]!;
+    const plugin = this.plugins[index];
+    if (!plugin) {
+      return false;
+    }
 
     // Call onDestroy if available
     if (plugin.onDestroy) {
@@ -203,13 +206,13 @@ export function createAnalyticsPlugin(config: AnalyticsPluginConfig): EtsyPlugin
     name: 'analytics',
     version: '1.0.0',
 
-    onBeforeRequest(requestConfig) {
+    onBeforeRequest(requestConfig): PluginRequestConfig {
       const requestId = `${requestConfig.method}:${requestConfig.endpoint}:${Date.now()}`;
       requestTimes.set(requestId, Date.now());
       return requestConfig;
     },
 
-    onAfterResponse(response) {
+    onAfterResponse<T>(response: PluginResponse<T>): PluginResponse<T> {
       if (config.trackEndpoint) {
         // Track successful request
         const requestId = Array.from(requestTimes.keys()).pop();
@@ -217,8 +220,12 @@ export function createAnalyticsPlugin(config: AnalyticsPluginConfig): EtsyPlugin
           const startTime = requestTimes.get(requestId);
           if (startTime) {
             const duration = Date.now() - startTime;
-            const [method, endpoint] = requestId.split(':');
-            config.trackEndpoint(endpoint!, method!, duration);
+            const parts = requestId.split(':');
+            const method = parts[0];
+            const endpoint = parts[1];
+            if (endpoint && method) {
+              config.trackEndpoint(endpoint, method, duration);
+            }
             requestTimes.delete(requestId);
           }
         }
@@ -226,7 +233,7 @@ export function createAnalyticsPlugin(config: AnalyticsPluginConfig): EtsyPlugin
       return response;
     },
 
-    onError(error) {
+    onError(error): void {
       if (config.trackError) {
         config.trackError(error);
       }
@@ -249,8 +256,6 @@ export interface RetryPluginConfig {
  */
 export function createRetryPlugin(config: RetryPluginConfig = {}): EtsyPlugin {
   const {
-    maxRetries = 3,
-    retryDelay = 1000,
     retryableStatusCodes = [408, 429, 500, 502, 503, 504],
   } = config;
 
@@ -258,7 +263,7 @@ export function createRetryPlugin(config: RetryPluginConfig = {}): EtsyPlugin {
     name: 'retry',
     version: '1.0.0',
 
-    async onError(error) {
+    async onError(error): Promise<void> {
       if (error instanceof EtsyApiError) {
         const statusCode = error.statusCode;
         if (statusCode && retryableStatusCodes.includes(statusCode)) {
@@ -304,7 +309,7 @@ export function createLoggingPlugin(config: LoggingPluginConfig = {}): EtsyPlugi
     name: 'logging',
     version: '1.0.0',
 
-    onBeforeRequest(requestConfig) {
+    onBeforeRequest(requestConfig): PluginRequestConfig {
       if (shouldLog('debug')) {
         logger.debug('[Etsy API] Request:', {
           method: requestConfig.method,
@@ -315,7 +320,7 @@ export function createLoggingPlugin(config: LoggingPluginConfig = {}): EtsyPlugi
       return requestConfig;
     },
 
-    onAfterResponse(response) {
+    onAfterResponse<T>(response: PluginResponse<T>): PluginResponse<T> {
       if (shouldLog('debug')) {
         logger.debug('[Etsy API] Response:', {
           status: response.status,
@@ -325,7 +330,7 @@ export function createLoggingPlugin(config: LoggingPluginConfig = {}): EtsyPlugi
       return response;
     },
 
-    onError(error) {
+    onError(error): void {
       if (shouldLog('error')) {
         logger.error('[Etsy API] Error:', error);
 
@@ -367,7 +372,7 @@ export function createCachingPlugin(config: CachingPluginConfig = {}): EtsyPlugi
     name: 'caching',
     version: '1.0.0',
 
-    onBeforeRequest(requestConfig) {
+    onBeforeRequest(requestConfig): PluginRequestConfig {
       // Only cache GET requests
       if (requestConfig.method.toUpperCase() === 'GET') {
         const key = generateKey(requestConfig);
@@ -381,7 +386,7 @@ export function createCachingPlugin(config: CachingPluginConfig = {}): EtsyPlugi
       return requestConfig;
     },
 
-    onAfterResponse(response) {
+    onAfterResponse<T>(response: PluginResponse<T>): PluginResponse<T> {
       // Store response in cache
       const key = `GET:${response.status}`;
       cache.set(key, {
@@ -391,7 +396,7 @@ export function createCachingPlugin(config: CachingPluginConfig = {}): EtsyPlugi
       return response;
     },
 
-    onDestroy() {
+    onDestroy(): void {
       cache.clear();
     },
   };
@@ -416,12 +421,12 @@ export function createRateLimitPlugin(config: RateLimitPluginConfig = {}): EtsyP
     name: 'rateLimit',
     version: '1.0.0',
 
-    async onBeforeRequest(requestConfig) {
+    async onBeforeRequest(requestConfig): Promise<PluginRequestConfig> {
       const now = Date.now();
       const oneSecondAgo = now - 1000;
 
       // Remove requests older than 1 second
-      while (requests.length > 0 && requests[0]! < oneSecondAgo) {
+      while (requests.length > 0 && requests[0] !== undefined && requests[0] < oneSecondAgo) {
         requests.shift();
       }
 
@@ -430,10 +435,12 @@ export function createRateLimitPlugin(config: RateLimitPluginConfig = {}): EtsyP
           config.onRateLimitExceeded();
         }
         // Wait until we can make another request
-        const oldestRequest = requests[0]!;
-        const waitTime = oldestRequest + 1000 - now;
-        if (waitTime > 0) {
-          await new Promise(resolve => setTimeout(resolve, waitTime));
+        const oldestRequest = requests[0];
+        if (oldestRequest !== undefined) {
+          const waitTime = oldestRequest + 1000 - now;
+          if (waitTime > 0) {
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+          }
         }
       }
 
