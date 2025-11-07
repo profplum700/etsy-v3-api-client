@@ -1,5 +1,3 @@
-'use client';
-
 import React, { createContext, useContext, ReactNode } from 'react';
 import type { EtsyClient } from '@profplum700/etsy-v3-api-client';
 

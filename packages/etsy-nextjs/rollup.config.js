@@ -31,8 +31,8 @@ export default [
       resolve(),
       commonjs(),
       typescript({
-        tsconfig: './tsconfig.json',
-        declaration: false,
+        tsconfig: './tsconfig.build.json',
+        outputToFilesystem: false,
       }),
     ],
   },
