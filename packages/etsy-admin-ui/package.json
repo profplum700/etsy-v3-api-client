@@ -13,7 +13,7 @@
   "scripts": {
     "build": "rollup -c",
     "build:watch": "rollup -c --watch",
-    "test": "echo 'Skipping Admin UI tests (jest-dom matcher issues)' && exit 0",
+    "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "lint": "eslint --config ../../eslint.config.mjs .",
@@ -51,8 +51,8 @@
     "node": ">=20.0.0"
   },
   "peerDependencies": {
-    "@profplum700/etsy-v3-api-client": "^2.0.0",
     "@profplum700/etsy-react": "^2.3.0",
+    "@profplum700/etsy-v3-api-client": "^2.0.0",
     "react": "^18.0.0 || ^19.0.0",
     "react-dom": "^18.0.0 || ^19.0.0"
   },
@@ -62,6 +62,7 @@
     "@rollup/plugin-commonjs": "^28.0.6",
     "@rollup/plugin-node-resolve": "^16.0.1",
     "@rollup/plugin-typescript": "^12.1.4",
+    "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.1.0",
     "@types/jest": "^30.0.0",
     "@types/react": "^18.3.18",

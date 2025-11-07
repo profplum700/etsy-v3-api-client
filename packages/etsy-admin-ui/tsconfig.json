@@ -9,7 +9,7 @@
     "declarationMap": true,
     "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "jest.setup.ts"],
   "exclude": ["node_modules", "dist", "__tests__"],
   "references": [
     { "path": "../etsy-react" }
