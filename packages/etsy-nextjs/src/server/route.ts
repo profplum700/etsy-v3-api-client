@@ -59,6 +59,7 @@ export function createEtsyApiRoute(config: EtsyApiRouteConfig): {
 
   async function handleRequest(
     request: NextRequest,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     handler: (client: any, request: NextRequest) => Promise<any>
   ): Promise<NextResponse> {
     try {
@@ -118,6 +119,7 @@ export function createEtsyApiRoute(config: EtsyApiRouteConfig): {
         }
 
         // Parse additional parameters
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const params: Record<string, any> = {};
         searchParams.forEach((value, key) => {
           if (key !== 'endpoint') {

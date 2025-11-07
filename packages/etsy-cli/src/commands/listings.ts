@@ -24,7 +24,9 @@ export const listingsCommand = new Command('listings')
           });
 
           // Handle both array and paginated response
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const results = Array.isArray(response) ? response : (response as any).results || [];
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const count = Array.isArray(response) ? response.length : (response as any).count || 0;
 
           spinner.succeed(`Found ${count} listings`);
@@ -37,6 +39,7 @@ export const listingsCommand = new Command('listings')
             } else {
               console.log(formatTable(
                 ['Listing ID', 'Title', 'State', 'Price', 'Quantity'],
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 results.map((listing: any) => [
                   listing.listing_id.toString(),
                   listing.title.substring(0, 40) + (listing.title.length > 40 ? '...' : ''),

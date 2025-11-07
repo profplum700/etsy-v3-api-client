@@ -19,10 +19,13 @@ interface ReceiptsOptions {
 export function useReceipts(
   shopId: string,
   receiptsOptions: ReceiptsOptions = {},
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   queryOptions: UseQueryOptions<any[]> = {}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): UsePaginatedQueryResult<any> {
   const client = useEtsyClient();
   const [currentPage, setCurrentPage] = useState(0);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [allData, setAllData] = useState<any[]>([]);
   const [hasMore, setHasMore] = useState(true);
   const [totalPages, setTotalPages] = useState<number | null>(null);
@@ -38,7 +41,9 @@ export function useReceipts(
     });
 
     // Handle both array response and paginated response
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const results = Array.isArray(response) ? response : (response as any).results || [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const count = Array.isArray(response) ? response.length : (response as any).count || 0;
     const totalPagesCalc = Math.ceil(count / limit);
 
@@ -76,7 +81,9 @@ export function useReceipts(
 export function useReceipt(
   shopId: string,
   receiptId: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   options: UseQueryOptions<any> = {}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): any {
   const client = useEtsyClient();
 

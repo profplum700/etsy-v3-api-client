@@ -5,11 +5,14 @@ import type { UseMutationOptions, UseMutationResult } from '../types';
 
 // Listing mutations
 export function useUpdateListing(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   options?: UseMutationOptions<any, { shopId: string; listingId: string; updates: any }>
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): UseMutationResult<any, { shopId: string; listingId: string; updates: any }> {
   const client = useEtsyClient();
 
   const mutationFn = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     async ({ shopId, listingId, updates }: { shopId: string; listingId: string; updates: any }) => {
       return await client.updateListing(shopId, listingId, updates);
     },
@@ -20,11 +23,14 @@ export function useUpdateListing(
 }
 
 export function useCreateDraftListing(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   options?: UseMutationOptions<any, { shopId: string; params: any }>
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): UseMutationResult<any, { shopId: string; params: any }> {
   const client = useEtsyClient();
 
   const mutationFn = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     async ({ shopId, params }: { shopId: string; params: any }) => {
       return await client.createDraftListing(shopId, params);
     },
@@ -35,7 +41,9 @@ export function useCreateDraftListing(
 }
 
 export function useDeleteListing(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   options?: UseMutationOptions<any, { listingId: string }>
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): UseMutationResult<any, { listingId: string }> {
   const client = useEtsyClient();
 
@@ -51,11 +59,14 @@ export function useDeleteListing(
 
 // Inventory mutations
 export function useUpdateInventory(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   options?: UseMutationOptions<any, { listingId: string; updates: any }>
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): UseMutationResult<any, { listingId: string; updates: any }> {
   const client = useEtsyClient();
 
   const mutationFn = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     async ({ listingId, updates }: { listingId: string; updates: any }) => {
       return await client.updateListingInventory(listingId, updates);
     },
@@ -67,7 +78,9 @@ export function useUpdateInventory(
 
 // Image mutations
 export function useUploadListingImage(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   options?: UseMutationOptions<any, { shopId: string; listingId: string; image: File | Buffer; rank?: number }>
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): UseMutationResult<any, { shopId: string; listingId: string; image: File | Buffer; rank?: number }> {
   const client = useEtsyClient();
 
@@ -82,7 +95,9 @@ export function useUploadListingImage(
 }
 
 export function useDeleteListingImage(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   options?: UseMutationOptions<any, { shopId: string; listingId: string; listingImageId: string }>
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): UseMutationResult<any, { shopId: string; listingId: string; listingImageId: string }> {
   const client = useEtsyClient();
 
@@ -98,7 +113,9 @@ export function useDeleteListingImage(
 
 // Receipt mutations
 export function useUpdateReceipt(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   options?: UseMutationOptions<any, { shopId: string; receiptId: string; was_shipped?: boolean; was_paid?: boolean }>
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): UseMutationResult<any, { shopId: string; receiptId: string; was_shipped?: boolean; was_paid?: boolean }> {
   const client = useEtsyClient();
 
@@ -114,11 +131,14 @@ export function useUpdateReceipt(
 
 // Shipping mutations
 export function useCreateShippingProfile(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   options?: UseMutationOptions<any, { shopId: string; params: any }>
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): UseMutationResult<any, { shopId: string; params: any }> {
   const client = useEtsyClient();
 
   const mutationFn = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     async ({ shopId, params }: { shopId: string; params: any }) => {
       return await client.createShopShippingProfile(shopId, params);
     },

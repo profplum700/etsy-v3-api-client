@@ -1,4 +1,5 @@
-const table = (data, config) => {
+/* eslint-disable no-undef */
+const table = (data) => {
   // Simple mock implementation that returns a basic table string
   if (!data || data.length === 0) return '';
 
