@@ -1,4 +1,7 @@
-// Server-side exports
+// Main entry point - Server-side exports ONLY
+// This ensures safe imports in API routes and Server Components
+// For client-side functionality, import from '@profplum700/etsy-nextjs/client'
+
 export {
   configureEtsyServerClient,
   getEtsyServerClient,
@@ -10,9 +13,3 @@ export {
   createEtsyApiRoute,
   type EtsyApiRouteConfig,
 } from './server/route';
-
-// Client-side exports
-export {
-  EtsyNextClientProvider,
-  useEtsyNextClient,
-} from './client/provider';
