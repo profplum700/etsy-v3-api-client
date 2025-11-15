@@ -17,6 +17,54 @@ npm install @profplum700/etsy-nextjs @profplum700/etsy-v3-api-client
 - Cookie-based token storage
 - Edge Runtime compatibility
 - TypeScript support
+- Optimized bundle sizes with tree-shakeable exports
+
+## Package Structure
+
+This package provides three separate entry points to ensure optimal bundle sizes and prevent build errors:
+
+### 📦 Entry Points
+
+1. **`@profplum700/etsy-nextjs`** (Main Entry)
+   - Default export for backward compatibility
+   - Contains both client and server code
+   - Use when you need both client and server functionality
+
+2. **`@profplum700/etsy-nextjs/server`** (Server-Only)
+   - Server-side code with **zero React dependencies**
+   - Optimized for Next.js Server Components, API Routes, and Server Actions
+   - Prevents "createContext is not a function" build errors
+   - Exports: `configureEtsyServerClient`, `getEtsyServerClient`, `createEtsyServerClient`, `createEtsyApiRoute`
+
+3. **`@profplum700/etsy-nextjs/client`** (Client-Only)
+   - Client-side React code
+   - Optimized for browser environments
+   - Exports: `EtsyNextClientProvider`, `useEtsyNextClient`
+
+### 🎯 Why Separate Entry Points?
+
+The separation into `/server` and `/client` subpaths solves a critical packaging issue where React Context code (createContext, useContext) was being bundled with server-side exports. This caused build errors when importing server functions in Next.js API routes or Server Components.
+
+**Benefits:**
+- ✅ **Tree-shakeable**: Only bundle what you need
+- ✅ **Zero React overhead**: Server bundles have no React dependencies
+- ✅ **Build stability**: No "createContext is not a function" errors
+- ✅ **Smaller bundles**: Optimized for both client and server environments
+- ✅ **Type-safe**: Full TypeScript support for all entry points
+
+### 💡 Migration Guide
+
+**Before (may cause build errors):**
+```typescript
+import { getEtsyServerClient } from '@profplum700/etsy-nextjs';
+```
+
+**After (recommended):**
+```typescript
+import { getEtsyServerClient } from '@profplum700/etsy-nextjs/server';
+```
+
+**Note:** The main entry point still works for backward compatibility, but using the specific `/server` or `/client` imports is recommended for optimal bundle sizes and build stability.
 
 ## Quick Start
 
@@ -57,7 +105,7 @@ export default async function ShopPage({ params }: { params: { shopId: string } 
 
 ```typescript
 // app/api/etsy/[...path]/route.ts
-import { createEtsyApiRoute } from '@profplum700/etsy-nextjs';
+import { createEtsyApiRoute } from '@profplum700/etsy-nextjs/server';
 
 export const { GET, POST, PUT, DELETE } = createEtsyApiRoute({
   apiKey: process.env.ETSY_API_KEY!,
@@ -77,7 +125,7 @@ export const { GET, POST, PUT, DELETE } = createEtsyApiRoute({
 ```typescript
 'use client';
 
-import { EtsyNextClientProvider, useEtsyNextClient } from '@profplum700/etsy-nextjs';
+import { EtsyNextClientProvider, useEtsyNextClient } from '@profplum700/etsy-nextjs/client';
 import { EtsyClient } from '@profplum700/etsy-v3-api-client';
 
 const client = new EtsyClient({
@@ -308,6 +356,19 @@ ETSY_SCOPES=listings_r,listings_w,shops_r
 All functions and components are fully typed with TypeScript.
 
 ```typescript
+// Server types
+import type {
+  EtsyServerClientConfig,
+  EtsyApiRouteConfig,
+} from '@profplum700/etsy-nextjs/server';
+
+// Client types (if needed)
+import type {
+  EtsyNextClientProvider,
+  useEtsyNextClient,
+} from '@profplum700/etsy-nextjs/client';
+
+// Or use the main entry for all types
 import type {
   EtsyServerClientConfig,
   EtsyApiRouteConfig,
