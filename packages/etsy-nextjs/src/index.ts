@@ -1,4 +1,7 @@
-// Server-side exports
+// Default export: Server-side only (safe for API routes, Server Components, and Server Actions)
+// This prevents "createContext is not a function" build errors when importing in API routes
+// For client-side features, import from '@profplum700/etsy-nextjs/client'
+
 export {
   configureEtsyServerClient,
   getEtsyServerClient,
@@ -10,9 +13,3 @@ export {
   createEtsyApiRoute,
   type EtsyApiRouteConfig,
 } from './server/route';
-
-// Client-side exports
-export {
-  EtsyNextClientProvider,
-  useEtsyNextClient,
-} from './client/provider';

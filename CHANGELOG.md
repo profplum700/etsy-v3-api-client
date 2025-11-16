@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **@profplum700/etsy-nextjs**: Fixed "createContext is not a function" build error in Next.js API routes
+  - **BREAKING**: Main entry point (`@profplum700/etsy-nextjs`) now exports only server-side code
+  - Client-side exports (`EtsyNextClientProvider`, `useEtsyNextClient`) must be imported from `@profplum700/etsy-nextjs/client`
+  - This prevents React Context code from being bundled with API routes during Next.js build
+  - Server imports from both `@profplum700/etsy-nextjs` and `@profplum700/etsy-nextjs/server` work identically
+  - See MIGRATION.md for upgrade instructions
+
 ## [2.3.1] - 2025-11-07
 
 ### Fixed
