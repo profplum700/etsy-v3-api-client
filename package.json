@@ -1,6 +1,6 @@
 {
   "name": "@profplum700/etsy-v3-api-client",
-  "version": "2.3.2",
+  "version": "2.3.4",
   "type": "module",
   "description": "JavaScript/TypeScript client for the Etsy Open API v3 with OAuth 2.0 authentication",
   "main": "dist/index.cjs",
@@ -34,11 +34,15 @@
     "version:patch": "node scripts/bump-version.mjs patch",
     "version:minor": "node scripts/bump-version.mjs minor",
     "version:major": "node scripts/bump-version.mjs major",
-    "release:patch": "pnpm run version:patch && pnpm run build && pnpm run test && pnpm publish -r --filter . --filter './packages/*' --access public",
-    "release:minor": "pnpm run version:minor && pnpm run build && pnpm run test && pnpm publish -r --filter . --filter './packages/*' --access public",
-    "release:major": "pnpm run version:major && pnpm run build && pnpm run test && pnpm publish -r --filter . --filter './packages/*' --access public",
+    "version:commit": "node scripts/commit-version.mjs",
+    "release:patch": "pnpm run version:patch && pnpm run version:commit && pnpm run build && pnpm run test && pnpm publish -r --filter . --filter './packages/*' --access public",
+    "release:minor": "pnpm run version:minor && pnpm run version:commit && pnpm run build && pnpm run test && pnpm publish -r --filter . --filter './packages/*' --access public",
+    "release:major": "pnpm run version:major && pnpm run version:commit && pnpm run build && pnpm run test && pnpm publish -r --filter . --filter './packages/*' --access public",
+    "release:patch:dry": "pnpm run version:patch && pnpm run version:commit && pnpm run build && pnpm run test && pnpm publish -r --filter . --filter './packages/*' --access public --dry-run",
+    "release:minor:dry": "pnpm run version:minor && pnpm run version:commit && pnpm run build && pnpm run test && pnpm publish -r --filter . --filter './packages/*' --access public --dry-run",
+    "release:major:dry": "pnpm run version:major && pnpm run version:commit && pnpm run build && pnpm run test && pnpm publish -r --filter . --filter './packages/*' --access public --dry-run",
     "release": "pnpm run release:patch",
-    "release:dry": "pnpm publish -r --filter . --filter './packages/*' --access public --dry-run"
+    "release:dry": "pnpm run release:patch:dry"
   },
   "keywords": [
     "etsy",

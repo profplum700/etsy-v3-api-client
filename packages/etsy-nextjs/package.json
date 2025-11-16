@@ -1,6 +1,6 @@
 {
   "name": "@profplum700/etsy-nextjs",
-  "version": "2.3.2",
+  "version": "2.3.4",
   "type": "module",
   "description": "Next.js integration for Etsy v3 API client",
   "main": "dist/index.cjs",
