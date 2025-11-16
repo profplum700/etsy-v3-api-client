@@ -1,4 +1,3 @@
-/* eslint-disable no-undef */
 const chalk = {
   red: (str) => str,
   green: (str) => str,
