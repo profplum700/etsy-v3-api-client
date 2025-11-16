@@ -290,7 +290,29 @@ ENCRYPTION_KEY=your_32_byte_encryption_key_here
 
 ### Summary
 
-v2.3+ introduces enhanced error handling, better documentation, and quality-of-life improvements. No breaking changes!
+v2.3+ introduces enhanced error handling, better documentation, and quality-of-life improvements.
+
+### ⚠️ Breaking Change in @profplum700/etsy-nextjs (v2.3.6+)
+
+**What Changed:**
+The main entry point (`@profplum700/etsy-nextjs`) now exports **only server-side code**. Client-side exports (React components and hooks) must be imported from `@profplum700/etsy-nextjs/client`.
+
+**Why:**
+This change prevents the "createContext is not a function" build error that occurred when Next.js tried to analyze API routes that imported from the main entry point.
+
+**Migration Required:**
+
+```typescript
+// ❌ Old (will break if you use client components)
+import { EtsyNextClientProvider, useEtsyNextClient } from '@profplum700/etsy-nextjs';
+
+// ✅ New (explicit client import)
+import { EtsyNextClientProvider, useEtsyNextClient } from '@profplum700/etsy-nextjs/client';
+
+// ✅ Server imports work from both (no change needed)
+import { createEtsyApiRoute } from '@profplum700/etsy-nextjs';
+import { createEtsyApiRoute } from '@profplum700/etsy-nextjs/server'; // Also works
+```
 
 ### New in v2.3+
 

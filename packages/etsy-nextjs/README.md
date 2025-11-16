@@ -25,46 +25,53 @@ This package provides three separate entry points to ensure optimal bundle sizes
 
 ### 📦 Entry Points
 
-1. **`@profplum700/etsy-nextjs`** (Main Entry)
-   - Default export for backward compatibility
-   - Contains both client and server code
-   - Use when you need both client and server functionality
+1. **`@profplum700/etsy-nextjs`** (Main Entry - Server-Only)
+   - **Server-side code with zero React dependencies**
+   - Safe for Next.js API Routes, Server Components, and Server Actions
+   - Prevents "createContext is not a function" build errors
+   - **Default export - use this for API routes and server code**
+   - Exports: `configureEtsyServerClient`, `getEtsyServerClient`, `createEtsyServerClient`, `createEtsyApiRoute`
 
 2. **`@profplum700/etsy-nextjs/server`** (Server-Only)
+   - Explicit server-side entry point (same as main entry)
    - Server-side code with **zero React dependencies**
    - Optimized for Next.js Server Components, API Routes, and Server Actions
-   - Prevents "createContext is not a function" build errors
    - Exports: `configureEtsyServerClient`, `getEtsyServerClient`, `createEtsyServerClient`, `createEtsyApiRoute`
 
 3. **`@profplum700/etsy-nextjs/client`** (Client-Only)
-   - Client-side React code
+   - **Client-side React code**
+   - **Must be imported explicitly for client components**
    - Optimized for browser environments
    - Exports: `EtsyNextClientProvider`, `useEtsyNextClient`
 
 ### 🎯 Why Separate Entry Points?
 
-The separation into `/server` and `/client` subpaths solves a critical packaging issue where React Context code (createContext, useContext) was being bundled with server-side exports. This caused build errors when importing server functions in Next.js API routes or Server Components.
+The main entry point now exports **only server-side code** to prevent React Context code (createContext, useContext) from being bundled with API routes. This eliminates the "createContext is not a function" build error that occurred when Next.js tried to analyze API routes during build time.
 
 **Benefits:**
-- ✅ **Tree-shakeable**: Only bundle what you need
-- ✅ **Zero React overhead**: Server bundles have no React dependencies
+- ✅ **Safe by default**: Main entry is safe for API routes (no React dependencies)
 - ✅ **Build stability**: No "createContext is not a function" errors
-- ✅ **Smaller bundles**: Optimized for both client and server environments
+- ✅ **Zero React overhead**: Server bundles have no React dependencies
+- ✅ **Tree-shakeable**: Only bundle what you need
+- ✅ **Explicit imports**: Client code must be explicitly imported from `/client`
 - ✅ **Type-safe**: Full TypeScript support for all entry points
 
-### 💡 Migration Guide
+### 💡 Usage Guide
 
-**Before (may cause build errors):**
+**For API Routes and Server Components (default):**
 ```typescript
-import { getEtsyServerClient } from '@profplum700/etsy-nextjs';
+// Both work - main entry is now server-only
+import { createEtsyApiRoute } from '@profplum700/etsy-nextjs';
+import { createEtsyApiRoute } from '@profplum700/etsy-nextjs/server';
 ```
 
-**After (recommended):**
+**For Client Components (explicit import required):**
 ```typescript
-import { getEtsyServerClient } from '@profplum700/etsy-nextjs/server';
+// Must import from /client subpath
+import { EtsyNextClientProvider, useEtsyNextClient } from '@profplum700/etsy-nextjs/client';
 ```
 
-**Note:** The main entry point still works for backward compatibility, but using the specific `/server` or `/client` imports is recommended for optimal bundle sizes and build stability.
+**Note:** As of v2.3.6+, the main entry point only exports server-side code. Client-side features must be imported from `@profplum700/etsy-nextjs/client`.
 
 ## Quick Start
 
