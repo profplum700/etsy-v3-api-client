@@ -31,7 +31,13 @@
     "clean": "rm -rf dist && pnpm --filter './packages/*' exec rm -rf dist",
     "prepublishOnly": "pnpm run build && pnpm run test",
     "prepare": "pnpm run build:core",
-    "release": "pnpm run build && pnpm run test && pnpm publish -r --filter . --filter './packages/*' --access public",
+    "version:patch": "node scripts/bump-version.mjs patch",
+    "version:minor": "node scripts/bump-version.mjs minor",
+    "version:major": "node scripts/bump-version.mjs major",
+    "release:patch": "pnpm run version:patch && pnpm run build && pnpm run test && pnpm publish -r --filter . --filter './packages/*' --access public",
+    "release:minor": "pnpm run version:minor && pnpm run build && pnpm run test && pnpm publish -r --filter . --filter './packages/*' --access public",
+    "release:major": "pnpm run version:major && pnpm run build && pnpm run test && pnpm publish -r --filter . --filter './packages/*' --access public",
+    "release": "pnpm run release:patch",
     "release:dry": "pnpm publish -r --filter . --filter './packages/*' --access public --dry-run"
   },
   "keywords": [
