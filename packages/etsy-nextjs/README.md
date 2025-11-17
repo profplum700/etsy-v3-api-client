@@ -73,6 +73,115 @@ import { EtsyNextClientProvider, useEtsyNextClient } from '@profplum700/etsy-nex
 
 **Note:** As of v2.3.6+, the main entry point only exports server-side code. Client-side features must be imported from `@profplum700/etsy-nextjs/client`.
 
+## OAuth Authentication
+
+This package provides complete OAuth 2.0 authentication handlers for Etsy API v3 with PKCE flow support.
+
+### OAuth Route Setup
+
+Create a catch-all route for OAuth handling:
+
+```typescript
+// app/api/etsy/auth/[...etsy]/route.ts
+import '@/lib/etsy-server'; // Ensure config is loaded
+import { createOAuthRoute } from '@profplum700/etsy-nextjs';
+
+const handler = createOAuthRoute();
+export { handler as GET, handler as POST };
+```
+
+This creates the following OAuth endpoints:
+- `GET /api/etsy/auth/authorize` - Start OAuth flow
+- `GET /api/etsy/auth/callback` - OAuth callback (receives code)
+- `POST /api/etsy/auth/refresh` - Refresh access token
+- `POST /api/etsy/auth/logout` - Clear auth cookies
+
+### OAuth Flow Example
+
+1. **Start OAuth Flow** - Redirect user to Etsy authorization:
+
+```typescript
+// In your component or page
+<a href="/api/etsy/auth/authorize">Connect to Etsy</a>
+
+// Or programmatically
+const response = await fetch('/api/etsy/auth/authorize', {
+  headers: { accept: 'application/json' }
+});
+const { authUrl } = await response.json();
+window.location.href = authUrl;
+```
+
+2. **Handle Callback** - User is redirected back to your app with tokens automatically stored in cookies
+
+3. **Use Authenticated Client** - Access tokens are automatically loaded from cookies:
+
+```typescript
+// Server Component
+import { getEtsyServerClient } from '@profplum700/etsy-nextjs';
+
+export default async function MyShopPage() {
+  const client = await getEtsyServerClient(); // Tokens loaded from cookies
+  const shop = await client.getShop('me'); // Get authenticated user's shop
+  return <div>{shop.title}</div>;
+}
+```
+
+4. **Refresh Tokens** - Automatically handled, or manually refresh:
+
+```typescript
+await fetch('/api/etsy/auth/refresh', { method: 'POST' });
+```
+
+5. **Logout** - Clear all auth cookies:
+
+```typescript
+await fetch('/api/etsy/auth/logout', { method: 'POST' });
+```
+
+### OAuth Security Features
+
+- **PKCE Flow**: Secure OAuth 2.0 flow with code challenge/verifier
+- **State Verification**: CSRF protection with state parameter validation
+- **Secure Cookies**: HTTP-only cookies for token storage
+- **Automatic Token Refresh**: Tokens are automatically refreshed when expired
+- **Cookie Expiration**: Tokens expire based on Etsy's token lifetime
+
+### OAuth Configuration
+
+Configure OAuth settings in your server config:
+
+```typescript
+// lib/etsy-server.ts
+import { configureEtsyServerClient } from '@profplum700/etsy-nextjs';
+
+configureEtsyServerClient({
+  apiKey: process.env.ETSY_API_KEY!,
+  redirectUri: process.env.ETSY_REDIRECT_URI!, // e.g., http://localhost:3000/api/etsy/auth/callback
+  scopes: [
+    'listings_r',    // Read listings
+    'listings_w',    // Write listings
+    'shops_r',       // Read shops
+    'transactions_r', // Read transactions
+  ],
+  cookieName: 'etsy-tokens', // Optional custom cookie name
+});
+```
+
+### OAuth Cookie Names
+
+The OAuth handler uses the following cookies:
+
+- `etsy_access_token` - Access token
+- `etsy_refresh_token` - Refresh token
+- `etsy_token_type` - Token type (Bearer)
+- `etsy_expires_at` - Token expiration timestamp
+- `etsy_oauth_state` - OAuth state (temporary, for callback)
+- `etsy_code_verifier` - PKCE code verifier (temporary, for callback)
+- `etsy-tokens` - Combined tokens (for compatibility)
+
+All cookies are HTTP-only and secure in production.
+
 ## Quick Start
 
 ### 1. Configure the Server Client
@@ -214,6 +323,39 @@ interface EtsyApiRouteConfig {
     enabled: boolean;
     ttl: number; // in seconds
   };
+}
+```
+
+#### `createOAuthRoute()`
+
+Create OAuth 2.0 authentication route handlers with PKCE flow support.
+
+```typescript
+const handler = createOAuthRoute();
+export { handler as GET, handler as POST };
+```
+
+**Features:**
+- Handles authorize, callback, refresh, and logout actions
+- PKCE flow with code challenge/verifier
+- State verification for CSRF protection
+- Secure HTTP-only cookie storage
+- Automatic token storage in compatible format
+
+**Endpoints Created:**
+- `GET /authorize` - Start OAuth flow
+- `GET /callback` - Handle OAuth callback
+- `POST /refresh` - Refresh access token
+- `POST /logout` - Clear authentication cookies
+
+**Types:**
+```typescript
+interface OAuthTokenResponse {
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+  expires_in: number;
+  scope?: string;
 }
 ```
 

@@ -13,3 +13,8 @@ export {
   createEtsyApiRoute,
   type EtsyApiRouteConfig,
 } from './server/route';
+
+export {
+  createOAuthRoute,
+  type OAuthTokenResponse,
+} from './server/oauth';

@@ -10,7 +10,7 @@ export interface EtsyServerClientConfig {
 }
 
 let serverClientInstance: EtsyClient | null = null;
-let serverClientConfig: EtsyServerClientConfig | null = null;
+export let serverClientConfig: EtsyServerClientConfig | null = null;
 
 /**
  * Configure the Etsy server client
