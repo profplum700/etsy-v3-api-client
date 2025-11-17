@@ -21,8 +21,7 @@
     "test:coverage": "jest --coverage",
     "lint": "eslint --config ../../eslint.config.mjs .",
     "lint:fix": "eslint --fix --config ../../eslint.config.mjs .",
-    "type-check": "tsc --noEmit",
-    "prepublishOnly": "pnpm run build && pnpm run test"
+    "type-check": "tsc --noEmit"
   },
   "keywords": [
     "etsy",

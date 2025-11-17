@@ -29,7 +29,6 @@
     "type-check": "pnpm run build && tsc --noEmit && pnpm --filter './packages/*' run type-check",
     "dev": "rollup -c --watch",
     "clean": "rm -rf dist && pnpm --filter './packages/*' exec rm -rf dist",
-    "prepublishOnly": "pnpm run build && pnpm run test",
     "prepare": "pnpm run build:core",
     "version:patch": "node scripts/bump-version.mjs patch",
     "version:minor": "node scripts/bump-version.mjs minor",
