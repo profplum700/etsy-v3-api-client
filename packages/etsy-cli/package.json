@@ -1,6 +1,6 @@
 {
   "name": "@profplum700/etsy-cli",
-  "version": "2.3.10",
+  "version": "2.3.11",
   "type": "module",
   "description": "Command-line tool for Etsy v3 API",
   "main": "dist/index.cjs",

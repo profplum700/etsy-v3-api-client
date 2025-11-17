@@ -1,6 +1,6 @@
 {
   "name": "@profplum700/etsy-admin-ui",
-  "version": "2.3.10",
+  "version": "2.3.11",
   "type": "module",
   "description": "Pre-built admin dashboard components for Etsy v3 API",
   "main": "dist/index.cjs",
