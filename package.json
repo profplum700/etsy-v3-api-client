@@ -12,9 +12,10 @@
     "CHANGELOG.md"
   ],
   "scripts": {
-    "build": "pnpm run build:core && pnpm run build:packages",
+    "build": "node scripts/build-all.mjs",
     "build:core": "rollup -c",
-    "build:packages": "pnpm --filter './packages/*' --workspace-concurrency=1 run build",
+    "build:packages": "node scripts/build-all.mjs",
+    "build:legacy": "pnpm run build:core && pnpm --filter './packages/*' --workspace-concurrency=1 run build",
     "build:watch": "rollup -c --watch",
     "test": "jest && pnpm --filter './packages/*' run test",
     "test:core": "jest",
