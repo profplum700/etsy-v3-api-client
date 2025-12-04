@@ -137,6 +137,7 @@ export class EtsyClient {
   private cache?: CacheStorage;
   private cacheTtl!: number;
   private keystring: string;
+  private sharedSecret?: string;
   private bulkOperationManager: BulkOperationManager;
 
   constructor(config: EtsyClientConfig) {
@@ -144,6 +145,7 @@ export class EtsyClient {
     this.baseUrl = config.baseUrl || 'https://api.etsy.com/v3/application';
     this.logger = new DefaultLogger();
     this.keystring = config.keystring;
+    this.sharedSecret = config.sharedSecret;
     
     // Set up rate limiting
     if (config.rateLimiting?.enabled !== false) {
@@ -258,9 +260,14 @@ export class EtsyClient {
   }
 
   /**
-   * Get API key
+   * Get API key in the format required by Etsy.
+   * If sharedSecret is provided, returns "keystring:secret" format.
+   * Otherwise, returns just the keystring for backwards compatibility.
    */
   private getApiKey(): string {
+    if (this.sharedSecret) {
+      return `${this.keystring}:${this.sharedSecret}`;
+    }
     return this.keystring;
   }
 

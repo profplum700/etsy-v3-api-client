@@ -156,6 +156,34 @@ describe('EtsyClient', () => {
       expect(result).toEqual({ user_id: 123, login_name: 'testuser' });
     });
 
+    it('should use keystring:secret format when sharedSecret is provided', async () => {
+      const configWithSecret = {
+        ...mockConfig,
+        sharedSecret: 'test-shared-secret'
+      };
+      const clientWithSecret = new EtsyClient(configWithSecret);
+
+      const mockResponse = {
+        ok: true,
+        json: jest.fn().mockResolvedValue({ user_id: 123, login_name: 'testuser' })
+      };
+      mockFetch.mockResolvedValue(mockResponse);
+
+      await clientWithSecret.getUser();
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.etsy.com/v3/application/users/me',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'Authorization': 'Bearer test-access-token',
+            'x-api-key': 'test-api-key:test-shared-secret',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          })
+        })
+      );
+    });
+
     it('should handle API errors properly', async () => {
       const mockResponse = {
         ok: false,
