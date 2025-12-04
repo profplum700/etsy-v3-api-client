@@ -57,6 +57,7 @@ const tokens = await authHelper.getAccessToken();
 // Create API client
 const client = new EtsyClient({
   keystring: 'your-api-key',
+  sharedSecret: 'your-shared-secret', // Required for new API key format
   accessToken: tokens.access_token,
   refreshToken: tokens.refresh_token,
   expiresAt: tokens.expires_at
@@ -161,10 +162,11 @@ import { EtsyClient } from '@profplum700/etsy-v3-api-client';
 
 const client = new EtsyClient({
   keystring: 'your-api-key',
+  sharedSecret: 'your-shared-secret', // Get this from Your Apps page on Etsy
   accessToken: 'user-access-token',
   refreshToken: 'user-refresh-token',
   expiresAt: new Date('2024-12-31T23:59:59Z'),
-  
+
   // Optional configuration
   rateLimiting: {
     enabled: true,
@@ -379,11 +381,12 @@ The package provides optimized builds for different environments:
 ```typescript
 interface EtsyClientConfig {
   keystring: string;                    // Required: Your API key
+  sharedSecret?: string;                // Your shared secret (from Your Apps page)
   accessToken?: string;                 // User's access token
   refreshToken?: string;                // User's refresh token
   expiresAt?: Date;                     // Token expiration date
   refreshSave?: (token, refresh, expires) => void; // Token save callback
-  
+
   rateLimiting?: {
     enabled?: boolean;                  // Enable rate limiting
     maxRequestsPerSecond?: number;      // Requests per second limit
