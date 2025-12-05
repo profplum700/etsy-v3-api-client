@@ -330,7 +330,15 @@ export class GlobalRequestQueue {
    * Delay helper
    */
   private delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise(resolve => {
+      const timer = setTimeout(resolve, ms);
+
+      // Ensure timers don't keep the Node.js event loop alive after tests complete
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if (typeof (timer as any).unref === 'function') {
+        (timer as any).unref();
+      }
+    });
   }
 }
 

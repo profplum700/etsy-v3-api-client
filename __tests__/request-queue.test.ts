@@ -11,6 +11,10 @@ describe('GlobalRequestQueue', () => {
     GlobalRequestQueue.resetInstance();
   });
 
+  afterAll(() => {
+    GlobalRequestQueue.resetInstance();
+  });
+
   describe('Singleton Pattern', () => {
     it('should return the same instance', () => {
       const instance1 = GlobalRequestQueue.getInstance();
