@@ -20,9 +20,9 @@
   "scripts": {
     "build": "rollup -c",
     "build:watch": "rollup -c --watch",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
+    "test": "pnpm exec jest --passWithNoTests",
+    "test:watch": "pnpm exec jest --watch",
+    "test:coverage": "pnpm exec jest --coverage",
     "lint": "eslint --config ../../eslint.config.mjs .",
     "lint:fix": "eslint --fix --config ../../eslint.config.mjs .",
     "type-check": "tsc --noEmit"
