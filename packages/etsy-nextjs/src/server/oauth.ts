@@ -269,7 +269,7 @@ async function handleCallback(request: NextRequest): Promise<NextResponse> {
  * Handle token refresh
  * POST /api/etsy/auth/refresh
  */
-async function handleRefresh(request: NextRequest): Promise<NextResponse> {
+async function handleRefresh(_request: NextRequest): Promise<NextResponse> {
   const cookieStore = await cookies();
   const refreshToken = cookieStore.get(COOKIE_NAMES.REFRESH_TOKEN)?.value;
 

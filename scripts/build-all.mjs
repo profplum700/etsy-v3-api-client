@@ -18,7 +18,7 @@ console.log('Building core package...');
 try {
   execSync('pnpm run build:core', { stdio: 'inherit', cwd: rootDir });
   console.log('✅ Core build complete\n');
-} catch (error) {
+} catch {
   console.error('❌ Core build failed');
   process.exit(1);
 }
@@ -34,7 +34,7 @@ for (const pkg of packages) {
 
     // Force garbage collection and wait a bit
     await new Promise(resolve => setTimeout(resolve, 500));
-  } catch (error) {
+  } catch {
     console.error(`❌ ${pkg} build failed`);
     process.exit(1);
   }

@@ -8,6 +8,8 @@
 
 export interface EtsyClientConfig {
   keystring: string;
+  /** Shared secret for the new API key format (keystring:secret) */
+  sharedSecret?: string;
   accessToken: string;
   refreshToken: string;
   expiresAt: Date;
