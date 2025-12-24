@@ -30,14 +30,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build project
+        run: pnpm run build
+
       - name: Run tests
         run: pnpm run test
 
       - name: Run type checking
         run: pnpm run type-check
-
-      - name: Build project
-        run: pnpm run build
 
       - name: Publish packages
         run: pnpm publish -r --filter . --filter './packages/*' --access public --provenance
