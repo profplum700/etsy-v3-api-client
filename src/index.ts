@@ -291,6 +291,7 @@ export type {
   // Listing Property Types
   EtsyListingProperty,
   EtsyListingPropertyScale,
+  UpdateListingPropertyParams,
 
   // Extended Taxonomy Types
   EtsyBuyerTaxonomyNode,

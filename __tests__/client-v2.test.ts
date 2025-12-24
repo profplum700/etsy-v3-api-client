@@ -962,6 +962,96 @@ describe('EtsyClient v2.0.0 - New Endpoints', () => {
         expect(result).toEqual(mockProperties.results);
       });
     });
+
+    describe('updateListingProperty', () => {
+      it('should update listing property with form-urlencoded body', async () => {
+        const mockProperty = {
+          property_id: 505,
+          name: 'width',
+          display_name: 'Width',
+          selected_values: [{ property_id: 505, value_ids: [505], values: ['12'] }]
+        };
+        mockFetch.mockResolvedValue({
+          ok: true,
+          headers: new Headers(),
+          json: jest.fn().mockResolvedValue(mockProperty)
+        });
+
+        const result = await client.updateListingProperty({
+          shopId: '12345678',
+          listingId: '1234567890',
+          propertyId: 505,
+          valueIds: [505],
+          values: ['12'],
+          scaleId: 5
+        });
+
+        expect(mockFetch).toHaveBeenCalledWith(
+          'https://api.etsy.com/v3/application/shops/12345678/listings/1234567890/properties/505',
+          expect.objectContaining({
+            method: 'PUT',
+            headers: expect.objectContaining({
+              'Content-Type': 'application/x-www-form-urlencoded'
+            }),
+            body: expect.stringContaining('value_ids')
+          })
+        );
+        expect(result.property_id).toBe(505);
+      });
+
+      it('should update listing property with multi-value arrays', async () => {
+        const mockProperty = {
+          property_id: 4848,
+          name: 'subject',
+          display_name: 'Subject',
+          selected_values: [
+            { property_id: 4848, value_ids: [1, 60, 5022], values: ['Abstract', 'Animals', 'Architecture'] }
+          ]
+        };
+        mockFetch.mockResolvedValue({
+          ok: true,
+          headers: new Headers(),
+          json: jest.fn().mockResolvedValue(mockProperty)
+        });
+
+        const result = await client.updateListingProperty({
+          shopId: '12345678',
+          listingId: '1234567890',
+          propertyId: 4848,
+          valueIds: [1, 60, 5022],
+          values: ['Abstract', 'Animals', 'Architecture']
+        });
+
+        // Verify the body contains multiple value_ids[] and values[] entries
+        const callArgs = mockFetch.mock.calls[0];
+        const body = callArgs[1].body as string;
+        expect(body).toContain('value_ids%5B%5D=1');  // URL encoded value_ids[]=1
+        expect(body).toContain('value_ids%5B%5D=60');
+        expect(body).toContain('value_ids%5B%5D=5022');
+        expect(body).toContain('values%5B%5D=Abstract');
+        expect(body).toContain('values%5B%5D=Animals');
+        expect(body).toContain('values%5B%5D=Architecture');
+        expect(result.property_id).toBe(4848);
+      });
+
+      it('should throw error on API failure', async () => {
+        mockFetch.mockResolvedValue({
+          ok: false,
+          status: 400,
+          statusText: 'Bad Request',
+          headers: new Headers(),
+          text: jest.fn().mockResolvedValue('Invalid property value')
+        });
+
+        await expect(client.updateListingProperty({
+          shopId: '12345678',
+          listingId: '1234567890',
+          propertyId: 505,
+          valueIds: [999],
+          values: ['invalid']
+        })).rejects.toThrow('Failed to update listing property');
+      });
+    });
   });
 
   // ============================================================================

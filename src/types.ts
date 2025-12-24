@@ -1463,6 +1463,15 @@ export interface EtsyListingPropertyScale {
   description?: string;
 }
 
+export interface UpdateListingPropertyParams {
+  shopId: string | number;
+  listingId: string | number;
+  propertyId: number;
+  valueIds: number[];
+  values: string[];
+  scaleId?: number;
+}
+
 // ============================================================================
 // Taxonomy Types (Extended)
 // ============================================================================

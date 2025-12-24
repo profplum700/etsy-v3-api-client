@@ -48,7 +48,8 @@ import {
   EtsyBuyerTaxonomyProperty,
   EtsyListingProperty,
   EtsyShopProductionPartner,
-  ApproachingLimitCallback
+  ApproachingLimitCallback,
+  UpdateListingPropertyParams
 } from './types';
 import { TokenManager } from './auth/token-manager';
 import { EtsyRateLimiter } from './rate-limiting';
@@ -1263,6 +1264,54 @@ export class EtsyClient {
       `/shops/${shopId}/listings/${listingId}/properties`
     );
     return response.results;
+  }
+
+  /**
+   * Update a listing property
+   * Endpoint: PUT /v3/application/shops/{shop_id}/listings/{listing_id}/properties/{property_id}
+   * Scopes: listings_w
+   */
+  public async updateListingProperty(
+    params: UpdateListingPropertyParams
+  ): Promise<EtsyListingProperty> {
+    const { shopId, listingId, propertyId, valueIds, values, scaleId } = params;
+
+    // Build form-urlencoded body
+    const body = new URLSearchParams();
+    valueIds.forEach(id => body.append('value_ids[]', id.toString()));
+    values.forEach(val => body.append('values[]', val));
+    if (scaleId !== undefined) {
+      body.append('scale_id', scaleId.toString());
+    }
+
+    const url = `${this.baseUrl}/shops/${shopId}/listings/${listingId}/properties/${propertyId}`;
+    await this.rateLimiter.waitForRateLimit();
+    const accessToken = await this.tokenManager.getAccessToken();
+
+    const response = await this.fetch(url, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'x-api-key': this.getApiKey(),
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: body.toString()
+    });
+
+    // Update rate limiter from response headers
+    this.rateLimiter.updateFromHeaders(response.headers);
+    this.rateLimiter.resetRetryCount();
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new EtsyApiError(
+        `Failed to update listing property: ${response.status} ${response.statusText}`,
+        response.status,
+        errorText
+      );
+    }
+
+    return response.json();
   }
 
   // ============================================================================
