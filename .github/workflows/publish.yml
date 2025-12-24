@@ -40,4 +40,4 @@ jobs:
         run: pnpm run type-check
 
       - name: Publish packages
-        run: pnpm publish -r --filter . --filter './packages/*' --access public --provenance
+        run: pnpm publish -r --filter . --filter './packages/*' --access public --provenance --no-git-checks
