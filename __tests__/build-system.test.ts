@@ -259,7 +259,7 @@ describe('Build System Tests', () => {
         'node.cjs': 200,          // 200KB for Node CJS
         'browser.esm.js': 300,    // 300KB for browser ESM (may include polyfills)
         'browser.umd.js': 150,    // 150KB for browser UMD (minified)
-        'index.d.ts': 60          // 60KB for declarations (increased for Phase 5 security features)
+        'index.d.ts': 65          // 65KB for declarations (increased for Phase 5 security features + rate limit headers)
       };
       
       for (const [file, limitKB] of Object.entries(sizeLimits)) {

@@ -58,9 +58,15 @@ describe('EtsyClient', () => {
       getRateLimitStatus: jest.fn().mockReturnValue({
         remainingRequests: 9999,
         resetTime: new Date(Date.now() + 86400000),
-        canMakeRequest: true
+        canMakeRequest: true,
+        isFromHeaders: false
       }),
-      canMakeRequest: jest.fn().mockReturnValue(true)
+      canMakeRequest: jest.fn().mockReturnValue(true),
+      updateFromHeaders: jest.fn(),
+      resetRetryCount: jest.fn(),
+      handleRateLimitResponse: jest.fn().mockResolvedValue({ shouldRetry: false, delayMs: 1000 }),
+      setApproachingLimitCallback: jest.fn(),
+      setWarningThreshold: jest.fn()
     } as unknown as jest.Mocked<EtsyRateLimiter>;
 
     // Mock fetch
@@ -513,7 +519,8 @@ describe('EtsyClient', () => {
       expect(result).toEqual({
         remainingRequests: 9999,
         resetTime: expect.any(Date),
-        canMakeRequest: true
+        canMakeRequest: true,
+        isFromHeaders: false
       });
     });
 

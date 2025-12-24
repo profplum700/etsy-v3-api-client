@@ -130,22 +130,27 @@ describe('Edge Cases and Error Handling', () => {
         keystring: 'test-key',
         accessToken: 'test-token',
         refreshToken: 'test-refresh',
-        expiresAt: new Date(Date.now() + 3600000)
+        expiresAt: new Date(Date.now() + 3600000),
+        rateLimiting: {
+          enabled: true,
+          maxRetries: 0 // Disable retries for faster test
+        }
       });
 
       mockFetch.mockResolvedValue({
         ok: false,
         status: 429,
         statusText: 'Too Many Requests',
-        headers: {
-          get: jest.fn().mockReturnValue('invalid-number') // Invalid retry-after
-        },
+        headers: new Headers({
+          'retry-after': 'invalid-number', // Invalid retry-after
+          'x-remaining-today': '1000'
+        }),
         text: jest.fn().mockResolvedValue('Rate limited')
       });
 
+      // With maxRetries=0, the first 429 will throw EtsyRateLimitError after max retries exceeded
       const error = await client.getUser().catch(e => e);
-      expect(error).toBeInstanceOf(EtsyApiError);
-      expect(error.statusCode).toBe(429);
+      expect(error).toBeInstanceOf(EtsyRateLimitError);
     });
 
     it('should handle empty response bodies', async () => {

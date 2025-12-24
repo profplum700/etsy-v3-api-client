@@ -312,6 +312,9 @@ export type {
   // Rate Limiting Types
   RateLimitConfig,
   RateLimitStatus,
+  EtsyRateLimitHeaders,
+  RateLimitErrorType,
+  ApproachingLimitCallback,
 
   // Error Types (Phase 1)
   EtsyErrorDetails,

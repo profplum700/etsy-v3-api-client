@@ -17,6 +17,7 @@ import {
   SearchParams,
   EtsyApiError,
   EtsyAuthError,
+  EtsyRateLimitError,
   EtsyTokens,
   RateLimitStatus,
   LoggerInterface,
@@ -46,7 +47,8 @@ import {
   EtsyBuyerTaxonomyNode,
   EtsyBuyerTaxonomyProperty,
   EtsyListingProperty,
-  EtsyShopProductionPartner
+  EtsyShopProductionPartner,
+  ApproachingLimitCallback
 } from './types';
 import { TokenManager } from './auth/token-manager';
 import { EtsyRateLimiter } from './rate-limiting';
@@ -152,7 +154,14 @@ export class EtsyClient {
       this.rateLimiter = new EtsyRateLimiter({
         maxRequestsPerDay: config.rateLimiting?.maxRequestsPerDay || 10000,
         maxRequestsPerSecond: config.rateLimiting?.maxRequestsPerSecond || 10,
-        minRequestInterval: config.rateLimiting?.minRequestInterval ?? 100
+        minRequestInterval: config.rateLimiting?.minRequestInterval ?? 100,
+        // New retry and callback options
+        maxRetries: config.rateLimiting?.maxRetries,
+        baseDelayMs: config.rateLimiting?.baseDelayMs,
+        maxDelayMs: config.rateLimiting?.maxDelayMs,
+        jitter: config.rateLimiting?.jitter,
+        qpdWarningThreshold: config.rateLimiting?.qpdWarningThreshold,
+        onApproachingLimit: config.rateLimiting?.onApproachingLimit
       });
     } else {
       this.rateLimiter = new EtsyRateLimiter(undefined);
@@ -175,20 +184,20 @@ export class EtsyClient {
    * Make an authenticated request to the Etsy API
    */
   private async makeRequest<T>(
-    endpoint: string, 
+    endpoint: string,
     options: RequestInit = {},
     useCache: boolean = true
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
-    
+
     // Set default method to GET if not specified
     const requestOptions: RequestInit = {
       method: 'GET',
       ...options
     };
-    
+
     const cacheKey = `${url}:${JSON.stringify(requestOptions)}`;
-    
+
     // Check cache first
     if (useCache && this.cache && requestOptions.method === 'GET') {
       const cached = await this.cache.get(cacheKey);
@@ -212,51 +221,93 @@ export class EtsyClient {
       ...requestOptions.headers
     };
 
-    try {
-      const response = await this.fetch(url, {
-        ...requestOptions,
-        headers
-      });
+    // Execute request with retry loop for 429 errors
+    return this.executeWithRetry<T>(url, { ...requestOptions, headers }, cacheKey, useCache);
+  }
 
-      if (!response.ok) {
-        const errorText = await response.text();
+  /**
+   * Execute request with automatic retry for 429 responses
+   */
+  private async executeWithRetry<T>(
+    url: string,
+    options: RequestInit,
+    cacheKey: string,
+    useCache: boolean
+  ): Promise<T> {
+    while (true) {
+      try {
+        const response = await this.fetch(url, options);
+
+        // Handle 429 Rate Limited
+        if (response.status === 429) {
+          const { shouldRetry, delayMs } = await this.rateLimiter.handleRateLimitResponse(
+            response.headers
+          );
+
+          if (shouldRetry) {
+            this.logger.warn(`Rate limited. Retrying in ${delayMs}ms...`);
+            await this.sleep(delayMs);
+            continue; // Retry the request
+          }
+          // If shouldRetry is false, handleRateLimitResponse will have thrown
+        }
+
+        // Handle other errors
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new EtsyApiError(
+            `Etsy API error: ${response.status} ${response.statusText}`,
+            response.status,
+            errorText
+          );
+        }
+
+        // SUCCESS: Update rate limiter with response headers
+        this.rateLimiter.updateFromHeaders(response.headers);
+        this.rateLimiter.resetRetryCount();
+
+        // Handle 204 No Content responses (typically from DELETE operations)
+        // These responses have no body, so calling response.json() would throw SyntaxError
+        if (response.status === 204) {
+          return undefined as T;
+        }
+
+        // Also check for empty content-length if headers are available
+        const contentLength = response.headers?.get?.('content-length');
+        if (contentLength === '0') {
+          return undefined as T;
+        }
+
+        const data = await response.json();
+
+        // Cache successful GET requests
+        if (useCache && this.cache && options.method === 'GET') {
+          await this.cache.set(cacheKey, JSON.stringify(data), this.cacheTtl);
+        }
+
+        return data;
+      } catch (error) {
+        // Re-throw rate limit errors (they've already been handled)
+        if (error instanceof EtsyRateLimitError) {
+          throw error;
+        }
+        if (error instanceof EtsyApiError || error instanceof EtsyAuthError) {
+          throw error;
+        }
         throw new EtsyApiError(
-          `Etsy API error: ${response.status} ${response.statusText}`,
-          response.status,
-          errorText
+          `Request failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          0,
+          error
         );
       }
-
-      // Handle 204 No Content responses (typically from DELETE operations)
-      // These responses have no body, so calling response.json() would throw SyntaxError
-      if (response.status === 204) {
-        return undefined as T;
-      }
-
-      // Also check for empty content-length if headers are available
-      const contentLength = response.headers?.get?.('content-length');
-      if (contentLength === '0') {
-        return undefined as T;
-      }
-
-      const data = await response.json();
-      
-      // Cache successful GET requests
-      if (useCache && this.cache && requestOptions.method === 'GET') {
-        await this.cache.set(cacheKey, JSON.stringify(data), this.cacheTtl);
-      }
-      
-      return data;
-    } catch (error) {
-      if (error instanceof EtsyApiError || error instanceof EtsyAuthError) {
-        throw error;
-      }
-      throw new EtsyApiError(
-        `Request failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        0,
-        error
-      );
     }
+  }
+
+  /**
+   * Sleep helper for retry delays
+   */
+  private sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   /**
@@ -1246,6 +1297,21 @@ export class EtsyClient {
    */
   public getRateLimitStatus(): RateLimitStatus {
     return this.rateLimiter.getRateLimitStatus();
+  }
+
+  /**
+   * Set callback to be notified when approaching daily rate limit
+   * @param callback - Function called when usage exceeds warning threshold
+   * @param threshold - Optional percentage threshold (0-100), default 80
+   */
+  public onApproachingRateLimit(
+    callback: ApproachingLimitCallback,
+    threshold?: number
+  ): void {
+    if (threshold !== undefined) {
+      this.rateLimiter.setWarningThreshold(threshold);
+    }
+    this.rateLimiter.setApproachingLimitCallback(callback);
   }
 
   /**

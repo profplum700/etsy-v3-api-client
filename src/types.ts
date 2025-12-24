@@ -23,6 +23,18 @@ export interface EtsyClientConfig {
     maxRequestsPerDay?: number;
     maxRequestsPerSecond?: number;
     minRequestInterval?: number;
+    /** Maximum number of automatic retries for 429 errors (default: 3) */
+    maxRetries?: number;
+    /** Base delay in milliseconds for exponential backoff (default: 1000) */
+    baseDelayMs?: number;
+    /** Maximum delay cap in milliseconds (default: 30000) */
+    maxDelayMs?: number;
+    /** Jitter factor 0-1 for randomizing delays (default: 0.1) */
+    jitter?: number;
+    /** Percentage threshold (0-100) for firing onApproachingLimit (default: 80) */
+    qpdWarningThreshold?: number;
+    /** Callback fired when daily remaining falls below threshold */
+    onApproachingLimit?: (remainingRequests: number, totalLimit: number, percentageUsed: number) => void;
   };
   caching?: {
     enabled: boolean;
@@ -383,16 +395,74 @@ export interface SearchParams {
 // Rate Limiting Types
 // ============================================================================
 
+/**
+ * Parsed rate limit information from Etsy API response headers
+ */
+export interface EtsyRateLimitHeaders {
+  /** Total queries per second limit (from x-limit-per-second) */
+  limitPerSecond?: number;
+  /** Remaining queries this second (from x-remaining-this-second) */
+  remainingThisSecond?: number;
+  /** Total queries per day limit in sliding 24h window (from x-limit-per-day) */
+  limitPerDay?: number;
+  /** Remaining queries in current 24h window (from x-remaining-today) */
+  remainingToday?: number;
+  /** Seconds to wait before retrying (from retry-after, only on 429) */
+  retryAfter?: number;
+}
+
+/**
+ * Error type enumeration for distinguishing QPD vs QPS exhaustion
+ */
+export type RateLimitErrorType = 'qpd_exhausted' | 'qps_exhausted' | 'unknown';
+
+/**
+ * Callback fired when approaching daily rate limit
+ */
+export type ApproachingLimitCallback = (
+  remainingRequests: number,
+  totalLimit: number,
+  percentageUsed: number
+) => void;
+
 export interface RateLimitConfig {
+  // Existing fields (used as fallback when headers unavailable)
   maxRequestsPerDay: number;
   maxRequestsPerSecond: number;
   minRequestInterval: number;
+
+  // New fields for retry behavior
+  /** Maximum number of automatic retries for 429 errors (default: 3) */
+  maxRetries?: number;
+  /** Base delay in milliseconds for exponential backoff (default: 1000) */
+  baseDelayMs?: number;
+  /** Maximum delay cap in milliseconds (default: 30000) */
+  maxDelayMs?: number;
+  /** Jitter factor 0-1 for randomizing delays (default: 0.1) */
+  jitter?: number;
+
+  // New fields for warning callback
+  /** Percentage threshold (0-100) for firing onApproachingLimit (default: 80) */
+  qpdWarningThreshold?: number;
+  /** Callback fired when daily remaining falls below threshold */
+  onApproachingLimit?: ApproachingLimitCallback;
 }
 
 export interface RateLimitStatus {
+  // Existing fields
   remainingRequests: number;
   resetTime: Date;
   canMakeRequest: boolean;
+
+  // New fields
+  /** Whether status is based on actual API headers or config fallback */
+  isFromHeaders: boolean;
+  /** Per-second limit from headers */
+  limitPerSecond?: number;
+  /** Remaining requests this second */
+  remainingThisSecond?: number;
+  /** Per-day limit from headers */
+  limitPerDay?: number;
 }
 
 // ============================================================================
@@ -762,9 +832,16 @@ export class EtsyAuthError extends Error {
 }
 
 export class EtsyRateLimitError extends Error {
-  constructor(message: string, public _retryAfter?: number) {
+  public readonly errorType: RateLimitErrorType;
+
+  constructor(
+    message: string,
+    public _retryAfter?: number,
+    errorType: RateLimitErrorType = 'unknown'
+  ) {
     super(message);
     this.name = 'EtsyRateLimitError';
+    this.errorType = errorType;
   }
 
   /**
@@ -772,6 +849,15 @@ export class EtsyRateLimitError extends Error {
    */
   get retryAfter(): number | undefined {
     return this._retryAfter;
+  }
+
+  /**
+   * Whether this error can be retried.
+   * QPD exhausted errors are NOT retryable.
+   * QPS errors and unknown errors ARE retryable.
+   */
+  isRetryable(): boolean {
+    return this.errorType !== 'qpd_exhausted';
   }
 }
 
