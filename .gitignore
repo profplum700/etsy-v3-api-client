@@ -101,3 +101,5 @@ test-package
 examples
 
 logs/
+
+.claude/settings.local.json
