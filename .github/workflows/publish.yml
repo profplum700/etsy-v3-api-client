@@ -39,5 +39,23 @@ jobs:
       - name: Run type checking
         run: pnpm run type-check
 
-      - name: Publish packages
-        run: pnpm publish -r --filter . --filter './packages/*' --access public --provenance --no-git-checks
+      # Use npm directly for publishing with Trusted Publishers (OIDC)
+      # pnpm publish --provenance doesn't properly handle npm's OIDC flow
+      - name: Publish core package
+        run: npm publish --provenance --access public
+
+      - name: Publish etsy-cli
+        run: npm publish --provenance --access public
+        working-directory: packages/etsy-cli
+
+      - name: Publish etsy-react
+        run: npm publish --provenance --access public
+        working-directory: packages/etsy-react
+
+      - name: Publish etsy-nextjs
+        run: npm publish --provenance --access public
+        working-directory: packages/etsy-nextjs
+
+      - name: Publish etsy-admin-ui
+        run: npm publish --provenance --access public
+        working-directory: packages/etsy-admin-ui
