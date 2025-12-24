@@ -23,7 +23,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: '24'
           registry-url: 'https://registry.npmjs.org'
           cache: 'pnpm'
 
@@ -39,23 +39,23 @@ jobs:
       - name: Run type checking
         run: pnpm run type-check
 
-      # Use npm directly for publishing with Trusted Publishers (OIDC)
-      # pnpm publish --provenance doesn't properly handle npm's OIDC flow
+      # Trusted Publishers (OIDC) requires npm 11.5.1+ (Node 24)
+      # Provenance is automatic with Trusted Publishers - no flag needed
       - name: Publish core package
-        run: npm publish --provenance --access public
+        run: npm publish --access public
 
       - name: Publish etsy-cli
-        run: npm publish --provenance --access public
+        run: npm publish --access public
         working-directory: packages/etsy-cli
 
       - name: Publish etsy-react
-        run: npm publish --provenance --access public
+        run: npm publish --access public
         working-directory: packages/etsy-react
 
       - name: Publish etsy-nextjs
-        run: npm publish --provenance --access public
+        run: npm publish --access public
         working-directory: packages/etsy-nextjs
 
       - name: Publish etsy-admin-ui
-        run: npm publish --provenance --access public
+        run: npm publish --access public
         working-directory: packages/etsy-admin-ui
