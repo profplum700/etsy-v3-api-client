@@ -261,7 +261,7 @@ export interface EtsyListing {
   item_width?: number;
   item_height?: number;
   item_dimensions_unit?: string;
-  state?: 'active' | 'inactive' | 'draft' | 'expired';
+  state?: 'active' | 'inactive' | 'sold_out' | 'draft' | 'expired';
   creation_tsz?: number;
   ending_tsz?: number;
   original_creation_tsz?: number;
@@ -335,6 +335,7 @@ export interface EtsyListingInventory {
   price_on_property?: number[];
   quantity_on_property?: number[];
   sku_on_property?: number[];
+  readiness_state_on_property?: number[];
 }
 
 export interface EtsyListingProduct {
@@ -400,17 +401,31 @@ export type ListingIncludes =
   | 'Videos';
 
 export interface SearchParams {
-  keywords?: string;
-  category?: string;
   limit?: number;
   offset?: number;
-  sort_on?: 'created' | 'price' | 'score';
-  sort_order?: 'up' | 'down';
+  keywords?: string;
+  sort_on?: 'created' | 'price' | 'updated' | 'score';
+  sort_order?: 'asc' | 'ascending' | 'desc' | 'descending' | 'up' | 'down';
   min_price?: number;
   max_price?: number;
-  tags?: string[];
-  location?: string;
+  taxonomy_id?: number;
   shop_location?: string;
+  legacy?: boolean;
+}
+
+export interface GetListingParams {
+  includes?: ListingIncludes[];
+  language?: string;
+  legacy?: boolean;
+  allow_suggested_title?: boolean;
+}
+
+export type ListingInventoryIncludes = 'Listing';
+
+export interface GetListingInventoryParams {
+  show_deleted?: boolean;
+  includes?: ListingInventoryIncludes;
+  legacy?: boolean;
 }
 
 export interface GetReviewsParams {
@@ -947,6 +962,7 @@ export interface UpdateShopParams {
   announcement?: string;
   sale_message?: string;
   digital_sale_message?: string;
+  policy_additional?: string;
 }
 
 export interface CreateShopSectionParams {
@@ -1105,8 +1121,8 @@ export interface EtsyShopRefund {
 export interface GetShopReceiptsParams {
   limit?: number;
   offset?: number;
-  sort_on?: 'created' | 'updated' | 'paid';
-  sort_order?: 'up' | 'down';
+  sort_on?: 'created' | 'updated' | 'receipt_id';
+  sort_order?: 'asc' | 'ascending' | 'desc' | 'descending' | 'up' | 'down';
   min_created?: number;
   max_created?: number;
   min_last_modified?: number;
@@ -1114,12 +1130,21 @@ export interface GetShopReceiptsParams {
   was_paid?: boolean;
   was_shipped?: boolean;
   was_delivered?: boolean;
+  was_canceled?: boolean;
+  legacy?: boolean;
+}
+
+export interface GetShopReceiptParams {
+  legacy?: boolean;
+}
+
+export interface GetShopReceiptTransactionsParams {
+  legacy?: boolean;
 }
 
 export interface UpdateShopReceiptParams {
   was_shipped?: boolean;
   was_paid?: boolean;
-  message_from_seller?: string;
 }
 
 // ============================================================================
@@ -1130,10 +1155,8 @@ export interface EtsyShippingProfile {
   shipping_profile_id: number;
   title: string;
   user_id: number;
-  min_processing_days: number;
-  max_processing_days: number;
-  processing_days_display_label: string;
   origin_country_iso: string;
+  is_deleted?: boolean;
   origin_postal_code?: string;
   profile_type: 'manual' | 'calculated';
   domestic_handling_fee?: number;
@@ -1192,9 +1215,10 @@ export interface CreateShippingProfileParams {
   origin_country_iso: string;
   primary_cost: number;
   secondary_cost: number;
-  min_processing_days: number;
-  max_processing_days: number;
-  processing_days_display_label?: string;
+  min_processing_time?: number;
+  max_processing_time?: number;
+  processing_time_unit?: string;
+  shipping_carrier_id?: number;
   origin_postal_code?: string;
   destination_country_iso?: string;
   destination_region?: string;
@@ -1206,9 +1230,9 @@ export interface CreateShippingProfileParams {
 export interface UpdateShippingProfileParams {
   title?: string;
   origin_country_iso?: string;
-  min_processing_days?: number;
-  max_processing_days?: number;
-  processing_days_display_label?: string;
+  min_processing_time?: number;
+  max_processing_time?: number;
+  processing_time_unit?: string;
   origin_postal_code?: string;
 }
 
@@ -1220,6 +1244,7 @@ export interface CreateShippingProfileDestinationParams {
   mail_class?: string;
   min_delivery_days?: number;
   max_delivery_days?: number;
+  shipping_carrier_id?: number;
 }
 
 export interface UpdateShippingProfileDestinationParams {
@@ -1230,6 +1255,12 @@ export interface UpdateShippingProfileDestinationParams {
   mail_class?: string;
   min_delivery_days?: number;
   max_delivery_days?: number;
+  shipping_carrier_id?: number;
+}
+
+export interface GetShippingProfileDestinationsParams {
+  limit?: number;
+  offset?: number;
 }
 
 export interface CreateReceiptShipmentParams {
@@ -1405,6 +1436,8 @@ export interface CreateDraftListingParams {
   personalization_instructions?: string;
   production_partner_ids?: number[];
   image_ids?: number[];
+  readiness_state_id?: number;
+  should_auto_renew?: boolean;
   is_supply?: boolean;
   is_customizable?: boolean;
   is_taxable?: boolean;
@@ -1436,13 +1469,10 @@ export interface UpdateListingParams {
   personalization_is_required?: boolean;
   personalization_char_count_max?: number;
   personalization_instructions?: string;
-  state?: 'active' | 'inactive' | 'draft';
+  state?: 'active' | 'inactive';
   is_supply?: boolean;
   production_partner_ids?: number[];
   type?: 'physical' | 'download' | 'both';
-  styles?: string[];
-  processing_min?: number;
-  processing_max?: number;
 }
 
 export interface UpdateListingInventoryParams {

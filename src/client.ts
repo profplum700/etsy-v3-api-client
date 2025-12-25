@@ -13,6 +13,8 @@ import {
   EtsyListingImage,
   EtsyListingInventory,
   EtsySellerTaxonomyNode,
+  GetListingParams,
+  GetListingInventoryParams,
   ListingParams,
   ListingIncludes,
   SearchParams,
@@ -32,7 +34,9 @@ import {
   EtsyShopReceipt,
   EtsyShopReceiptTransaction,
   EtsyShopReceiptShipment,
+  GetShopReceiptParams,
   GetShopReceiptsParams,
+  GetShopReceiptTransactionsParams,
   UpdateShopReceiptParams,
   EtsyShippingProfile,
   EtsyShippingProfileDestination,
@@ -41,6 +45,7 @@ import {
   UpdateShippingProfileParams,
   CreateShippingProfileDestinationParams,
   UpdateShippingProfileDestinationParams,
+  GetShippingProfileDestinationsParams,
   CreateReceiptShipmentParams,
   EtsyPaymentAccountLedgerEntry,
   EtsyPayment,
@@ -314,6 +319,22 @@ export class EtsyClient {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
+  private buildFormBody(params: Record<string, unknown>): URLSearchParams {
+    const body = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+      if (value === undefined || value === null) continue;
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          if (item === undefined || item === null) continue;
+          body.append(key, String(item));
+        }
+      } else {
+        body.append(key, String(value));
+      }
+    }
+    return body;
+  }
+
   /**
    * Get API key in the format required by Etsy.
    * If sharedSecret is provided, returns "keystring:secret" format.
@@ -438,10 +459,30 @@ export class EtsyClient {
    */
   public async getListing(
     listingId: string,
-    includes?: ListingIncludes[]
+    params?: GetListingParams | ListingIncludes[]
   ): Promise<EtsyListing> {
-    const params = includes ? `?includes=${includes.join(',')}` : '';
-    return this.makeRequest<EtsyListing>(`/listings/${listingId}${params}`);
+    const resolvedParams = Array.isArray(params)
+      ? { includes: params }
+      : params;
+    const searchParams = new URLSearchParams();
+    if (resolvedParams?.includes) {
+      searchParams.set('includes', resolvedParams.includes.join(','));
+    }
+    if (resolvedParams?.language) {
+      searchParams.set('language', resolvedParams.language);
+    }
+    if (resolvedParams?.legacy !== undefined) {
+      searchParams.set('legacy', resolvedParams.legacy.toString());
+    }
+    if (resolvedParams?.allow_suggested_title !== undefined) {
+      searchParams.set(
+        'allow_suggested_title',
+        resolvedParams.allow_suggested_title.toString()
+      );
+    }
+    const query = searchParams.toString();
+    const suffix = query ? `?${query}` : '';
+    return this.makeRequest<EtsyListing>(`/listings/${listingId}${suffix}`);
   }
 
   /**
@@ -451,16 +492,19 @@ export class EtsyClient {
     const searchParams = new URLSearchParams();
     
     if (params.keywords) searchParams.set('keywords', params.keywords);
-    if (params.category) searchParams.set('category', params.category);
     if (params.limit !== undefined) searchParams.set('limit', params.limit.toString());
     if (params.offset !== undefined) searchParams.set('offset', params.offset.toString());
     if (params.sort_on) searchParams.set('sort_on', params.sort_on);
     if (params.sort_order) searchParams.set('sort_order', params.sort_order);
     if (params.min_price !== undefined) searchParams.set('min_price', params.min_price.toString());
     if (params.max_price !== undefined) searchParams.set('max_price', params.max_price.toString());
-    if (params.tags) searchParams.set('tags', params.tags.join(','));
-    if (params.location) searchParams.set('location', params.location);
+    if (params.taxonomy_id !== undefined) {
+      searchParams.set('taxonomy_id', params.taxonomy_id.toString());
+    }
     if (params.shop_location) searchParams.set('shop_location', params.shop_location);
+    if (params.legacy !== undefined) {
+      searchParams.set('legacy', params.legacy.toString());
+    }
 
     const response = await this.makeRequest<EtsyApiResponse<EtsyListing>>(
       `/listings/active?${searchParams.toString()}`
@@ -483,8 +527,25 @@ export class EtsyClient {
   /**
    * Get listing inventory
    */
-  public async getListingInventory(listingId: string): Promise<EtsyListingInventory> {
-    return this.makeRequest<EtsyListingInventory>(`/listings/${listingId}/inventory`);
+  public async getListingInventory(
+    listingId: string,
+    params: GetListingInventoryParams = {}
+  ): Promise<EtsyListingInventory> {
+    const searchParams = new URLSearchParams();
+    if (params.show_deleted !== undefined) {
+      searchParams.set('show_deleted', params.show_deleted.toString());
+    }
+    if (params.includes) {
+      searchParams.set('includes', params.includes);
+    }
+    if (params.legacy !== undefined) {
+      searchParams.set('legacy', params.legacy.toString());
+    }
+    const query = searchParams.toString();
+    const suffix = query ? `?${query}` : '';
+    return this.makeRequest<EtsyListingInventory>(
+      `/listings/${listingId}/inventory${suffix}`
+    );
   }
 
   // ===========================================================================
@@ -565,7 +626,10 @@ export class EtsyClient {
    * Endpoint: GET /v3/application/users/me/shops
    */
   public async getUserShops(): Promise<EtsyShop[]> {
-    const response = await this.makeRequest<EtsyApiResponse<EtsyShop>>('/users/me/shops');
+    const user = await this.getUser();
+    const response = await this.makeRequest<EtsyApiResponse<EtsyShop>>(
+      `/users/${user.user_id}/shops`
+    );
     return response.results || [];
   }
 
@@ -594,11 +658,13 @@ export class EtsyClient {
       }
     }
 
+    const body = this.buildFormBody(params);
     return this.makeRequest<EtsyShop>(
       `/shops/${shopId}`,
       {
         method: 'PUT',
-        body: JSON.stringify(params)
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString()
       },
       false
     );
@@ -610,11 +676,13 @@ export class EtsyClient {
    * Scopes: shops_w
    */
   public async createShopSection(shopId: string, params: CreateShopSectionParams): Promise<EtsyShopSection> {
+    const body = this.buildFormBody(params);
     return this.makeRequest<EtsyShopSection>(
       `/shops/${shopId}/sections`,
       {
         method: 'POST',
-        body: JSON.stringify(params)
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString()
       },
       false
     );
@@ -630,11 +698,13 @@ export class EtsyClient {
     sectionId: string,
     params: UpdateShopSectionParams
   ): Promise<EtsyShopSection> {
+    const body = this.buildFormBody(params);
     return this.makeRequest<EtsyShopSection>(
       `/shops/${shopId}/sections/${sectionId}`,
       {
         method: 'PUT',
-        body: JSON.stringify(params)
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString()
       },
       false
     );
@@ -665,7 +735,7 @@ export class EtsyClient {
   public async createDraftListing(
     shopId: string,
     params: CreateDraftListingParams,
-    options?: ValidationOptions
+    options?: ValidationOptions & { legacy?: boolean }
   ): Promise<EtsyListing> {
     // Validate request if enabled
     if (options?.validate) {
@@ -682,11 +752,15 @@ export class EtsyClient {
       }
     }
 
+    const legacy = options?.legacy;
+    const query = legacy !== undefined ? `?legacy=${legacy}` : '';
+    const body = this.buildFormBody(params);
     return this.makeRequest<EtsyListing>(
-      `/shops/${shopId}/listings`,
+      `/shops/${shopId}/listings${query}`,
       {
         method: 'POST',
-        body: JSON.stringify(params)
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString()
       },
       false
     );
@@ -701,7 +775,7 @@ export class EtsyClient {
     shopId: string,
     listingId: string,
     params: UpdateListingParams,
-    options?: ValidationOptions
+    options?: ValidationOptions & { legacy?: boolean }
   ): Promise<EtsyListing> {
     // Validate request if enabled
     if (options?.validate) {
@@ -718,11 +792,15 @@ export class EtsyClient {
       }
     }
 
+    const legacy = options?.legacy;
+    const query = legacy !== undefined ? `?legacy=${legacy}` : '';
+    const body = this.buildFormBody(params);
     return this.makeRequest<EtsyListing>(
-      `/shops/${shopId}/listings/${listingId}`,
+      `/shops/${shopId}/listings/${listingId}${query}`,
       {
         method: 'PATCH',
-        body: JSON.stringify(params)
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString()
       },
       false
     );
@@ -815,12 +893,11 @@ export class EtsyClient {
    * Scopes: listings_r
    */
   public async getListingImage(
-    shopId: string,
     listingId: string,
     imageId: string
   ): Promise<EtsyListingImage> {
     return this.makeRequest<EtsyListingImage>(
-      `/shops/${shopId}/listings/${listingId}/images/${imageId}`
+      `/listings/${listingId}/images/${imageId}`
     );
   }
 
