@@ -161,6 +161,16 @@ describe('createOAuthRoute', () => {
   });
 
   describe('callback handler', () => {
+    let consoleErrorSpy: jest.SpiedFunction<typeof console.error>;
+
+    beforeEach(() => {
+      consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      consoleErrorSpy.mockRestore();
+    });
+
     it('should exchange code for tokens and set cookies', async () => {
       // Mock successful token exchange
       (global.fetch as jest.MockedFunction<typeof fetch>).mockResolvedValueOnce({
@@ -229,6 +239,7 @@ describe('createOAuthRoute', () => {
       const json = await response.json();
       expect(json.error).toContain('OAuth authorization failed');
       expect(json.details).toContain('User denied access');
+      expect(consoleErrorSpy).toHaveBeenCalled();
     });
   });
 
