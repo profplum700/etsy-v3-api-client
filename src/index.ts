@@ -246,6 +246,7 @@ export type {
   EtsyShop,
   EtsyShopSection,
   EtsyListing,
+  EtsyReview,
   EtsyListingImage,
   EtsyListingInventory,
   EtsyListingProduct,
@@ -309,6 +310,7 @@ export type {
   // API Parameters
   ListingParams,
   SearchParams,
+  GetReviewsParams,
 
   // Rate Limiting Types
   RateLimitConfig,

@@ -196,7 +196,7 @@ const listings = await client.getListingsByShop('shop-id');
 const listing = await client.getListing('listing-id');
 
 // Search listings
-const searchResults = await client.findAllActiveListings({
+const searchResults = await client.findAllListingsActive({
   keywords: 'vintage',
   category: 'art',
   limit: 25
@@ -357,10 +357,118 @@ The package provides optimized builds for different environments:
 #### Listing Methods
 - `getListing(listingId)` - Get listing details
 - `getListingsByShop(shopId, options?)` - Get shop's listings
-- `findAllActiveListings(options?)` - Search active listings
+- `findAllListingsActive(options?)` - Search active listings
+
+#### Listing Management Endpoint Support
+| Category | Endpoint | Supported |
+| --- | --- | --- |
+| BuyerTaxonomy | getBuyerTaxonomyNodes | Yes |
+| BuyerTaxonomy | getPropertiesByBuyerTaxonomyId | No |
+| SellerTaxonomy | getSellerTaxonomyNodes | Yes |
+| SellerTaxonomy | getPropertiesByTaxonomyId | Yes |
+| ShopListing | createDraftListing | Yes |
+| ShopListing | getListingsByShop | Yes |
+| ShopListing | deleteListing | Yes |
+| ShopListing | getListing | Yes |
+| ShopListing | findAllListingsActive | Yes |
+| ShopListing | findAllActiveListingsByShop | No |
+| ShopListing | getListingsByListingIds | No |
+| ShopListing | getFeaturedListingsByShop | No |
+| ShopListing | deleteListingProperty | No |
+| ShopListing | updateListingProperty | Yes |
+| ShopListing | getListingProperty | No |
+| ShopListing | getListingProperties | Yes |
+| ShopListing | updateListing | Yes |
+| ShopListing | getListingsByShopReceipt | No |
+| ShopListing | getListingsByShopReturnPolicy | No |
+| ShopListing | getListingsByShopSectionId | No |
+| ShopListing File | deleteListingFile | No |
+| ShopListing File | getListingFile | No |
+| ShopListing File | getAllListingFiles | No |
+| ShopListing File | uploadListingFile | No |
+| ShopListing Image | deleteListingImage | Yes |
+| ShopListing Image | getListingImage | Yes |
+| ShopListing Image | getListingImages | Yes |
+| ShopListing Image | uploadListingImage | Yes |
+| ShopListing Inventory | getListingInventory | Yes |
+| ShopListing Inventory | updateListingInventory | Yes |
+| ShopListing Offering | getListingOffering | No |
+| ShopListing Product | getListingProduct | No |
+| ShopListing Translation | createListingTranslation | No |
+| ShopListing Translation | getListingTranslation | No |
+| ShopListing Translation | updateListingTranslation | No |
+| ShopListing VariationImage | getListingVariationImages | No |
+| ShopListing VariationImage | updateVariationImages | No |
+| ShopListing Video | deleteListingVideo | No |
+| ShopListing Video | getListingVideo | No |
+| ShopListing Video | getListingVideos | No |
+| ShopListing Video | uploadListingVideo | No |
+| Other | ping | No |
+| Other | tokenScopes | No |
+| Ledger Entry | getShopPaymentAccountLedgerEntry | Yes |
+| Ledger Entry | getShopPaymentAccountLedgerEntries | Yes |
+| Payment | getShopPaymentByReceiptId | No |
+| Payment | getPaymentAccountLedgerEntry | No |
+| Payment | getPayments | No |
+| Shop Receipt | getShopReceipt | Yes |
+| Shop Receipt | updateShopReceipt | Yes |
+| Shop Receipt | getShopReceipts | Yes |
+| Shop Receipt | searchAllShopReceipts | No |
+| Shop Receipt Transactions | getShopReceiptTransaction | Yes |
+| Shop Receipt Transactions | getShopReceiptTransactionsByListing | No |
+| Shop Receipt Transactions | getShopReceiptTransactionsByReceipt | Yes |
+| Shop Receipt Transactions | getShopReceiptTransactionsByShop | No |
+| Review | getReviewsByListing | Yes |
+| Review | getReviewsByShop | Yes |
+| Shop HolidayPreferences | getShopHolidayPreferences | No |
+| Shop HolidayPreferences | updateShopHolidayPreferences | No |
+| Shop ProcessingProfiles | createShopShippingProfileUpgrade | No |
+| Shop ProcessingProfiles | getShopShippingProfileUpgrades | Yes |
+| Shop ProcessingProfiles | deleteShopShippingProfileUpgrade | No |
+| Shop ProcessingProfiles | getShopShippingProfileUpgrade | No |
+| Shop ProcessingProfiles | updateShopShippingProfileUpgrade | No |
+| Shop ShippingProfile | getShippingCarriers | No |
+| Shop ShippingProfile | createShopShippingProfile | Yes |
+| Shop ShippingProfile | getShopShippingProfiles | Yes |
+| Shop ShippingProfile | deleteShopShippingProfile | Yes |
+| Shop ShippingProfile | getShopShippingProfile | Yes |
+| Shop ShippingProfile | updateShopShippingProfile | Yes |
+| Shop ShippingProfile | createShopShippingProfileDestination | Yes |
+| Shop ShippingProfile | getShopShippingProfileDestinationsByShippingProfile | Yes |
+| Shop ShippingProfile | deleteShopShippingProfileDestination | Yes |
+| Shop ShippingProfile | updateShopShippingProfileDestination | Yes |
+| Shop ShippingProfile | createShopShippingProfileUpgrade | No |
+| Shop ShippingProfile | getShopShippingProfileUpgrades | Yes |
+| Shop ShippingProfile | deleteShopShippingProfileUpgrade | No |
+| Shop ShippingProfile | updateShopShippingProfileUpgrade | No |
+| Shop | getShop | Yes |
+| Shop | updateShop | Yes |
+| Shop | getShopByOwnerUserId | Yes |
+| Shop | findShops | No |
+| Shop ProductionPartner | getShopProductionPartners | Yes |
+| Shop Section | createShopSection | Yes |
+| Shop Section | getShopSections | Yes |
+| Shop Section | deleteShopSection | Yes |
+| Shop Section | getShopSection | Yes |
+| Shop Section | updateShopSection | Yes |
+| Shop Return Policy | consolidateShopReturnPolicies | No |
+| Shop Return Policy | createShopReturnPolicy | No |
+| Shop Return Policy | getShopReturnPolicies | No |
+| Shop Return Policy | deleteShopReturnPolicy | No |
+| Shop Return Policy | getShopReturnPolicy | No |
+| Shop Return Policy | updateShopReturnPolicy | No |
+| User | getUser | Yes |
+| User | getMe | No |
+| UserAddress | deleteUserAddress | No |
+| UserAddress | getUserAddress | No |
+| UserAddress | getUserAddresses | No |
+
+#### Review Methods
+- `getReviewsByListing(listingId, options?)` - Get reviews for a listing        
+- `getReviewsByShop(shopId, options?)` - Get reviews for a shop
 
 #### Search Methods
-- `findAllActiveListings(params)` - Search listings with filters
+- `findAllListingsActive(params)` - Search listings with filters
 
 ### AuthHelper Methods
 - `getAuthUrl()` - Generate authorization URL

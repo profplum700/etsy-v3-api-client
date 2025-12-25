@@ -296,6 +296,18 @@ export interface EtsyListing {
   used_manufacturer?: boolean;
 }
 
+export interface EtsyReview {
+  review_id?: number;
+  rating?: number;
+  review?: string;
+  language?: string;
+  created_timestamp?: number;
+  created_tsz?: number;
+  listing_id?: number;
+  shop_id?: number;
+  [key: string]: unknown;
+}
+
 export interface EtsyListingImage {
   listing_image_id: number;
   hex_code?: string;
@@ -389,6 +401,13 @@ export interface SearchParams {
   tags?: string[];
   location?: string;
   shop_location?: string;
+}
+
+export interface GetReviewsParams {
+  limit?: number;
+  offset?: number;
+  min_created?: number;
+  max_created?: number;
 }
 
 // ============================================================================

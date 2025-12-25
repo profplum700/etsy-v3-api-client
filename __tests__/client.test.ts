@@ -499,6 +499,51 @@ describe('EtsyClient', () => {
     });
   });
 
+  describe('reviews', () => {
+    let client: EtsyClient;
+
+    beforeEach(() => {
+      client = new EtsyClient(mockConfig);
+    });
+
+    it('should fetch listing reviews with params', async () => {
+      const mockReviews = [{ review_id: 1, rating: 5 }];
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue({ results: mockReviews })
+      });
+
+      const result = await client.getReviewsByListing('123', {
+        limit: 10,
+        offset: 5,
+        min_created: 946684800,
+        max_created: 946684900
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.etsy.com/v3/application/listings/123/reviews?limit=10&offset=5&min_created=946684800&max_created=946684900',
+        expect.any(Object)
+      );
+      expect(result).toEqual(mockReviews);
+    });
+
+    it('should fetch shop reviews without params', async () => {
+      const mockReviews = [{ review_id: 2, rating: 4 }];
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue({ results: mockReviews })
+      });
+
+      const result = await client.getReviewsByShop('456');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.etsy.com/v3/application/shops/456/reviews?',
+        expect.any(Object)
+      );
+      expect(result).toEqual(mockReviews);
+    });
+  });
+
 
   describe('utility methods', () => {
     let client: EtsyClient;

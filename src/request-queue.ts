@@ -241,15 +241,27 @@ export class GlobalRequestQueue {
           if (item.timeout) {
             // Calculate remaining timeout (total timeout minus time already spent in queue)
             const remainingTimeout = item.timeout - elapsed;
+            let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
             // Race the request against the timeout
             const timeoutPromise = new Promise<never>((_, reject) => {
-              setTimeout(() => {
+              timeoutId = setTimeout(() => {
                 reject(new Error(`Request timeout after ${item.timeout}ms (exceeded during execution)`));
               }, remainingTimeout);
+
+              // Prevent open handles in Node.js test runners
+              if (timeoutId && typeof timeoutId.unref === 'function') {
+                timeoutId.unref();
+              }
             });
 
-            result = await Promise.race([item.request(), timeoutPromise]);
+            try {
+              result = await Promise.race([item.request(), timeoutPromise]);
+            } finally {
+              if (timeoutId) {
+                clearTimeout(timeoutId);
+              }
+            }
           } else {
             // No timeout specified
             result = await item.request();

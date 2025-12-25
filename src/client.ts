@@ -49,7 +49,9 @@ import {
   EtsyListingProperty,
   EtsyShopProductionPartner,
   ApproachingLimitCallback,
-  UpdateListingPropertyParams
+  UpdateListingPropertyParams,
+  EtsyReview,
+  GetReviewsParams
 } from './types';
 import { TokenManager } from './auth/token-manager';
 import { EtsyRateLimiter } from './rate-limiting';
@@ -476,6 +478,64 @@ export class EtsyClient {
    */
   public async getListingInventory(listingId: string): Promise<EtsyListingInventory> {
     return this.makeRequest<EtsyListingInventory>(`/listings/${listingId}/inventory`);
+  }
+
+  // ===========================================================================
+  // Review Methods
+  // ===========================================================================
+
+  /**
+   * Get reviews for a listing
+   * Endpoint: GET /v3/application/listings/{listing_id}/reviews
+   * Scopes: feedback_r
+   */
+  public async getReviewsByListing(
+    listingId: string,
+    params: GetReviewsParams = {}
+  ): Promise<EtsyReview[]> {
+    const searchParams = new URLSearchParams();
+
+    if (params.limit !== undefined) searchParams.set('limit', params.limit.toString());
+    if (params.offset !== undefined) searchParams.set('offset', params.offset.toString());
+    if (params.min_created !== undefined) {
+      searchParams.set('min_created', params.min_created.toString());
+    }
+    if (params.max_created !== undefined) {
+      searchParams.set('max_created', params.max_created.toString());
+    }
+
+    const response = await this.makeRequest<EtsyApiResponse<EtsyReview>>(
+      `/listings/${listingId}/reviews?${searchParams.toString()}`
+    );
+
+    return response.results;
+  }
+
+  /**
+   * Get reviews for a shop
+   * Endpoint: GET /v3/application/shops/{shop_id}/reviews
+   * Scopes: feedback_r
+   */
+  public async getReviewsByShop(
+    shopId: string,
+    params: GetReviewsParams = {}
+  ): Promise<EtsyReview[]> {
+    const searchParams = new URLSearchParams();
+
+    if (params.limit !== undefined) searchParams.set('limit', params.limit.toString());
+    if (params.offset !== undefined) searchParams.set('offset', params.offset.toString());
+    if (params.min_created !== undefined) {
+      searchParams.set('min_created', params.min_created.toString());
+    }
+    if (params.max_created !== undefined) {
+      searchParams.set('max_created', params.max_created.toString());
+    }
+
+    const response = await this.makeRequest<EtsyApiResponse<EtsyReview>>(
+      `/shops/${shopId}/reviews?${searchParams.toString()}`
+    );
+
+    return response.results;
   }
 
   // ============================================================================
