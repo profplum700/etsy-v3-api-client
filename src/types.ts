@@ -383,11 +383,21 @@ export interface EtsySellerTaxonomyNode {
 export interface ListingParams {
   limit?: number;
   offset?: number;
-  state?: 'active' | 'inactive' | 'draft' | 'expired';
-  sort_on?: 'created' | 'ending' | 'price' | 'views' | 'score';
-  sort_order?: 'up' | 'down';
-  includes?: string[];
+  state?: 'active' | 'inactive' | 'sold_out' | 'draft' | 'expired';
+  sort_on?: 'created' | 'price' | 'updated' | 'score';
+  sort_order?: 'asc' | 'ascending' | 'desc' | 'descending' | 'up' | 'down';
+  includes?: ListingIncludes[];
+  legacy?: boolean;
 }
+
+export type ListingIncludes =
+  | 'Shipping'
+  | 'Images'
+  | 'Shop'
+  | 'User'
+  | 'Translations'
+  | 'Inventory'
+  | 'Videos';
 
 export interface SearchParams {
   keywords?: string;

@@ -14,6 +14,7 @@ import {
   EtsyListingInventory,
   EtsySellerTaxonomyNode,
   ListingParams,
+  ListingIncludes,
   SearchParams,
   EtsyApiError,
   EtsyAuthError,
@@ -421,6 +422,9 @@ export class EtsyClient {
     if (params.sort_on) searchParams.set('sort_on', params.sort_on);
     if (params.sort_order) searchParams.set('sort_order', params.sort_order);
     if (params.includes) searchParams.set('includes', params.includes.join(','));
+    if (params.legacy !== undefined) {
+      searchParams.set('legacy', params.legacy.toString());
+    }
 
     const response = await this.makeRequest<EtsyApiResponse<EtsyListing>>(
       `/shops/${targetShopId}/listings?${searchParams.toString()}`
@@ -432,7 +436,10 @@ export class EtsyClient {
   /**
    * Get single listing details
    */
-  public async getListing(listingId: string, includes?: string[]): Promise<EtsyListing> {
+  public async getListing(
+    listingId: string,
+    includes?: ListingIncludes[]
+  ): Promise<EtsyListing> {
     const params = includes ? `?includes=${includes.join(',')}` : '';
     return this.makeRequest<EtsyListing>(`/listings/${listingId}${params}`);
   }

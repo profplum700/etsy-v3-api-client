@@ -44,10 +44,10 @@ describe('Query Builder', () => {
       mockClient.getListingsByShop.mockResolvedValue([]);
 
       const query = new ListingQueryBuilder(mockClient, '123');
-      await query.include(['images', 'inventory']).fetch();
+      await query.include(['Images', 'Inventory']).fetch();
 
-      expect(mockClient.getListingsByShop).toHaveBeenCalledWith('123', {
-        includes: ['images', 'inventory']
+      expect(mockClient.getListingsByShop).toHaveBeenCalledWith('123', {        
+        includes: ['Images', 'Inventory']
       });
     });
 
@@ -81,14 +81,14 @@ describe('Query Builder', () => {
       const query = new ListingQueryBuilder(mockClient, '123');
       await query
         .where({ state: 'active' })
-        .include(['images'])
+        .include(['Images'])
         .limit(10)
         .sortBy('created', 'desc')
         .fetch();
 
-      expect(mockClient.getListingsByShop).toHaveBeenCalledWith('123', {
+      expect(mockClient.getListingsByShop).toHaveBeenCalledWith('123', {        
         state: 'active',
-        includes: ['images'],
+        includes: ['Images'],
         limit: 10,
         sort_on: 'created',
         sort_order: 'down' // 'desc' maps to 'down'

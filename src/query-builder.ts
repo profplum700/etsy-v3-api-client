@@ -8,6 +8,7 @@ import {
   EtsyListing,
   EtsyShopReceipt,
   ListingParams,
+  ListingIncludes,
   GetShopReceiptsParams
 } from './types';
 
@@ -16,7 +17,7 @@ import {
 // ============================================================================
 
 export type SortOrder = 'asc' | 'desc';
-export type ListingState = 'active' | 'inactive' | 'draft' | 'expired';
+export type ListingState = 'active' | 'inactive' | 'sold_out' | 'draft' | 'expired';
 export type ListingSortOn = 'created' | 'price' | 'updated' | 'score';
 
 // ============================================================================
@@ -30,7 +31,7 @@ export class ListingQueryBuilder {
   private client: EtsyClient;
   private shopId?: string;
   private params: ListingParams = {};
-  private includeFields: string[] = [];
+  private includeFields: ListingIncludes[] = [];
 
   constructor(client: EtsyClient, shopId?: string) {
     this.client = client;
@@ -53,7 +54,7 @@ export class ListingQueryBuilder {
   /**
    * Include related data
    */
-  include(fields: string[]): this {
+  include(fields: ListingIncludes[]): this {
     this.includeFields = fields;
     this.params.includes = fields;
     return this;

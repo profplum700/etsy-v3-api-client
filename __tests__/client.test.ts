@@ -3,7 +3,7 @@
  */
 
 import { EtsyClient } from '../src/client';
-import { EtsyApiError, EtsyClientConfig } from '../src/types';
+import { EtsyApiError, EtsyClientConfig, ListingParams } from '../src/types';
 import { TokenManager } from '../src/auth/token-manager';
 import { EtsyRateLimiter } from '../src/rate-limiting';
 
@@ -356,19 +356,19 @@ describe('EtsyClient', () => {
         json: jest.fn().mockResolvedValue({ results: mockListings })
       });
 
-      const params = {
+      const params: ListingParams = {
         state: 'draft' as const,
         limit: 10,
         offset: 0,
         sort_on: 'created' as const,
         sort_order: 'down' as const,
-        includes: ['images']
+        includes: ['Images']
       };
 
       const result = await client.getListingsByShop('456', params);
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'https://api.etsy.com/v3/application/shops/456/listings?state=draft&limit=10&offset=0&sort_on=created&sort_order=down&includes=images',
+        'https://api.etsy.com/v3/application/shops/456/listings?state=draft&limit=10&offset=0&sort_on=created&sort_order=down&includes=Images',
         expect.any(Object)
       );
       expect(result).toEqual(mockListings);
@@ -432,10 +432,10 @@ describe('EtsyClient', () => {
         json: jest.fn().mockResolvedValue(mockListing)
       });
 
-      const result = await client.getListing('123', ['images', 'inventory']);
+      const result = await client.getListing('123', ['Images', 'Inventory']);
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'https://api.etsy.com/v3/application/listings/123?includes=images,inventory',
+        'https://api.etsy.com/v3/application/listings/123?includes=Images,Inventory',
         expect.any(Object)
       );
       expect(result).toEqual(mockListing);
