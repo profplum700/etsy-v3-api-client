@@ -4,6 +4,13 @@
 
 This document outlines the comprehensive plan to replace manually-maintained TypeScript types and client methods with OpenAPI-generated code for the Etsy API v3 client.
 
+## Etsy OpenAPI Specification
+
+- **Documentation**: https://developers.etsy.com/documentation/reference/
+- **OpenAPI Spec URL**: https://www.etsy.com/openapi/generated/oas/3.0.0.json
+
+The spec will be downloaded and stored locally at `spec/etsy-openapi.json` for version control and reproducibility.
+
 ## Goals
 
 1. **Deterministic Generation**: Use the Etsy OpenAPI spec as the single source of truth
@@ -131,7 +138,8 @@ etsy-v3-api-client/
 
 **Step 1: Fetch and Store OpenAPI Spec**
 ```bash
-# Add script to fetch latest spec
+# Fetch the official Etsy OpenAPI spec
+# Documentation: https://developers.etsy.com/documentation/reference/
 curl -o spec/etsy-openapi.json https://www.etsy.com/openapi/generated/oas/3.0.0.json
 ```
 
