@@ -47,7 +47,7 @@
   },
   "homepage": "https://github.com/profplum700/etsy-v3-api-client/tree/main/packages/etsy-cli#readme",
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=24.0.0"
   },
   "dependencies": {
     "@profplum700/etsy-v3-api-client": "workspace:*",

@@ -71,7 +71,7 @@ describe('Build System Tests', () => {
     });
 
     it('should have correct engine requirements', () => {
-      expect(packageJson.engines.node).toBe('>=20.0.0');
+      expect(packageJson.engines.node).toBe('>=24.0.0');
     });
 
     it('should be marked as side-effect free', () => {
