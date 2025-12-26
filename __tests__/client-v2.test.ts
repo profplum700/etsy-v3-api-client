@@ -94,7 +94,7 @@ describe('EtsyClient v2.0.0 - New Endpoints', () => {
           'https://api.etsy.com/v3/application/shops/123',
           expect.objectContaining({
             method: 'PUT',
-            body: JSON.stringify({ title: 'Updated Title' })
+            body: 'title=Updated+Title'
           })
         );
         expect(result).toEqual(mockShop);
@@ -119,7 +119,7 @@ describe('EtsyClient v2.0.0 - New Endpoints', () => {
           'https://api.etsy.com/v3/application/shops/123',
           expect.objectContaining({
             method: 'PUT',
-            body: JSON.stringify(updateParams)
+            body: expect.stringContaining('title=New+Title')
           })
         );
         expect(result).toEqual(mockShop);
@@ -140,7 +140,7 @@ describe('EtsyClient v2.0.0 - New Endpoints', () => {
           'https://api.etsy.com/v3/application/shops/123/sections',
           expect.objectContaining({
             method: 'POST',
-            body: JSON.stringify({ title: 'New Section' })
+            body: 'title=New+Section'
           })
         );
         expect(result).toEqual(mockSection);
@@ -161,7 +161,7 @@ describe('EtsyClient v2.0.0 - New Endpoints', () => {
           'https://api.etsy.com/v3/application/shops/123/sections/456',
           expect.objectContaining({
             method: 'PUT',
-            body: JSON.stringify({ title: 'Updated Section' })
+            body: 'title=Updated+Section'
           })
         );
         expect(result).toEqual(mockSection);
@@ -215,7 +215,8 @@ describe('EtsyClient v2.0.0 - New Endpoints', () => {
           'https://api.etsy.com/v3/application/shops/123/listings',
           expect.objectContaining({
             method: 'POST',
-            body: JSON.stringify(listingParams)
+            body:
+              'quantity=10&title=Test+Listing&description=Test+description&price=29.99&who_made=i_did&when_made=made_to_order&taxonomy_id=123'
           })
         );
         expect(result).toEqual(mockListing);
@@ -266,7 +267,7 @@ describe('EtsyClient v2.0.0 - New Endpoints', () => {
           'https://api.etsy.com/v3/application/shops/123/listings/789',
           expect.objectContaining({
             method: 'PATCH',
-            body: JSON.stringify(updateParams)
+            body: expect.stringContaining('title=Updated+Title')
           })
         );
         expect(result).toEqual(mockListing);
@@ -383,10 +384,10 @@ describe('EtsyClient v2.0.0 - New Endpoints', () => {
           json: jest.fn().mockResolvedValue(mockImage)
         });
 
-        const result = await client.getListingImage('123', '789', '999');
+        const result = await client.getListingImage('789', '999');
 
         expect(mockFetch).toHaveBeenCalledWith(
-          'https://api.etsy.com/v3/application/shops/123/listings/789/images/999',
+          'https://api.etsy.com/v3/application/listings/789/images/999',
           expect.any(Object)
         );
         expect(result).toEqual(mockImage);
@@ -493,7 +494,7 @@ describe('EtsyClient v2.0.0 - New Endpoints', () => {
           'https://api.etsy.com/v3/application/shops/123/receipts/1',
           expect.objectContaining({
             method: 'PUT',
-            body: JSON.stringify({ was_shipped: true })
+            body: 'was_shipped=true'
           })
         );
         expect(result).toEqual(mockReceipt);
@@ -579,8 +580,8 @@ describe('EtsyClient v2.0.0 - New Endpoints', () => {
           origin_country_iso: 'US',
           primary_cost: 5.99,
           secondary_cost: 2.99,
-          min_processing_days: 1,
-          max_processing_days: 3
+          min_processing_time: 1,
+          max_processing_time: 3
         };
         const mockProfile = { shipping_profile_id: 1, ...profileParams };
         mockFetch.mockResolvedValue({
@@ -594,7 +595,8 @@ describe('EtsyClient v2.0.0 - New Endpoints', () => {
           'https://api.etsy.com/v3/application/shops/123/shipping-profiles',
           expect.objectContaining({
             method: 'POST',
-            body: JSON.stringify(profileParams)
+            body:
+              'title=Standard+Shipping&origin_country_iso=US&primary_cost=5.99&secondary_cost=2.99&min_processing_time=1&max_processing_time=3'
           })
         );
         expect(result).toEqual(mockProfile);
@@ -615,7 +617,10 @@ describe('EtsyClient v2.0.0 - New Endpoints', () => {
 
         expect(mockFetch).toHaveBeenCalledWith(
           'https://api.etsy.com/v3/application/shops/123/shipping-profiles/1',
-          expect.objectContaining({ method: 'PUT' })
+          expect.objectContaining({
+            method: 'PUT',
+            body: 'title=Updated+Title'
+          })
         );
         expect(result).toEqual(mockProfile);
       });
@@ -675,7 +680,10 @@ describe('EtsyClient v2.0.0 - New Endpoints', () => {
 
         expect(mockFetch).toHaveBeenCalledWith(
           'https://api.etsy.com/v3/application/shops/123/shipping-profiles/1/destinations',
-          expect.objectContaining({ method: 'POST' })
+          expect.objectContaining({
+            method: 'POST',
+            body: 'primary_cost=10&secondary_cost=5&destination_country_iso=CA'
+          })
         );
         expect(result).toEqual(mockDest);
       });
@@ -742,7 +750,7 @@ describe('EtsyClient v2.0.0 - New Endpoints', () => {
           'https://api.etsy.com/v3/application/shops/123/receipts/456/tracking',
           expect.objectContaining({
             method: 'POST',
-            body: JSON.stringify(shipmentParams)
+            body: 'tracking_code=1Z999AA10123456784&carrier_name=UPS'
           })
         );
         expect(result).toEqual(mockShipment);
@@ -767,26 +775,6 @@ describe('EtsyClient v2.0.0 - New Endpoints', () => {
       });
     });
 
-    describe('getShopReceiptShipments', () => {
-      it('should get receipt shipments', async () => {
-        const mockShipments = {
-          count: 1,
-          results: [{ receipt_shipping_id: 1, tracking_code: '123456' }]
-        };
-        mockFetch.mockResolvedValue({
-          ok: true,
-          json: jest.fn().mockResolvedValue(mockShipments)
-        });
-
-        const result = await client.getShopReceiptShipments('123', '456');
-
-        expect(mockFetch).toHaveBeenCalledWith(
-          'https://api.etsy.com/v3/application/shops/123/receipts/456/shipments',
-          expect.any(Object)
-        );
-        expect(result).toEqual(mockShipments.results);
-      });
-    });
   });
 
   // ============================================================================
@@ -875,13 +863,16 @@ describe('EtsyClient v2.0.0 - New Endpoints', () => {
         };
         mockFetch.mockResolvedValue({
           ok: true,
-          json: jest.fn().mockResolvedValue(mockPayment)
+          json: jest.fn().mockResolvedValue({
+            count: 1,
+            results: [mockPayment]
+          })
         });
 
         const result = await client.getShopPayment('123', '1');
 
         expect(mockFetch).toHaveBeenCalledWith(
-          'https://api.etsy.com/v3/application/shops/123/payment-account/payments/1',
+          'https://api.etsy.com/v3/application/shops/123/payments?payment_ids=1',
           expect.any(Object)
         );
         expect(result).toEqual(mockPayment);
@@ -1025,12 +1016,12 @@ describe('EtsyClient v2.0.0 - New Endpoints', () => {
         // Verify the body contains multiple value_ids[] and values[] entries
         const callArgs = mockFetch.mock.calls[0];
         const body = callArgs[1].body as string;
-        expect(body).toContain('value_ids%5B%5D=1');  // URL encoded value_ids[]=1
-        expect(body).toContain('value_ids%5B%5D=60');
-        expect(body).toContain('value_ids%5B%5D=5022');
-        expect(body).toContain('values%5B%5D=Abstract');
-        expect(body).toContain('values%5B%5D=Animals');
-        expect(body).toContain('values%5B%5D=Architecture');
+        expect(body).toContain('value_ids=1');
+        expect(body).toContain('value_ids=60');
+        expect(body).toContain('value_ids=5022');
+        expect(body).toContain('values=Abstract');
+        expect(body).toContain('values=Animals');
+        expect(body).toContain('values=Architecture');
         expect(result.property_id).toBe(4848);
       });
 

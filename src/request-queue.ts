@@ -343,12 +343,13 @@ export class GlobalRequestQueue {
    */
   private delay(ms: number): Promise<void> {
     return new Promise(resolve => {
-      const timer = setTimeout(resolve, ms);
+      const timer = setTimeout(resolve, ms) as ReturnType<typeof setTimeout> & {
+        unref?: () => void;
+      };
 
       // Ensure timers don't keep the Node.js event loop alive after tests complete
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      if (typeof (timer as any).unref === 'function') {
-        (timer as any).unref();
+      if (typeof timer.unref === 'function') {
+        timer.unref();
       }
     });
   }

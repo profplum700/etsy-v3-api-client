@@ -319,9 +319,9 @@ export class EtsyClient {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  private buildFormBody(params: Record<string, unknown>): URLSearchParams {
+  private buildFormBody(params: Record<string, unknown> | object): URLSearchParams {
     const body = new URLSearchParams();
-    for (const [key, value] of Object.entries(params)) {
+    for (const [key, value] of Object.entries(params as Record<string, unknown>)) {
       if (value === undefined || value === null) continue;
       if (Array.isArray(value)) {
         for (const item of value) {
@@ -826,10 +826,13 @@ export class EtsyClient {
    */
   public async updateListingInventory(
     listingId: string,
-    params: UpdateListingInventoryParams
+    params: UpdateListingInventoryParams,
+    options?: { legacy?: boolean }
   ): Promise<EtsyListingInventory> {
+    const legacy = options?.legacy;
+    const query = legacy !== undefined ? `?legacy=${legacy}` : '';
     return this.makeRequest<EtsyListingInventory>(
-      `/listings/${listingId}/inventory`,
+      `/listings/${listingId}/inventory${query}`,
       {
         method: 'PUT',
         body: JSON.stringify(params)
@@ -1041,6 +1044,8 @@ export class EtsyClient {
     if (params?.was_paid !== undefined) searchParams.set('was_paid', params.was_paid.toString());
     if (params?.was_shipped !== undefined) searchParams.set('was_shipped', params.was_shipped.toString());
     if (params?.was_delivered !== undefined) searchParams.set('was_delivered', params.was_delivered.toString());
+    if (params?.was_canceled !== undefined) searchParams.set('was_canceled', params.was_canceled.toString());
+    if (params?.legacy !== undefined) searchParams.set('legacy', params.legacy.toString());
 
     const response = await this.makeRequest<EtsyApiResponse<EtsyShopReceipt>>(
       `/shops/${shopId}/receipts?${searchParams.toString()}`
@@ -1054,8 +1059,20 @@ export class EtsyClient {
    * Endpoint: GET /v3/application/shops/{shop_id}/receipts/{receipt_id}
    * Scopes: transactions_r
    */
-  public async getShopReceipt(shopId: string, receiptId: string): Promise<EtsyShopReceipt> {
-    return this.makeRequest<EtsyShopReceipt>(`/shops/${shopId}/receipts/${receiptId}`);
+  public async getShopReceipt(
+    shopId: string,
+    receiptId: string,
+    params: GetShopReceiptParams = {}
+  ): Promise<EtsyShopReceipt> {
+    const searchParams = new URLSearchParams();
+    if (params.legacy !== undefined) {
+      searchParams.set('legacy', params.legacy.toString());
+    }
+    const query = searchParams.toString();
+    const suffix = query ? `?${query}` : '';
+    return this.makeRequest<EtsyShopReceipt>(
+      `/shops/${shopId}/receipts/${receiptId}${suffix}`
+    );
   }
 
   /**
@@ -1066,13 +1083,18 @@ export class EtsyClient {
   public async updateShopReceipt(
     shopId: string,
     receiptId: string,
-    params: UpdateShopReceiptParams
+    params: UpdateShopReceiptParams,
+    options?: { legacy?: boolean }
   ): Promise<EtsyShopReceipt> {
+    const legacy = options?.legacy;
+    const query = legacy !== undefined ? `?legacy=${legacy}` : '';
+    const body = this.buildFormBody(params);
     return this.makeRequest<EtsyShopReceipt>(
-      `/shops/${shopId}/receipts/${receiptId}`,
+      `/shops/${shopId}/receipts/${receiptId}${query}`,
       {
         method: 'PUT',
-        body: JSON.stringify(params)
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString()
       },
       false
     );
@@ -1085,11 +1107,18 @@ export class EtsyClient {
    */
   public async getShopReceiptTransactions(
     shopId: string,
-    receiptId: string
+    receiptId: string,
+    params: GetShopReceiptTransactionsParams = {}
   ): Promise<EtsyShopReceiptTransaction[]> {
-    const response = await this.makeRequest<EtsyApiResponse<EtsyShopReceiptTransaction>>(
-      `/shops/${shopId}/receipts/${receiptId}/transactions`
-    );
+    const searchParams = new URLSearchParams();
+    if (params.legacy !== undefined) {
+      searchParams.set('legacy', params.legacy.toString());
+    }
+    const query = searchParams.toString();
+    const suffix = query ? `?${query}` : '';
+    const response = await this.makeRequest<
+      EtsyApiResponse<EtsyShopReceiptTransaction>
+    >(`/shops/${shopId}/receipts/${receiptId}/transactions${suffix}`);
 
     return response.results;
   }
@@ -1134,11 +1163,13 @@ export class EtsyClient {
     shopId: string,
     params: CreateShippingProfileParams
   ): Promise<EtsyShippingProfile> {
+    const body = this.buildFormBody(params);
     return this.makeRequest<EtsyShippingProfile>(
       `/shops/${shopId}/shipping-profiles`,
       {
         method: 'POST',
-        body: JSON.stringify(params)
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString()
       },
       false
     );
@@ -1168,11 +1199,13 @@ export class EtsyClient {
     profileId: string,
     params: UpdateShippingProfileParams
   ): Promise<EtsyShippingProfile> {
+    const body = this.buildFormBody(params);
     return this.makeRequest<EtsyShippingProfile>(
       `/shops/${shopId}/shipping-profiles/${profileId}`,
       {
         method: 'PUT',
-        body: JSON.stringify(params)
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString()
       },
       false
     );
@@ -1198,10 +1231,20 @@ export class EtsyClient {
    */
   public async getShopShippingProfileDestinations(
     shopId: string,
-    profileId: string
+    profileId: string,
+    params: GetShippingProfileDestinationsParams = {}
   ): Promise<EtsyShippingProfileDestination[]> {
+    const searchParams = new URLSearchParams();
+    if (params.limit !== undefined) {
+      searchParams.set('limit', params.limit.toString());
+    }
+    if (params.offset !== undefined) {
+      searchParams.set('offset', params.offset.toString());
+    }
+    const query = searchParams.toString();
+    const suffix = query ? `?${query}` : '';
     const response = await this.makeRequest<EtsyApiResponse<EtsyShippingProfileDestination>>(
-      `/shops/${shopId}/shipping-profiles/${profileId}/destinations`
+      `/shops/${shopId}/shipping-profiles/${profileId}/destinations${suffix}`
     );
 
     return response.results;
@@ -1217,11 +1260,13 @@ export class EtsyClient {
     profileId: string,
     params: CreateShippingProfileDestinationParams
   ): Promise<EtsyShippingProfileDestination> {
+    const body = this.buildFormBody(params);
     return this.makeRequest<EtsyShippingProfileDestination>(
       `/shops/${shopId}/shipping-profiles/${profileId}/destinations`,
       {
         method: 'POST',
-        body: JSON.stringify(params)
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString()
       },
       false
     );
@@ -1238,11 +1283,13 @@ export class EtsyClient {
     destinationId: string,
     params: UpdateShippingProfileDestinationParams
   ): Promise<EtsyShippingProfileDestination> {
+    const body = this.buildFormBody(params);
     return this.makeRequest<EtsyShippingProfileDestination>(
       `/shops/${shopId}/shipping-profiles/${profileId}/destinations/${destinationId}`,
       {
         method: 'PUT',
-        body: JSON.stringify(params)
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString()
       },
       false
     );
@@ -1293,32 +1340,21 @@ export class EtsyClient {
   public async createReceiptShipment(
     shopId: string,
     receiptId: string,
-    params: CreateReceiptShipmentParams
+    params: CreateReceiptShipmentParams,
+    options?: { legacy?: boolean }
   ): Promise<EtsyShopReceiptShipment> {
+    const legacy = options?.legacy;
+    const query = legacy !== undefined ? `?legacy=${legacy}` : '';
+    const body = this.buildFormBody(params);
     return this.makeRequest<EtsyShopReceiptShipment>(
-      `/shops/${shopId}/receipts/${receiptId}/tracking`,
+      `/shops/${shopId}/receipts/${receiptId}/tracking${query}`,
       {
         method: 'POST',
-        body: JSON.stringify(params)
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString()
       },
       false
     );
-  }
-
-  /**
-   * Get shipments for a receipt
-   * Endpoint: GET /v3/application/shops/{shop_id}/receipts/{receipt_id}/shipments
-   * Scopes: transactions_r
-   */
-  public async getShopReceiptShipments(
-    shopId: string,
-    receiptId: string
-  ): Promise<EtsyShopReceiptShipment[]> {
-    const response = await this.makeRequest<EtsyApiResponse<EtsyShopReceiptShipment>>(
-      `/shops/${shopId}/receipts/${receiptId}/shipments`
-    );
-
-    return response.results;
   }
 
   // ============================================================================
@@ -1362,14 +1398,36 @@ export class EtsyClient {
   }
 
   /**
-   * Get payment for a shop
-   * Endpoint: GET /v3/application/shops/{shop_id}/payment-account/payments/{payment_id}
+   * Get payments for a shop
+   * Endpoint: GET /v3/application/shops/{shop_id}/payments
    * Scopes: transactions_r
    */
-  public async getShopPayment(shopId: string, paymentId: string): Promise<EtsyPayment> {
-    return this.makeRequest<EtsyPayment>(
-      `/shops/${shopId}/payment-account/payments/${paymentId}`
+  public async getPayments(
+    shopId: string,
+    paymentIds: number[]
+  ): Promise<EtsyPayment[]> {
+    const searchParams = new URLSearchParams();
+    searchParams.set('payment_ids', paymentIds.join(','));
+    const response = await this.makeRequest<EtsyApiResponse<EtsyPayment>>(
+      `/shops/${shopId}/payments?${searchParams.toString()}`
     );
+    return response.results;
+  }
+
+  /**
+   * Get a single payment for a shop
+   * Endpoint: GET /v3/application/shops/{shop_id}/payments
+   * Scopes: transactions_r
+   */
+  public async getShopPayment(
+    shopId: string,
+    paymentId: string
+  ): Promise<EtsyPayment> {
+    const payments = await this.getPayments(shopId, [Number(paymentId)]);
+    if (payments.length === 0) {
+      throw new EtsyApiError('Payment not found', 404);
+    }
+    return payments[0]!;
   }
 
   // ============================================================================
@@ -1422,8 +1480,8 @@ export class EtsyClient {
 
     // Build form-urlencoded body
     const body = new URLSearchParams();
-    valueIds.forEach(id => body.append('value_ids[]', id.toString()));
-    values.forEach(val => body.append('values[]', val));
+    valueIds.forEach(id => body.append('value_ids', id.toString()));
+    values.forEach(val => body.append('values', val));
     if (scaleId !== undefined) {
       body.append('scale_id', scaleId.toString());
     }

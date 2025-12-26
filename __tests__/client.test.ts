@@ -435,7 +435,7 @@ describe('EtsyClient', () => {
       const result = await client.getListing('123', ['Images', 'Inventory']);
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'https://api.etsy.com/v3/application/listings/123?includes=Images,Inventory',
+        'https://api.etsy.com/v3/application/listings/123?includes=Images%2CInventory',
         expect.any(Object)
       );
       expect(result).toEqual(mockListing);
@@ -477,22 +477,20 @@ describe('EtsyClient', () => {
 
       const params = {
         keywords: 'vintage print',
-        category: 'art',
         limit: 20,
         offset: 0,
         sort_on: 'price' as const,
         sort_order: 'up' as const,
         min_price: 10,
         max_price: 100,
-        tags: ['vintage', 'print'],
-        location: 'US',
+        taxonomy_id: 123,
         shop_location: 'New York'
       };
 
       const result = await client.findAllListingsActive(params);
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'https://api.etsy.com/v3/application/listings/active?keywords=vintage+print&category=art&limit=20&offset=0&sort_on=price&sort_order=up&min_price=10&max_price=100&tags=vintage%2Cprint&location=US&shop_location=New+York',
+        'https://api.etsy.com/v3/application/listings/active?keywords=vintage+print&limit=20&offset=0&sort_on=price&sort_order=up&min_price=10&max_price=100&taxonomy_id=123&shop_location=New+York',
         expect.any(Object)
       );
       expect(result).toEqual(mockListings);

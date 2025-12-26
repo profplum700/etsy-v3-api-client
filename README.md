@@ -198,7 +198,7 @@ const listing = await client.getListing('listing-id');
 // Search listings
 const searchResults = await client.findAllListingsActive({
   keywords: 'vintage',
-  category: 'art',
+  taxonomy_id: 123,
   limit: 25
 });
 ```

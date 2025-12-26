@@ -106,7 +106,6 @@ Receipts / Transactions
 - createReceiptShipment -> createReceiptShipment
   (POST /shops/{shop_id}/receipts/{receipt_id}/tracking): Mismatch
   if JSON body is used. Spec requires application/x-www-form-urlencoded, legacy optional.
-- getShopReceiptShipments -> Off-spec.
   - No /shops/{shop_id}/receipts/{receipt_id}/shipments endpoint in spec.
 
 Shipping Profiles
@@ -172,19 +171,17 @@ Work done in current branch (code changes already applied)
   createDraftListing, updateListing to form-encoded bodies with legacy query
   support where applicable.
 - Updated getListingImage to use /listings/{listing_id}/images/{listing_image_id}.
+- Added legacy query support for updateListingInventory.
+- Updated updateListingProperty to send value_ids and values fields.
+- Added legacy support for getShopReceipt and getShopReceiptTransactions.
+- Switched updateShopReceipt and createReceiptShipment to form-encoded bodies with legacy query support.
+- Switched shipping profile create/update and destination create/update to form-encoded bodies.
+- Added limit/offset support for getShopShippingProfileDestinations.
+- Reworked getShopPayment to use /shops/{shop_id}/payments via getPayments.
 
 Remaining gaps to address (implementation)
 ------------------------------------------
-- updateListingInventory: add legacy query parameter support.
-- updateListingProperty: use field names value_ids and values (not value_ids[]/values[]).
-- getShopReceipts: include was_canceled and legacy in query serialization.
-- getShopReceipt: support legacy query parameter.
-- updateShopReceipt: send application/x-www-form-urlencoded body and legacy param.
-- getShopReceiptTransactions: support legacy query parameter.
-- createReceiptShipment: send application/x-www-form-urlencoded body and legacy param.
-- getShopReceiptShipments: remove or re-scope; endpoint is off-spec.
-- createShopShippingProfile/updateShopShippingProfile: use form-encoded bodies.
-- getShopShippingProfileDestinations: add limit/offset support.
-- createShopShippingProfileDestination/updateShopShippingProfileDestination: use form-encoded bodies.
-- getShopPayment: rework to match spec (payments list, receipt payments, or ledger-entry payments).
+- Consider adding spec endpoints not currently implemented:
+  - GET /shops/{shop_id}/receipts/{receipt_id}/payments
+  - GET /shops/{shop_id}/payment-account/ledger-entries/payments
 

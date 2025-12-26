@@ -27,13 +27,21 @@ const COOKIE_NAMES = {
   TOKENS: 'etsy-tokens', // Combined tokens cookie (for compatibility)
 } as const;
 
+type CookieOptions = {
+  httpOnly: boolean;
+  secure: boolean;
+  sameSite: 'lax';
+  path: string;
+  maxAge: number;
+};
+
 /**
  * Cookie options for secure storage
  */
-const getCookieOptions = (maxAge?: number) => ({
+const getCookieOptions = (maxAge?: number): CookieOptions => ({
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
-  sameSite: 'lax' as const,
+  sameSite: 'lax',
   path: '/',
   maxAge: maxAge || 60 * 60 * 24 * 30, // 30 days default
 });
@@ -52,7 +60,9 @@ const getCookieOptions = (maxAge?: number) => ({
  * export { handler as GET, handler as POST };
  * ```
  */
-export function createOAuthRoute() {
+export function createOAuthRoute(): (
+  request: NextRequest
+) => Promise<NextResponse> {
   return async function handler(request: NextRequest) {
     const url = new URL(request.url);
     const pathname = url.pathname;

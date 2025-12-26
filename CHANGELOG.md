@@ -193,7 +193,6 @@ This release transforms the client into a **comprehensive, production-ready Etsy
 
 #### **Fulfillment & Shipment Tracking**
 - `createReceiptShipment()` - Add tracking information to orders
-- `getShopReceiptShipments()` - Get all shipments for a receipt
 
 #### **Payment & Financial Data**
 - `getShopPaymentAccountLedgerEntries()` - Get payment ledger entries
