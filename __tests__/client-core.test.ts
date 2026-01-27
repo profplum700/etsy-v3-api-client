@@ -225,4 +225,44 @@ describe('EtsyClient Core', () => {
       // Should not throw any errors
     });
   });
+
+  describe('ping', () => {
+    it('should ping the API', async () => {
+      ctx.mockFetch.mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue(1234567890),
+        headers: new Headers({ 'content-length': '10' })
+      });
+
+      const result = await ctx.client.ping();
+
+      expect(ctx.mockFetch).toHaveBeenCalledWith(
+        'https://api.etsy.com/v3/application/openapi-ping',
+        expect.any(Object)
+      );
+      expect(result).toBe(1234567890);
+    });
+  });
+
+  describe('tokenScopes', () => {
+    it('should get token scopes', async () => {
+      const mockScopes = { scopes: ['shops_r', 'listings_r', 'listings_w'] };
+      ctx.mockFetch.mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue(mockScopes),
+        headers: new Headers({ 'content-length': '100' })
+      });
+
+      const result = await ctx.client.tokenScopes({ token: 'test-token-123' });
+
+      expect(ctx.mockFetch).toHaveBeenCalledWith(
+        'https://api.etsy.com/v3/application/scopes',
+        expect.objectContaining({
+          method: 'POST',
+          body: 'token=test-token-123'
+        })
+      );
+      expect(result).toEqual(mockScopes);
+    });
+  });
 });

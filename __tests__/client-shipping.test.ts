@@ -180,4 +180,93 @@ describe('EtsyClient Shipping Profiles', () => {
       expect(result).toEqual(mockUpgrades.results);
     });
   });
+
+  describe('createShopShippingProfileUpgrade', () => {
+    it('should create a shipping profile upgrade', async () => {
+      const upgradeParams = {
+        type: 0,
+        upgrade_name: 'Express Shipping',
+        price: 9.99,
+        secondary_price: 4.99
+      };
+      const mockUpgrade = { upgrade_id: 1, ...upgradeParams };
+      ctx.mockFetch.mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue(mockUpgrade)
+      });
+
+      const result = await ctx.client.createShopShippingProfileUpgrade('123', '1', upgradeParams);
+
+      expect(ctx.mockFetch).toHaveBeenCalledWith(
+        'https://api.etsy.com/v3/application/shops/123/shipping-profiles/1/upgrades',
+        expect.objectContaining({
+          method: 'POST',
+          body: 'type=0&upgrade_name=Express+Shipping&price=9.99&secondary_price=4.99'
+        })
+      );
+      expect(result).toEqual(mockUpgrade);
+    });
+  });
+
+  describe('updateShopShippingProfileUpgrade', () => {
+    it('should update a shipping profile upgrade', async () => {
+      const mockUpgrade = { upgrade_id: 1, upgrade_name: 'Priority Shipping' };
+      ctx.mockFetch.mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue(mockUpgrade)
+      });
+
+      const result = await ctx.client.updateShopShippingProfileUpgrade('123', '1', '1', {
+        upgrade_name: 'Priority Shipping',
+        price: 14.99
+      });
+
+      expect(ctx.mockFetch).toHaveBeenCalledWith(
+        'https://api.etsy.com/v3/application/shops/123/shipping-profiles/1/upgrades/1',
+        expect.objectContaining({
+          method: 'PUT',
+          body: 'upgrade_name=Priority+Shipping&price=14.99'
+        })
+      );
+      expect(result).toEqual(mockUpgrade);
+    });
+  });
+
+  describe('deleteShopShippingProfileUpgrade', () => {
+    it('should delete a shipping profile upgrade', async () => {
+      ctx.mockFetch.mockResolvedValue(create204Response());
+
+      const result = await ctx.client.deleteShopShippingProfileUpgrade('123', '1', '1');
+
+      expect(ctx.mockFetch).toHaveBeenCalledWith(
+        'https://api.etsy.com/v3/application/shops/123/shipping-profiles/1/upgrades/1',
+        expect.objectContaining({ method: 'DELETE' })
+      );
+      expect(result).toBeUndefined();
+    });
+  });
+
+  describe('getShippingCarriers', () => {
+    it('should get shipping carriers by origin country', async () => {
+      const mockCarriers = {
+        count: 2,
+        results: [
+          { shipping_carrier_id: 1, name: 'USPS' },
+          { shipping_carrier_id: 2, name: 'UPS' }
+        ]
+      };
+      ctx.mockFetch.mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue(mockCarriers)
+      });
+
+      const result = await ctx.client.getShippingCarriers('US');
+
+      expect(ctx.mockFetch).toHaveBeenCalledWith(
+        'https://api.etsy.com/v3/application/shipping-carriers?origin_country_iso=US',
+        expect.any(Object)
+      );
+      expect(result).toEqual(mockCarriers.results);
+    });
+  });
 });

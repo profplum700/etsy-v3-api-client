@@ -108,4 +108,57 @@ describe('EtsyClient Payments & Ledger', () => {
       expect(result).toEqual(mockPayment);
     });
   });
+
+  describe('getPaymentAccountLedgerEntryPayments', () => {
+    it('should get payments for ledger entries', async () => {
+      const mockPayments = {
+        count: 2,
+        results: [
+          { payment_id: 1, amount_gross: { amount: 2999, divisor: 100, currency_code: 'USD' } },
+          { payment_id: 2, amount_gross: { amount: 1999, divisor: 100, currency_code: 'USD' } }
+        ]
+      };
+      ctx.mockFetch.mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue(mockPayments)
+      });
+
+      const result = await ctx.client.getPaymentAccountLedgerEntryPayments('123', {
+        ledger_entry_ids: [100, 200]
+      });
+
+      expect(ctx.mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/shops/123/payment-account/ledger-entries/payments'),
+        expect.any(Object)
+      );
+      expect(ctx.mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('ledger_entry_ids=100%2C200'),
+        expect.any(Object)
+      );
+      expect(result).toEqual(mockPayments.results);
+    });
+  });
+
+  describe('getShopPaymentByReceiptId', () => {
+    it('should get payments for a receipt', async () => {
+      const mockPayments = {
+        count: 1,
+        results: [
+          { payment_id: 1, amount_gross: { amount: 2999, divisor: 100, currency_code: 'USD' } }
+        ]
+      };
+      ctx.mockFetch.mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue(mockPayments)
+      });
+
+      const result = await ctx.client.getShopPaymentByReceiptId('123', '456');
+
+      expect(ctx.mockFetch).toHaveBeenCalledWith(
+        'https://api.etsy.com/v3/application/shops/123/receipts/456/payments',
+        expect.any(Object)
+      );
+      expect(result).toEqual(mockPayments.results);
+    });
+  });
 });

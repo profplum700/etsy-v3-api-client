@@ -488,4 +488,237 @@ describe('EtsyClient Listings', () => {
       });
     });
   });
+
+  // ============================================================================
+  // Additional Listing Methods
+  // ============================================================================
+
+  describe('findAllActiveListingsByShop', () => {
+    it('should find all active listings for a shop', async () => {
+      const mockListings = [{ listing_id: 1, title: 'Active Listing' }];
+      ctx.mockFetch.mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue({ count: 1, results: mockListings })
+      });
+
+      const result = await ctx.client.findAllActiveListingsByShop('456');
+
+      expect(ctx.mockFetch).toHaveBeenCalledWith(
+        'https://api.etsy.com/v3/application/shops/456/listings/active',
+        expect.any(Object)
+      );
+      expect(result).toEqual(mockListings);
+    });
+
+    it('should find active listings with parameters', async () => {
+      const mockListings = [{ listing_id: 1, title: 'Active Listing' }];
+      ctx.mockFetch.mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue({ count: 1, results: mockListings })
+      });
+
+      await ctx.client.findAllActiveListingsByShop('456', {
+        limit: 10,
+        offset: 5,
+        sort_on: 'price',
+        keywords: 'vintage'
+      });
+
+      expect(ctx.mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('limit=10'),
+        expect.any(Object)
+      );
+      expect(ctx.mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('keywords=vintage'),
+        expect.any(Object)
+      );
+    });
+  });
+
+  describe('getFeaturedListingsByShop', () => {
+    it('should get featured listings for a shop', async () => {
+      const mockListings = [{ listing_id: 1, title: 'Featured Listing' }];
+      ctx.mockFetch.mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue({ count: 1, results: mockListings })
+      });
+
+      const result = await ctx.client.getFeaturedListingsByShop('456');
+
+      expect(ctx.mockFetch).toHaveBeenCalledWith(
+        'https://api.etsy.com/v3/application/shops/456/listings/featured',
+        expect.any(Object)
+      );
+      expect(result).toEqual(mockListings);
+    });
+  });
+
+  describe('getListingsByListingIds', () => {
+    it('should get listings by listing IDs', async () => {
+      const mockListings = [
+        { listing_id: 1, title: 'Listing 1' },
+        { listing_id: 2, title: 'Listing 2' }
+      ];
+      ctx.mockFetch.mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue({ count: 2, results: mockListings })
+      });
+
+      const result = await ctx.client.getListingsByListingIds({ listing_ids: [1, 2] });
+
+      expect(ctx.mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/listings/batch?listing_ids=1%2C2'),
+        expect.any(Object)
+      );
+      expect(result).toEqual(mockListings);
+    });
+
+    it('should get listings by IDs with includes', async () => {
+      const mockListings = [{ listing_id: 1, title: 'Listing 1' }];
+      ctx.mockFetch.mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue({ count: 1, results: mockListings })
+      });
+
+      await ctx.client.getListingsByListingIds({
+        listing_ids: [1],
+        includes: ['Images', 'Shop']
+      });
+
+      expect(ctx.mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('includes=Images%2CShop'),
+        expect.any(Object)
+      );
+    });
+  });
+
+  describe('getListingsByShopReceipt', () => {
+    it('should get listings by shop receipt', async () => {
+      const mockListings = [{ listing_id: 1, title: 'Receipt Listing' }];
+      ctx.mockFetch.mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue({ count: 1, results: mockListings })
+      });
+
+      const result = await ctx.client.getListingsByShopReceipt('123', '456');
+
+      expect(ctx.mockFetch).toHaveBeenCalledWith(
+        'https://api.etsy.com/v3/application/shops/123/receipts/456/listings',
+        expect.any(Object)
+      );
+      expect(result).toEqual(mockListings);
+    });
+  });
+
+  describe('getListingsByShopSectionId', () => {
+    it('should get listings by shop section IDs', async () => {
+      const mockListings = [{ listing_id: 1, title: 'Section Listing' }];
+      ctx.mockFetch.mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue({ count: 1, results: mockListings })
+      });
+
+      const result = await ctx.client.getListingsByShopSectionId('123', {
+        shop_section_ids: [10, 20]
+      });
+
+      expect(ctx.mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/shops/123/shop-sections/listings?shop_section_ids=10%2C20'),
+        expect.any(Object)
+      );
+      expect(result).toEqual(mockListings);
+    });
+  });
+
+  describe('getListingsByShopReturnPolicy', () => {
+    it('should get listings by return policy', async () => {
+      const mockListings = [{ listing_id: 1, title: 'Policy Listing' }];
+      ctx.mockFetch.mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue({ count: 1, results: mockListings })
+      });
+
+      const result = await ctx.client.getListingsByShopReturnPolicy('123', '456');
+
+      expect(ctx.mockFetch).toHaveBeenCalledWith(
+        'https://api.etsy.com/v3/application/shops/123/policies/return/456/listings',
+        expect.any(Object)
+      );
+      expect(result).toEqual(mockListings);
+    });
+  });
+
+  describe('getListingProperty', () => {
+    it('should get a single listing property', async () => {
+      const mockProperty = { property_id: 1, name: 'color', display_name: 'Color' };
+      ctx.mockFetch.mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue(mockProperty)
+      });
+
+      const result = await ctx.client.getListingProperty('789', '1');
+
+      expect(ctx.mockFetch).toHaveBeenCalledWith(
+        'https://api.etsy.com/v3/application/listings/789/properties/1',
+        expect.any(Object)
+      );
+      expect(result).toEqual(mockProperty);
+    });
+  });
+
+  describe('deleteListingProperty', () => {
+    it('should delete a listing property', async () => {
+      ctx.mockFetch.mockResolvedValue(create204Response());
+
+      const result = await ctx.client.deleteListingProperty('123', '789', '1');
+
+      expect(ctx.mockFetch).toHaveBeenCalledWith(
+        'https://api.etsy.com/v3/application/shops/123/listings/789/properties/1',
+        expect.objectContaining({ method: 'DELETE' })
+      );
+      expect(result).toBeUndefined();
+    });
+  });
+
+  describe('getListingProduct', () => {
+    it('should get a listing product', async () => {
+      const mockProduct = { product_id: 1, sku: 'SKU-001', offerings: [] };
+      ctx.mockFetch.mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue(mockProduct)
+      });
+
+      const result = await ctx.client.getListingProduct('789', '1');
+
+      expect(ctx.mockFetch).toHaveBeenCalledWith(
+        'https://api.etsy.com/v3/application/listings/789/inventory/products/1',
+        expect.any(Object)
+      );
+      expect(result).toEqual(mockProduct);
+    });
+  });
+
+  describe('getListingOffering', () => {
+    it('should get a listing offering', async () => {
+      const mockOffering = {
+        offering_id: 1,
+        price: { amount: 2999, divisor: 100, currency_code: 'USD' },
+        quantity: 10,
+        is_enabled: true,
+        is_deleted: false
+      };
+      ctx.mockFetch.mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue(mockOffering)
+      });
+
+      const result = await ctx.client.getListingOffering('789', '1', '100');
+
+      expect(ctx.mockFetch).toHaveBeenCalledWith(
+        'https://api.etsy.com/v3/application/listings/789/products/1/offerings/100',
+        expect.any(Object)
+      );
+      expect(result).toEqual(mockOffering);
+    });
+  });
 });

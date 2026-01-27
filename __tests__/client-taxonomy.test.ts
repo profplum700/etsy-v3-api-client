@@ -98,4 +98,28 @@ describe('EtsyClient Taxonomy & Reviews', () => {
       expect(result).toEqual(mockReviews);
     });
   });
+
+  describe('getPropertiesByBuyerTaxonomyId', () => {
+    it('should get properties for a buyer taxonomy', async () => {
+      const mockProperties = {
+        count: 2,
+        results: [
+          { property_id: 1, name: 'color', display_name: 'Color' },
+          { property_id: 2, name: 'size', display_name: 'Size' }
+        ]
+      };
+      ctx.mockFetch.mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue(mockProperties)
+      });
+
+      const result = await ctx.client.getPropertiesByBuyerTaxonomyId(456);
+
+      expect(ctx.mockFetch).toHaveBeenCalledWith(
+        'https://api.etsy.com/v3/application/buyer-taxonomy/nodes/456/properties',
+        expect.any(Object)
+      );
+      expect(result).toEqual(mockProperties.results);
+    });
+  });
 });

@@ -57,7 +57,43 @@ import {
   ApproachingLimitCallback,
   UpdateListingPropertyParams,
   EtsyReview,
-  GetReviewsParams
+  GetReviewsParams,
+  // New types for missing endpoints
+  EtsyShopProcessingProfile,
+  CreateReadinessStateParams,
+  UpdateReadinessStateParams,
+  GetReadinessStateParams,
+  EtsyShopReturnPolicy,
+  CreateReturnPolicyParams,
+  UpdateReturnPolicyParams,
+  ConsolidateReturnPoliciesParams,
+  EtsyShopHolidayPreference,
+  UpdateHolidayPreferencesParams,
+  EtsyListingFile,
+  EtsyListingVideo,
+  EtsyListingTranslation,
+  CreateListingTranslationParams,
+  UpdateListingTranslationParams,
+  EtsyListingVariationImage,
+  UpdateVariationImagesParams,
+  EtsyUserAddress,
+  EtsyShippingCarrier,
+  FindShopsParams,
+  GetListingsByIdsParams,
+  FindActiveListingsByShopParams,
+  GetFeaturedListingsParams,
+  GetListingsByShopReceiptParams,
+  GetListingsBySectionParams,
+  GetListingsByReturnPolicyParams,
+  CreateShippingProfileUpgradeParams,
+  UpdateShippingProfileUpgradeParams,
+  GetTransactionsByListingParams,
+  GetTransactionsByShopParams,
+  GetLedgerEntryPaymentsParams,
+  EtsyListingProduct,
+  EtsyListingOffering,
+  TokenScopesParams,
+  TokenScopesResponse
 } from './types';
 import { TokenManager } from './auth/token-manager';
 import { EtsyRateLimiter } from './rate-limiting';
@@ -1530,6 +1566,990 @@ export class EtsyClient {
       `/shops/${shopId}/production-partners`
     );
     return response.results;
+  }
+
+  // ============================================================================
+  // Shop Processing Profiles (Readiness State) Methods
+  // ============================================================================
+
+  /**
+   * Create a shop readiness state definition (processing profile)
+   * Endpoint: POST /v3/application/shops/{shop_id}/readiness-state-definitions
+   * Scopes: shops_w
+   */
+  public async createShopReadinessStateDefinition(
+    shopId: string,
+    params: CreateReadinessStateParams
+  ): Promise<EtsyShopProcessingProfile> {
+    const body = this.buildFormBody(params);
+    return this.makeRequest<EtsyShopProcessingProfile>(
+      `/shops/${shopId}/readiness-state-definitions`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString()
+      },
+      false
+    );
+  }
+
+  /**
+   * Get all shop readiness state definitions (processing profiles)
+   * Endpoint: GET /v3/application/shops/{shop_id}/readiness-state-definitions
+   * Scopes: shops_r
+   */
+  public async getShopReadinessStateDefinitions(
+    shopId: string,
+    params: GetReadinessStateParams = {}
+  ): Promise<EtsyShopProcessingProfile[]> {
+    const searchParams = new URLSearchParams();
+    if (params.limit !== undefined) searchParams.set('limit', params.limit.toString());
+    if (params.offset !== undefined) searchParams.set('offset', params.offset.toString());
+    const query = searchParams.toString();
+    const suffix = query ? `?${query}` : '';
+    const response = await this.makeRequest<EtsyApiResponse<EtsyShopProcessingProfile>>(
+      `/shops/${shopId}/readiness-state-definitions${suffix}`
+    );
+    return response.results;
+  }
+
+  /**
+   * Get a specific shop readiness state definition
+   * Endpoint: GET /v3/application/shops/{shop_id}/readiness-state-definitions/{id}
+   * Scopes: shops_r
+   */
+  public async getShopReadinessStateDefinition(
+    shopId: string,
+    definitionId: string
+  ): Promise<EtsyShopProcessingProfile> {
+    return this.makeRequest<EtsyShopProcessingProfile>(
+      `/shops/${shopId}/readiness-state-definitions/${definitionId}`
+    );
+  }
+
+  /**
+   * Update a shop readiness state definition
+   * Endpoint: PUT /v3/application/shops/{shop_id}/readiness-state-definitions/{id}
+   * Scopes: shops_w
+   */
+  public async updateShopReadinessStateDefinition(
+    shopId: string,
+    definitionId: string,
+    params: UpdateReadinessStateParams
+  ): Promise<EtsyShopProcessingProfile> {
+    const body = this.buildFormBody(params);
+    return this.makeRequest<EtsyShopProcessingProfile>(
+      `/shops/${shopId}/readiness-state-definitions/${definitionId}`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString()
+      },
+      false
+    );
+  }
+
+  /**
+   * Delete a shop readiness state definition
+   * Endpoint: DELETE /v3/application/shops/{shop_id}/readiness-state-definitions/{id}
+   * Scopes: shops_w
+   */
+  public async deleteShopReadinessStateDefinition(
+    shopId: string,
+    definitionId: string
+  ): Promise<void> {
+    await this.makeRequest<void>(
+      `/shops/${shopId}/readiness-state-definitions/${definitionId}`,
+      { method: 'DELETE' },
+      false
+    );
+  }
+
+  // ============================================================================
+  // Shop Return Policy Methods
+  // ============================================================================
+
+  /**
+   * Create a shop return policy
+   * Endpoint: POST /v3/application/shops/{shop_id}/policies/return
+   * Scopes: shops_w
+   */
+  public async createShopReturnPolicy(
+    shopId: string,
+    params: CreateReturnPolicyParams
+  ): Promise<EtsyShopReturnPolicy> {
+    const body = this.buildFormBody(params);
+    return this.makeRequest<EtsyShopReturnPolicy>(
+      `/shops/${shopId}/policies/return`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString()
+      },
+      false
+    );
+  }
+
+  /**
+   * Get all shop return policies
+   * Endpoint: GET /v3/application/shops/{shop_id}/policies/return
+   * Scopes: shops_r
+   */
+  public async getShopReturnPolicies(shopId: string): Promise<EtsyShopReturnPolicy[]> {
+    const response = await this.makeRequest<EtsyApiResponse<EtsyShopReturnPolicy>>(
+      `/shops/${shopId}/policies/return`
+    );
+    return response.results;
+  }
+
+  /**
+   * Get a specific shop return policy
+   * Endpoint: GET /v3/application/shops/{shop_id}/policies/return/{id}
+   * Scopes: shops_r
+   */
+  public async getShopReturnPolicy(
+    shopId: string,
+    returnPolicyId: string
+  ): Promise<EtsyShopReturnPolicy> {
+    return this.makeRequest<EtsyShopReturnPolicy>(
+      `/shops/${shopId}/policies/return/${returnPolicyId}`
+    );
+  }
+
+  /**
+   * Update a shop return policy
+   * Endpoint: PUT /v3/application/shops/{shop_id}/policies/return/{id}
+   * Scopes: shops_w
+   */
+  public async updateShopReturnPolicy(
+    shopId: string,
+    returnPolicyId: string,
+    params: UpdateReturnPolicyParams
+  ): Promise<EtsyShopReturnPolicy> {
+    const body = this.buildFormBody(params);
+    return this.makeRequest<EtsyShopReturnPolicy>(
+      `/shops/${shopId}/policies/return/${returnPolicyId}`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString()
+      },
+      false
+    );
+  }
+
+  /**
+   * Delete a shop return policy
+   * Endpoint: DELETE /v3/application/shops/{shop_id}/policies/return/{id}
+   * Scopes: shops_w
+   */
+  public async deleteShopReturnPolicy(
+    shopId: string,
+    returnPolicyId: string
+  ): Promise<void> {
+    await this.makeRequest<void>(
+      `/shops/${shopId}/policies/return/${returnPolicyId}`,
+      { method: 'DELETE' },
+      false
+    );
+  }
+
+  /**
+   * Consolidate shop return policies
+   * Endpoint: POST /v3/application/shops/{shop_id}/policies/return/consolidate
+   * Scopes: shops_w
+   */
+  public async consolidateShopReturnPolicies(
+    shopId: string,
+    params: ConsolidateReturnPoliciesParams
+  ): Promise<EtsyShopReturnPolicy> {
+    const body = this.buildFormBody(params);
+    return this.makeRequest<EtsyShopReturnPolicy>(
+      `/shops/${shopId}/policies/return/consolidate`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString()
+      },
+      false
+    );
+  }
+
+  // ============================================================================
+  // Shop Holiday Preferences Methods
+  // ============================================================================
+
+  /**
+   * Get shop holiday preferences
+   * Endpoint: GET /v3/application/shops/{shop_id}/holiday-preferences
+   * Scopes: shops_r
+   */
+  public async getHolidayPreferences(shopId: string): Promise<EtsyShopHolidayPreference[]> {
+    const response = await this.makeRequest<EtsyApiResponse<EtsyShopHolidayPreference>>(
+      `/shops/${shopId}/holiday-preferences`
+    );
+    return response.results;
+  }
+
+  /**
+   * Update a shop holiday preference
+   * Endpoint: PUT /v3/application/shops/{shop_id}/holiday-preferences/{holiday_id}
+   * Scopes: shops_w
+   */
+  public async updateHolidayPreferences(
+    shopId: string,
+    holidayId: string,
+    params: UpdateHolidayPreferencesParams
+  ): Promise<EtsyShopHolidayPreference> {
+    const body = this.buildFormBody(params);
+    return this.makeRequest<EtsyShopHolidayPreference>(
+      `/shops/${shopId}/holiday-preferences/${holidayId}`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString()
+      },
+      false
+    );
+  }
+
+  // ============================================================================
+  // Listing File Methods
+  // ============================================================================
+
+  /**
+   * Upload a listing file
+   * Endpoint: POST /v3/application/shops/{shop_id}/listings/{listing_id}/files
+   * Scopes: listings_w
+   */
+  public async uploadListingFile(
+    shopId: string,
+    listingId: string,
+    fileData: Blob | Buffer,
+    params?: { name?: string; rank?: number; listing_file_id?: number }
+  ): Promise<EtsyListingFile> {
+    const formData = new FormData();
+    formData.append('file', fileData as Blob);
+    if (params?.name) formData.append('name', params.name);
+    if (params?.rank !== undefined) formData.append('rank', params.rank.toString());
+    if (params?.listing_file_id !== undefined) formData.append('listing_file_id', params.listing_file_id.toString());
+
+    const url = `${this.baseUrl}/shops/${shopId}/listings/${listingId}/files`;
+    await this.rateLimiter.waitForRateLimit();
+    const accessToken = await this.tokenManager.getAccessToken();
+
+    const response = await this.fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'x-api-key': this.getApiKey(),
+      },
+      body: formData
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new EtsyApiError(
+        `Failed to upload file: ${response.status} ${response.statusText}`,
+        response.status,
+        errorText
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get all listing files
+   * Endpoint: GET /v3/application/shops/{shop_id}/listings/{listing_id}/files
+   * Scopes: listings_r
+   */
+  public async getAllListingFiles(
+    shopId: string,
+    listingId: string
+  ): Promise<EtsyListingFile[]> {
+    const response = await this.makeRequest<EtsyApiResponse<EtsyListingFile>>(
+      `/shops/${shopId}/listings/${listingId}/files`
+    );
+    return response.results;
+  }
+
+  /**
+   * Get a specific listing file
+   * Endpoint: GET /v3/application/shops/{shop_id}/listings/{listing_id}/files/{file_id}
+   * Scopes: listings_r
+   */
+  public async getListingFile(
+    shopId: string,
+    listingId: string,
+    fileId: string
+  ): Promise<EtsyListingFile> {
+    return this.makeRequest<EtsyListingFile>(
+      `/shops/${shopId}/listings/${listingId}/files/${fileId}`
+    );
+  }
+
+  /**
+   * Delete a listing file
+   * Endpoint: DELETE /v3/application/shops/{shop_id}/listings/{listing_id}/files/{file_id}
+   * Scopes: listings_d
+   */
+  public async deleteListingFile(
+    shopId: string,
+    listingId: string,
+    fileId: string
+  ): Promise<void> {
+    await this.makeRequest<void>(
+      `/shops/${shopId}/listings/${listingId}/files/${fileId}`,
+      { method: 'DELETE' },
+      false
+    );
+  }
+
+  // ============================================================================
+  // Listing Video Methods
+  // ============================================================================
+
+  /**
+   * Upload a listing video
+   * Endpoint: POST /v3/application/shops/{shop_id}/listings/{listing_id}/videos
+   * Scopes: listings_w
+   */
+  public async uploadListingVideo(
+    shopId: string,
+    listingId: string,
+    videoData: Blob | Buffer,
+    params?: { name?: string; video_id?: number }
+  ): Promise<EtsyListingVideo> {
+    const formData = new FormData();
+    formData.append('video', videoData as Blob);
+    if (params?.name) formData.append('name', params.name);
+    if (params?.video_id !== undefined) formData.append('video_id', params.video_id.toString());
+
+    const url = `${this.baseUrl}/shops/${shopId}/listings/${listingId}/videos`;
+    await this.rateLimiter.waitForRateLimit();
+    const accessToken = await this.tokenManager.getAccessToken();
+
+    const response = await this.fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'x-api-key': this.getApiKey(),
+      },
+      body: formData
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new EtsyApiError(
+        `Failed to upload video: ${response.status} ${response.statusText}`,
+        response.status,
+        errorText
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get listing videos
+   * Endpoint: GET /v3/application/listings/{listing_id}/videos
+   */
+  public async getListingVideos(listingId: string): Promise<EtsyListingVideo[]> {
+    const response = await this.makeRequest<EtsyApiResponse<EtsyListingVideo>>(
+      `/listings/${listingId}/videos`
+    );
+    return response.results;
+  }
+
+  /**
+   * Get a specific listing video
+   * Endpoint: GET /v3/application/listings/{listing_id}/videos/{video_id}
+   */
+  public async getListingVideo(
+    listingId: string,
+    videoId: string
+  ): Promise<EtsyListingVideo> {
+    return this.makeRequest<EtsyListingVideo>(
+      `/listings/${listingId}/videos/${videoId}`
+    );
+  }
+
+  /**
+   * Delete a listing video
+   * Endpoint: DELETE /v3/application/shops/{shop_id}/listings/{listing_id}/videos/{video_id}
+   * Scopes: listings_d
+   */
+  public async deleteListingVideo(
+    shopId: string,
+    listingId: string,
+    videoId: string
+  ): Promise<void> {
+    await this.makeRequest<void>(
+      `/shops/${shopId}/listings/${listingId}/videos/${videoId}`,
+      { method: 'DELETE' },
+      false
+    );
+  }
+
+  // ============================================================================
+  // Listing Translation Methods
+  // ============================================================================
+
+  /**
+   * Create a listing translation
+   * Endpoint: POST /v3/application/shops/{shop_id}/listings/{listing_id}/translations/{language}
+   * Scopes: listings_w
+   */
+  public async createListingTranslation(
+    shopId: string,
+    listingId: string,
+    language: string,
+    params: CreateListingTranslationParams
+  ): Promise<EtsyListingTranslation> {
+    const body = this.buildFormBody(params);
+    return this.makeRequest<EtsyListingTranslation>(
+      `/shops/${shopId}/listings/${listingId}/translations/${language}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString()
+      },
+      false
+    );
+  }
+
+  /**
+   * Get a listing translation
+   * Endpoint: GET /v3/application/shops/{shop_id}/listings/{listing_id}/translations/{language}
+   * Scopes: listings_r
+   */
+  public async getListingTranslation(
+    shopId: string,
+    listingId: string,
+    language: string
+  ): Promise<EtsyListingTranslation> {
+    return this.makeRequest<EtsyListingTranslation>(
+      `/shops/${shopId}/listings/${listingId}/translations/${language}`
+    );
+  }
+
+  /**
+   * Update a listing translation
+   * Endpoint: PUT /v3/application/shops/{shop_id}/listings/{listing_id}/translations/{language}
+   * Scopes: listings_w
+   */
+  public async updateListingTranslation(
+    shopId: string,
+    listingId: string,
+    language: string,
+    params: UpdateListingTranslationParams
+  ): Promise<EtsyListingTranslation> {
+    const body = this.buildFormBody(params);
+    return this.makeRequest<EtsyListingTranslation>(
+      `/shops/${shopId}/listings/${listingId}/translations/${language}`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString()
+      },
+      false
+    );
+  }
+
+  // ============================================================================
+  // Listing Variation Image Methods
+  // ============================================================================
+
+  /**
+   * Get listing variation images
+   * Endpoint: GET /v3/application/shops/{shop_id}/listings/{listing_id}/variation-images
+   * Scopes: listings_r
+   */
+  public async getListingVariationImages(
+    shopId: string,
+    listingId: string
+  ): Promise<EtsyListingVariationImage[]> {
+    const response = await this.makeRequest<EtsyApiResponse<EtsyListingVariationImage>>(
+      `/shops/${shopId}/listings/${listingId}/variation-images`
+    );
+    return response.results;
+  }
+
+  /**
+   * Update variation images for a listing
+   * Endpoint: POST /v3/application/shops/{shop_id}/listings/{listing_id}/variation-images
+   * Scopes: listings_w
+   */
+  public async updateVariationImages(
+    shopId: string,
+    listingId: string,
+    params: UpdateVariationImagesParams
+  ): Promise<EtsyListingVariationImage[]> {
+    const response = await this.makeRequest<EtsyApiResponse<EtsyListingVariationImage>>(
+      `/shops/${shopId}/listings/${listingId}/variation-images`,
+      {
+        method: 'POST',
+        body: JSON.stringify(params)
+      },
+      false
+    );
+    return response.results;
+  }
+
+  // ============================================================================
+  // Additional Listing Methods
+  // ============================================================================
+
+  /**
+   * Find all active listings by shop
+   * Endpoint: GET /v3/application/shops/{shop_id}/listings/active
+   */
+  public async findAllActiveListingsByShop(
+    shopId: string,
+    params: FindActiveListingsByShopParams = {}
+  ): Promise<EtsyListing[]> {
+    const searchParams = new URLSearchParams();
+    if (params.limit !== undefined) searchParams.set('limit', params.limit.toString());
+    if (params.offset !== undefined) searchParams.set('offset', params.offset.toString());
+    if (params.sort_on) searchParams.set('sort_on', params.sort_on);
+    if (params.sort_order) searchParams.set('sort_order', params.sort_order);
+    if (params.keywords) searchParams.set('keywords', params.keywords);
+    if (params.legacy !== undefined) searchParams.set('legacy', params.legacy.toString());
+    const query = searchParams.toString();
+    const suffix = query ? `?${query}` : '';
+    const response = await this.makeRequest<EtsyApiResponse<EtsyListing>>(
+      `/shops/${shopId}/listings/active${suffix}`
+    );
+    return response.results;
+  }
+
+  /**
+   * Get featured listings by shop
+   * Endpoint: GET /v3/application/shops/{shop_id}/listings/featured
+   */
+  public async getFeaturedListingsByShop(
+    shopId: string,
+    params: GetFeaturedListingsParams = {}
+  ): Promise<EtsyListing[]> {
+    const searchParams = new URLSearchParams();
+    if (params.limit !== undefined) searchParams.set('limit', params.limit.toString());
+    if (params.offset !== undefined) searchParams.set('offset', params.offset.toString());
+    if (params.legacy !== undefined) searchParams.set('legacy', params.legacy.toString());
+    const query = searchParams.toString();
+    const suffix = query ? `?${query}` : '';
+    const response = await this.makeRequest<EtsyApiResponse<EtsyListing>>(
+      `/shops/${shopId}/listings/featured${suffix}`
+    );
+    return response.results;
+  }
+
+  /**
+   * Get listings by listing IDs (batch)
+   * Endpoint: GET /v3/application/listings/batch
+   */
+  public async getListingsByListingIds(
+    params: GetListingsByIdsParams
+  ): Promise<EtsyListing[]> {
+    const searchParams = new URLSearchParams();
+    searchParams.set('listing_ids', params.listing_ids.join(','));
+    if (params.includes) searchParams.set('includes', params.includes.join(','));
+    if (params.legacy !== undefined) searchParams.set('legacy', params.legacy.toString());
+    const response = await this.makeRequest<EtsyApiResponse<EtsyListing>>(
+      `/listings/batch?${searchParams.toString()}`
+    );
+    return response.results;
+  }
+
+  /**
+   * Get listings by shop receipt
+   * Endpoint: GET /v3/application/shops/{shop_id}/receipts/{receipt_id}/listings
+   * Scopes: transactions_r
+   */
+  public async getListingsByShopReceipt(
+    shopId: string,
+    receiptId: string,
+    params: GetListingsByShopReceiptParams = {}
+  ): Promise<EtsyListing[]> {
+    const searchParams = new URLSearchParams();
+    if (params.limit !== undefined) searchParams.set('limit', params.limit.toString());
+    if (params.offset !== undefined) searchParams.set('offset', params.offset.toString());
+    if (params.legacy !== undefined) searchParams.set('legacy', params.legacy.toString());
+    const query = searchParams.toString();
+    const suffix = query ? `?${query}` : '';
+    const response = await this.makeRequest<EtsyApiResponse<EtsyListing>>(
+      `/shops/${shopId}/receipts/${receiptId}/listings${suffix}`
+    );
+    return response.results;
+  }
+
+  /**
+   * Get a single listing property
+   * Endpoint: GET /v3/application/listings/{listing_id}/properties/{property_id}
+   */
+  public async getListingProperty(
+    listingId: string,
+    propertyId: string
+  ): Promise<EtsyListingProperty> {
+    return this.makeRequest<EtsyListingProperty>(
+      `/listings/${listingId}/properties/${propertyId}`
+    );
+  }
+
+  /**
+   * Delete a listing property
+   * Endpoint: DELETE /v3/application/shops/{shop_id}/listings/{listing_id}/properties/{property_id}
+   * Scopes: listings_w
+   */
+  public async deleteListingProperty(
+    shopId: string,
+    listingId: string,
+    propertyId: string
+  ): Promise<void> {
+    await this.makeRequest<void>(
+      `/shops/${shopId}/listings/${listingId}/properties/${propertyId}`,
+      { method: 'DELETE' },
+      false
+    );
+  }
+
+  /**
+   * Get a listing product
+   * Endpoint: GET /v3/application/listings/{listing_id}/inventory/products/{product_id}
+   */
+  public async getListingProduct(
+    listingId: string,
+    productId: string
+  ): Promise<EtsyListingProduct> {
+    return this.makeRequest<EtsyListingProduct>(
+      `/listings/${listingId}/inventory/products/${productId}`
+    );
+  }
+
+  /**
+   * Get a listing offering
+   * Endpoint: GET /v3/application/listings/{listing_id}/products/{product_id}/offerings/{offering_id}
+   */
+  public async getListingOffering(
+    listingId: string,
+    productId: string,
+    offeringId: string
+  ): Promise<EtsyListingOffering> {
+    return this.makeRequest<EtsyListingOffering>(
+      `/listings/${listingId}/products/${productId}/offerings/${offeringId}`
+    );
+  }
+
+  /**
+   * Get listings by shop section ID
+   * Endpoint: GET /v3/application/shops/{shop_id}/shop-sections/listings
+   */
+  public async getListingsByShopSectionId(
+    shopId: string,
+    params: GetListingsBySectionParams
+  ): Promise<EtsyListing[]> {
+    const searchParams = new URLSearchParams();
+    searchParams.set('shop_section_ids', params.shop_section_ids.join(','));
+    if (params.limit !== undefined) searchParams.set('limit', params.limit.toString());
+    if (params.offset !== undefined) searchParams.set('offset', params.offset.toString());
+    if (params.sort_on) searchParams.set('sort_on', params.sort_on);
+    if (params.sort_order) searchParams.set('sort_order', params.sort_order);
+    if (params.legacy !== undefined) searchParams.set('legacy', params.legacy.toString());
+    const response = await this.makeRequest<EtsyApiResponse<EtsyListing>>(
+      `/shops/${shopId}/shop-sections/listings?${searchParams.toString()}`
+    );
+    return response.results;
+  }
+
+  /**
+   * Get listings by shop return policy
+   * Endpoint: GET /v3/application/shops/{shop_id}/policies/return/{id}/listings
+   */
+  public async getListingsByShopReturnPolicy(
+    shopId: string,
+    returnPolicyId: string,
+    params: GetListingsByReturnPolicyParams = {}
+  ): Promise<EtsyListing[]> {
+    const searchParams = new URLSearchParams();
+    if (params.legacy !== undefined) searchParams.set('legacy', params.legacy.toString());
+    const query = searchParams.toString();
+    const suffix = query ? `?${query}` : '';
+    const response = await this.makeRequest<EtsyApiResponse<EtsyListing>>(
+      `/shops/${shopId}/policies/return/${returnPolicyId}/listings${suffix}`
+    );
+    return response.results;
+  }
+
+  // ============================================================================
+  // Additional Shop Methods
+  // ============================================================================
+
+  /**
+   * Find shops by name
+   * Endpoint: GET /v3/application/shops
+   */
+  public async findShops(params: FindShopsParams): Promise<EtsyShop[]> {
+    const searchParams = new URLSearchParams();
+    searchParams.set('shop_name', params.shop_name);
+    if (params.limit !== undefined) searchParams.set('limit', params.limit.toString());
+    if (params.offset !== undefined) searchParams.set('offset', params.offset.toString());
+    const response = await this.makeRequest<EtsyApiResponse<EtsyShop>>(
+      `/shops?${searchParams.toString()}`
+    );
+    return response.results;
+  }
+
+  // ============================================================================
+  // Additional Shipping Methods
+  // ============================================================================
+
+  /**
+   * Create a shipping profile upgrade
+   * Endpoint: POST /v3/application/shops/{shop_id}/shipping-profiles/{shipping_profile_id}/upgrades
+   * Scopes: shops_w
+   */
+  public async createShopShippingProfileUpgrade(
+    shopId: string,
+    profileId: string,
+    params: CreateShippingProfileUpgradeParams
+  ): Promise<EtsyShippingProfileUpgrade> {
+    const body = this.buildFormBody(params);
+    return this.makeRequest<EtsyShippingProfileUpgrade>(
+      `/shops/${shopId}/shipping-profiles/${profileId}/upgrades`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString()
+      },
+      false
+    );
+  }
+
+  /**
+   * Update a shipping profile upgrade
+   * Endpoint: PUT /v3/application/shops/{shop_id}/shipping-profiles/{shipping_profile_id}/upgrades/{upgrade_id}
+   * Scopes: shops_w
+   */
+  public async updateShopShippingProfileUpgrade(
+    shopId: string,
+    profileId: string,
+    upgradeId: string,
+    params: UpdateShippingProfileUpgradeParams
+  ): Promise<EtsyShippingProfileUpgrade> {
+    const body = this.buildFormBody(params);
+    return this.makeRequest<EtsyShippingProfileUpgrade>(
+      `/shops/${shopId}/shipping-profiles/${profileId}/upgrades/${upgradeId}`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString()
+      },
+      false
+    );
+  }
+
+  /**
+   * Delete a shipping profile upgrade
+   * Endpoint: DELETE /v3/application/shops/{shop_id}/shipping-profiles/{shipping_profile_id}/upgrades/{upgrade_id}
+   * Scopes: shops_w
+   */
+  public async deleteShopShippingProfileUpgrade(
+    shopId: string,
+    profileId: string,
+    upgradeId: string
+  ): Promise<void> {
+    await this.makeRequest<void>(
+      `/shops/${shopId}/shipping-profiles/${profileId}/upgrades/${upgradeId}`,
+      { method: 'DELETE' },
+      false
+    );
+  }
+
+  /**
+   * Get shipping carriers
+   * Endpoint: GET /v3/application/shipping-carriers
+   */
+  public async getShippingCarriers(originCountryIso: string): Promise<EtsyShippingCarrier[]> {
+    const searchParams = new URLSearchParams();
+    searchParams.set('origin_country_iso', originCountryIso);
+    const response = await this.makeRequest<EtsyApiResponse<EtsyShippingCarrier>>(
+      `/shipping-carriers?${searchParams.toString()}`
+    );
+    return response.results;
+  }
+
+  // ============================================================================
+  // Additional Transaction Methods
+  // ============================================================================
+
+  /**
+   * Get shop receipt transactions by listing
+   * Endpoint: GET /v3/application/shops/{shop_id}/listings/{listing_id}/transactions
+   * Scopes: transactions_r
+   */
+  public async getShopReceiptTransactionsByListing(
+    shopId: string,
+    listingId: string,
+    params: GetTransactionsByListingParams = {}
+  ): Promise<EtsyShopReceiptTransaction[]> {
+    const searchParams = new URLSearchParams();
+    if (params.limit !== undefined) searchParams.set('limit', params.limit.toString());
+    if (params.offset !== undefined) searchParams.set('offset', params.offset.toString());
+    if (params.legacy !== undefined) searchParams.set('legacy', params.legacy.toString());
+    const query = searchParams.toString();
+    const suffix = query ? `?${query}` : '';
+    const response = await this.makeRequest<EtsyApiResponse<EtsyShopReceiptTransaction>>(
+      `/shops/${shopId}/listings/${listingId}/transactions${suffix}`
+    );
+    return response.results;
+  }
+
+  /**
+   * Get shop receipt transactions by shop
+   * Endpoint: GET /v3/application/shops/{shop_id}/transactions
+   * Scopes: transactions_r
+   */
+  public async getShopReceiptTransactionsByShop(
+    shopId: string,
+    params: GetTransactionsByShopParams = {}
+  ): Promise<EtsyShopReceiptTransaction[]> {
+    const searchParams = new URLSearchParams();
+    if (params.limit !== undefined) searchParams.set('limit', params.limit.toString());
+    if (params.offset !== undefined) searchParams.set('offset', params.offset.toString());
+    if (params.legacy !== undefined) searchParams.set('legacy', params.legacy.toString());
+    const query = searchParams.toString();
+    const suffix = query ? `?${query}` : '';
+    const response = await this.makeRequest<EtsyApiResponse<EtsyShopReceiptTransaction>>(
+      `/shops/${shopId}/transactions${suffix}`
+    );
+    return response.results;
+  }
+
+  // ============================================================================
+  // Additional Payment Methods
+  // ============================================================================
+
+  /**
+   * Get payment account ledger entry payments
+   * Endpoint: GET /v3/application/shops/{shop_id}/payment-account/ledger-entries/payments
+   * Scopes: transactions_r
+   */
+  public async getPaymentAccountLedgerEntryPayments(
+    shopId: string,
+    params: GetLedgerEntryPaymentsParams
+  ): Promise<EtsyPayment[]> {
+    const searchParams = new URLSearchParams();
+    searchParams.set('ledger_entry_ids', params.ledger_entry_ids.join(','));
+    const response = await this.makeRequest<EtsyApiResponse<EtsyPayment>>(
+      `/shops/${shopId}/payment-account/ledger-entries/payments?${searchParams.toString()}`
+    );
+    return response.results;
+  }
+
+  /**
+   * Get shop payment by receipt ID
+   * Endpoint: GET /v3/application/shops/{shop_id}/receipts/{receipt_id}/payments
+   * Scopes: transactions_r
+   */
+  public async getShopPaymentByReceiptId(
+    shopId: string,
+    receiptId: string
+  ): Promise<EtsyPayment[]> {
+    const response = await this.makeRequest<EtsyApiResponse<EtsyPayment>>(
+      `/shops/${shopId}/receipts/${receiptId}/payments`
+    );
+    return response.results;
+  }
+
+  // ============================================================================
+  // Additional User Methods
+  // ============================================================================
+
+  /**
+   * Get the authenticated user (alias for getUser using /users/me)
+   * Endpoint: GET /v3/application/users/me
+   */
+  public async getMe(): Promise<EtsyUser> {
+    return this.makeRequest<EtsyUser>('/users/me');
+  }
+
+  /**
+   * Get user addresses
+   * Endpoint: GET /v3/application/user/addresses
+   */
+  public async getUserAddresses(): Promise<EtsyUserAddress[]> {
+    const response = await this.makeRequest<EtsyApiResponse<EtsyUserAddress>>(
+      '/user/addresses'
+    );
+    return response.results;
+  }
+
+  /**
+   * Get a specific user address
+   * Endpoint: GET /v3/application/user/addresses/{user_address_id}
+   */
+  public async getUserAddress(userAddressId: string): Promise<EtsyUserAddress> {
+    return this.makeRequest<EtsyUserAddress>(
+      `/user/addresses/${userAddressId}`
+    );
+  }
+
+  /**
+   * Delete a user address
+   * Endpoint: DELETE /v3/application/user/addresses/{user_address_id}
+   */
+  public async deleteUserAddress(userAddressId: string): Promise<void> {
+    await this.makeRequest<void>(
+      `/user/addresses/${userAddressId}`,
+      { method: 'DELETE' },
+      false
+    );
+  }
+
+  // ============================================================================
+  // Additional Taxonomy Methods
+  // ============================================================================
+
+  /**
+   * Get properties by buyer taxonomy ID
+   * Endpoint: GET /v3/application/buyer-taxonomy/nodes/{taxonomy_id}/properties
+   */
+  public async getPropertiesByBuyerTaxonomyId(
+    taxonomyId: number
+  ): Promise<EtsyBuyerTaxonomyProperty[]> {
+    const response = await this.makeRequest<EtsyApiResponse<EtsyBuyerTaxonomyProperty>>(
+      `/buyer-taxonomy/nodes/${taxonomyId}/properties`
+    );
+    return response.results;
+  }
+
+  // ============================================================================
+  // Other Endpoints
+  // ============================================================================
+
+  /**
+   * Ping the Etsy API
+   * Endpoint: GET /v3/application/openapi-ping
+   */
+  public async ping(): Promise<number> {
+    return this.makeRequest<number>('/openapi-ping', {}, false);
+  }
+
+  /**
+   * Get token scopes
+   * Endpoint: POST /v3/application/scopes
+   */
+  public async tokenScopes(params: TokenScopesParams): Promise<TokenScopesResponse> {
+    const body = this.buildFormBody(params);
+    return this.makeRequest<TokenScopesResponse>(
+      '/scopes',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString()
+      },
+      false
+    );
   }
 
   // ============================================================================

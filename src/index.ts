@@ -307,6 +307,60 @@ export type {
   UploadListingImageParams,
   UploadListingFileParams,
 
+  // Shop Processing Profile Types
+  EtsyShopProcessingProfile,
+  CreateReadinessStateParams,
+  UpdateReadinessStateParams,
+  GetReadinessStateParams,
+
+  // Shop Return Policy Types
+  EtsyShopReturnPolicy,
+  CreateReturnPolicyParams,
+  UpdateReturnPolicyParams,
+  ConsolidateReturnPoliciesParams,
+
+  // Shop Holiday Preference Types
+  EtsyShopHolidayPreference,
+  UpdateHolidayPreferencesParams,
+
+  // Listing File Types
+  EtsyListingFile,
+
+  // Listing Video Types
+  EtsyListingVideo,
+
+  // Listing Translation Types
+  EtsyListingTranslation,
+  CreateListingTranslationParams,
+  UpdateListingTranslationParams,
+
+  // Listing Variation Image Types
+  EtsyListingVariationImage,
+  UpdateVariationImagesParams,
+
+  // User Address Types
+  EtsyUserAddress,
+
+  // Shipping Carrier Types
+  EtsyShippingCarrier,
+  EtsyShippingCarrierMailClass,
+
+  // Additional Parameter Types
+  FindShopsParams,
+  GetListingsByIdsParams,
+  FindActiveListingsByShopParams,
+  GetFeaturedListingsParams,
+  GetListingsByShopReceiptParams,
+  GetListingsBySectionParams,
+  GetListingsByReturnPolicyParams,
+  CreateShippingProfileUpgradeParams,
+  UpdateShippingProfileUpgradeParams,
+  GetTransactionsByListingParams,
+  GetTransactionsByShopParams,
+  GetLedgerEntryPaymentsParams,
+  TokenScopesParams,
+  TokenScopesResponse,
+
   // API Parameters
   ListingParams,
   SearchParams,

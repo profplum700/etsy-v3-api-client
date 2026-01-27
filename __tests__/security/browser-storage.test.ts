@@ -157,7 +157,7 @@ describe('SecureTokenStorage', () => {
       const tokens: EtsyTokens = {
         access_token: 'test_access_token',
         refresh_token: 'test_refresh_token',
-        expires_at: new Date('2025-12-31'),
+        expires_at: new Date('2030-12-31'),
         token_type: 'Bearer',
         scope: 'shops_r listings_r',
       };
@@ -269,7 +269,7 @@ describe('SecureTokenStorage', () => {
       const originalTokens: EtsyTokens = {
         access_token: 'test_access_token',
         refresh_token: 'test_refresh_token',
-        expires_at: new Date('2025-12-31'),
+        expires_at: new Date('2030-12-31'),
         token_type: 'Bearer',
         scope: 'shops_r listings_r',
       };
@@ -328,7 +328,7 @@ describe('SecureTokenStorage', () => {
       const tokens: EtsyTokens = {
         access_token: 'test_token',
         refresh_token: 'test_refresh',
-        expires_at: new Date('2025-12-31'),
+        expires_at: new Date('2030-12-31'),
         token_type: 'Bearer',
         scope: 'shops_r',
       };
@@ -364,7 +364,7 @@ describe('SecureTokenStorage', () => {
       const tokens: EtsyTokens = {
         access_token: 'test_token',
         refresh_token: 'test_refresh',
-        expires_at: new Date('2025-12-31'),
+        expires_at: new Date('2030-12-31'),
         token_type: 'Bearer',
         scope: 'shops_r',
       };
@@ -538,7 +538,7 @@ describe('SecureTokenStorage', () => {
       const tokens: EtsyTokens = {
         access_token: longToken,
         refresh_token: longToken,
-        expires_at: new Date('2025-12-31'),
+        expires_at: new Date('2030-12-31'),
         token_type: 'Bearer',
         scope: 'shops_r',
       };
@@ -553,7 +553,7 @@ describe('SecureTokenStorage', () => {
       const tokens: EtsyTokens = {
         access_token: specialToken,
         refresh_token: 'refresh_🔒',
-        expires_at: new Date('2025-12-31'),
+        expires_at: new Date('2030-12-31'),
         token_type: 'Bearer',
         scope: 'shops_r',
       };
@@ -567,7 +567,7 @@ describe('SecureTokenStorage', () => {
       const tokens: EtsyTokens = {
         access_token: 'test_token',
         refresh_token: 'test_refresh',
-        expires_at: new Date('2025-12-31T23:59:59.999Z'),
+        expires_at: new Date('2030-12-31T23:59:59.999Z'),
         token_type: 'Bearer',
         scope: 'shops_r',
       };

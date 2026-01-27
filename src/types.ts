@@ -1600,3 +1600,282 @@ export interface UploadListingFileParams {
   name?: string;
   rank?: number;
 }
+
+// ============================================================================
+// Shop Processing Profile (Readiness State) Types
+// ============================================================================
+
+export interface EtsyShopProcessingProfile {
+  shop_id: number;
+  readiness_state_id: number;
+  readiness_state: 'ready_to_ship' | 'made_to_order';
+  min_processing_days: number;
+  max_processing_days: number;
+  processing_days_display_label: string;
+}
+
+export interface CreateReadinessStateParams {
+  readiness_state: 'ready_to_ship' | 'made_to_order';
+  min_processing_time: number;
+  max_processing_time: number;
+  processing_time_unit?: 'days' | 'weeks';
+}
+
+export interface UpdateReadinessStateParams {
+  readiness_state?: 'ready_to_ship' | 'made_to_order';
+  min_processing_time?: number;
+  max_processing_time?: number;
+  processing_time_unit?: 'days' | 'weeks';
+}
+
+export interface GetReadinessStateParams {
+  limit?: number;
+  offset?: number;
+}
+
+// ============================================================================
+// Shop Return Policy Types
+// ============================================================================
+
+export interface EtsyShopReturnPolicy {
+  return_policy_id: number;
+  shop_id: number;
+  accepts_returns: boolean;
+  accepts_exchanges: boolean;
+  return_deadline: number | null;
+}
+
+export interface CreateReturnPolicyParams {
+  accepts_returns: boolean;
+  accepts_exchanges: boolean;
+  return_deadline?: number | null;
+}
+
+export interface UpdateReturnPolicyParams {
+  accepts_returns: boolean;
+  accepts_exchanges: boolean;
+  return_deadline?: number | null;
+}
+
+export interface ConsolidateReturnPoliciesParams {
+  source_return_policy_id: number;
+  destination_return_policy_id: number;
+}
+
+// ============================================================================
+// Shop Holiday Preference Types
+// ============================================================================
+
+export interface EtsyShopHolidayPreference {
+  shop_id: number;
+  holiday_id: number;
+  country_iso: string;
+  is_working: boolean;
+  holiday_name: string;
+}
+
+export interface UpdateHolidayPreferencesParams {
+  is_working: boolean;
+}
+
+// ============================================================================
+// Listing File Types
+// ============================================================================
+
+export interface EtsyListingFile {
+  listing_file_id: number;
+  listing_id: number;
+  rank: number;
+  filename: string;
+  filesize: string;
+  size_bytes: number;
+  filetype: string;
+  create_timestamp: number;
+  created_timestamp: number;
+}
+
+// ============================================================================
+// Listing Video Types
+// ============================================================================
+
+export interface EtsyListingVideo {
+  video_id: number;
+  height: number;
+  width: number;
+  thumbnail_url: string;
+  video_url: string;
+  video_state: 'active' | 'inactive' | 'deleted' | 'flagged';
+}
+
+// ============================================================================
+// Listing Translation Types
+// ============================================================================
+
+export interface EtsyListingTranslation {
+  listing_id: number;
+  language: string;
+  title: string | null;
+  description: string | null;
+  tags: string[];
+}
+
+export interface CreateListingTranslationParams {
+  title: string;
+  description: string;
+  tags?: string[];
+}
+
+export interface UpdateListingTranslationParams {
+  title: string;
+  description: string;
+  tags?: string[];
+}
+
+// ============================================================================
+// Listing Variation Image Types
+// ============================================================================
+
+export interface EtsyListingVariationImage {
+  property_id: number;
+  value_id: number;
+  value: string | null;
+  image_id: number;
+}
+
+export interface UpdateVariationImagesParams {
+  variation_images: Array<{
+    property_id: number;
+    value_id: number;
+    image_id: number;
+  }>;
+}
+
+// ============================================================================
+// User Address Types
+// ============================================================================
+
+export interface EtsyUserAddress {
+  user_address_id: number;
+  user_id: number;
+  name: string;
+  first_line: string;
+  second_line: string | null;
+  city: string;
+  state: string | null;
+  zip: string | null;
+  iso_country_code: string | null;
+  country_name: string | null;
+  is_default_shipping_address: boolean;
+}
+
+// ============================================================================
+// Shipping Carrier Types
+// ============================================================================
+
+export interface EtsyShippingCarrierMailClass {
+  mail_class_key: string;
+  name: string;
+}
+
+export interface EtsyShippingCarrier {
+  shipping_carrier_id: number;
+  name: string;
+  domestic_classes: EtsyShippingCarrierMailClass[];
+  international_classes: EtsyShippingCarrierMailClass[];
+}
+
+// ============================================================================
+// Additional Parameter Types for Missing Endpoints
+// ============================================================================
+
+export interface FindShopsParams {
+  shop_name: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface GetListingsByIdsParams {
+  listing_ids: number[];
+  includes?: ListingIncludes[];
+  legacy?: boolean;
+}
+
+export interface FindActiveListingsByShopParams {
+  limit?: number;
+  offset?: number;
+  sort_on?: 'created' | 'price' | 'updated' | 'score';
+  sort_order?: 'asc' | 'ascending' | 'desc' | 'descending' | 'up' | 'down';
+  keywords?: string;
+  legacy?: boolean;
+}
+
+export interface GetFeaturedListingsParams {
+  limit?: number;
+  offset?: number;
+  legacy?: boolean;
+}
+
+export interface GetListingsByShopReceiptParams {
+  limit?: number;
+  offset?: number;
+  legacy?: boolean;
+}
+
+export interface GetListingsBySectionParams {
+  shop_section_ids: number[];
+  limit?: number;
+  offset?: number;
+  sort_on?: 'created' | 'price' | 'updated' | 'score';
+  sort_order?: 'asc' | 'ascending' | 'desc' | 'descending' | 'up' | 'down';
+  legacy?: boolean;
+}
+
+export interface GetListingsByReturnPolicyParams {
+  legacy?: boolean;
+}
+
+export interface CreateShippingProfileUpgradeParams {
+  type: number;
+  upgrade_name: string;
+  price: number;
+  secondary_price: number;
+  shipping_carrier_id?: number;
+  mail_class?: string;
+  min_delivery_days?: number;
+  max_delivery_days?: number;
+}
+
+export interface UpdateShippingProfileUpgradeParams {
+  upgrade_name?: string;
+  type?: number;
+  price?: number;
+  secondary_price?: number;
+  shipping_carrier_id?: number;
+  mail_class?: string;
+  min_delivery_days?: number;
+  max_delivery_days?: number;
+}
+
+export interface GetTransactionsByListingParams {
+  limit?: number;
+  offset?: number;
+  legacy?: boolean;
+}
+
+export interface GetTransactionsByShopParams {
+  limit?: number;
+  offset?: number;
+  legacy?: boolean;
+}
+
+export interface GetLedgerEntryPaymentsParams {
+  ledger_entry_ids: number[];
+}
+
+export interface TokenScopesParams {
+  token: string;
+}
+
+export interface TokenScopesResponse {
+  scopes: string[];
+}

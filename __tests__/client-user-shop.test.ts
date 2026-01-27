@@ -231,4 +231,116 @@ describe('EtsyClient User & Shop', () => {
       });
     });
   });
+
+  describe('findShops', () => {
+    it('should find shops by name', async () => {
+      const mockShops = {
+        count: 1,
+        results: [{ shop_id: 789, shop_name: 'TestShop' }]
+      };
+      ctx.mockFetch.mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue(mockShops)
+      });
+
+      const result = await ctx.client.findShops({ shop_name: 'TestShop' });
+
+      expect(ctx.mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/shops?shop_name=TestShop'),
+        expect.any(Object)
+      );
+      expect(result).toEqual(mockShops.results);
+    });
+
+    it('should find shops with pagination', async () => {
+      ctx.mockFetch.mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue({ count: 0, results: [] })
+      });
+
+      await ctx.client.findShops({ shop_name: 'Test', limit: 10, offset: 5 });
+
+      expect(ctx.mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('limit=10'),
+        expect.any(Object)
+      );
+      expect(ctx.mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('offset=5'),
+        expect.any(Object)
+      );
+    });
+  });
+
+  describe('getMe', () => {
+    it('should get authenticated user', async () => {
+      const mockUser = { user_id: 123, login_name: 'testuser' };
+      ctx.mockFetch.mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue(mockUser)
+      });
+
+      const result = await ctx.client.getMe();
+
+      expect(ctx.mockFetch).toHaveBeenCalledWith(
+        'https://api.etsy.com/v3/application/users/me',
+        expect.any(Object)
+      );
+      expect(result).toEqual(mockUser);
+    });
+  });
+
+  describe('User Addresses', () => {
+    describe('getUserAddresses', () => {
+      it('should get user addresses', async () => {
+        const mockAddresses = {
+          count: 1,
+          results: [{ user_address_id: 1, name: 'Home', city: 'Portland' }]
+        };
+        ctx.mockFetch.mockResolvedValue({
+          ok: true,
+          json: jest.fn().mockResolvedValue(mockAddresses)
+        });
+
+        const result = await ctx.client.getUserAddresses();
+
+        expect(ctx.mockFetch).toHaveBeenCalledWith(
+          'https://api.etsy.com/v3/application/user/addresses',
+          expect.any(Object)
+        );
+        expect(result).toEqual(mockAddresses.results);
+      });
+    });
+
+    describe('getUserAddress', () => {
+      it('should get a specific user address', async () => {
+        const mockAddress = { user_address_id: 1, name: 'Home', city: 'Portland' };
+        ctx.mockFetch.mockResolvedValue({
+          ok: true,
+          json: jest.fn().mockResolvedValue(mockAddress)
+        });
+
+        const result = await ctx.client.getUserAddress('1');
+
+        expect(ctx.mockFetch).toHaveBeenCalledWith(
+          'https://api.etsy.com/v3/application/user/addresses/1',
+          expect.any(Object)
+        );
+        expect(result).toEqual(mockAddress);
+      });
+    });
+
+    describe('deleteUserAddress', () => {
+      it('should delete a user address', async () => {
+        ctx.mockFetch.mockResolvedValue(create204Response());
+
+        const result = await ctx.client.deleteUserAddress('1');
+
+        expect(ctx.mockFetch).toHaveBeenCalledWith(
+          'https://api.etsy.com/v3/application/user/addresses/1',
+          expect.objectContaining({ method: 'DELETE' })
+        );
+        expect(result).toBeUndefined();
+      });
+    });
+  });
 });

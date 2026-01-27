@@ -181,4 +181,70 @@ describe('EtsyClient Receipts & Transactions', () => {
       });
     });
   });
+
+  describe('getShopReceiptTransactionsByListing', () => {
+    it('should get transactions by listing', async () => {
+      const mockTransactions = {
+        count: 2,
+        results: [
+          { transaction_id: 1, title: 'Item 1' },
+          { transaction_id: 2, title: 'Item 2' }
+        ]
+      };
+      ctx.mockFetch.mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue(mockTransactions)
+      });
+
+      const result = await ctx.client.getShopReceiptTransactionsByListing('123', '789');
+
+      expect(ctx.mockFetch).toHaveBeenCalledWith(
+        'https://api.etsy.com/v3/application/shops/123/listings/789/transactions',
+        expect.any(Object)
+      );
+      expect(result).toEqual(mockTransactions.results);
+    });
+
+    it('should get transactions by listing with pagination', async () => {
+      ctx.mockFetch.mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue({ count: 0, results: [] })
+      });
+
+      await ctx.client.getShopReceiptTransactionsByListing('123', '789', {
+        limit: 10,
+        offset: 5
+      });
+
+      expect(ctx.mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('limit=10'),
+        expect.any(Object)
+      );
+      expect(ctx.mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('offset=5'),
+        expect.any(Object)
+      );
+    });
+  });
+
+  describe('getShopReceiptTransactionsByShop', () => {
+    it('should get all transactions for a shop', async () => {
+      const mockTransactions = {
+        count: 1,
+        results: [{ transaction_id: 1, title: 'Shop Transaction' }]
+      };
+      ctx.mockFetch.mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue(mockTransactions)
+      });
+
+      const result = await ctx.client.getShopReceiptTransactionsByShop('123');
+
+      expect(ctx.mockFetch).toHaveBeenCalledWith(
+        'https://api.etsy.com/v3/application/shops/123/transactions',
+        expect.any(Object)
+      );
+      expect(result).toEqual(mockTransactions.results);
+    });
+  });
 });
