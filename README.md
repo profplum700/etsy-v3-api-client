@@ -6,6 +6,8 @@
 
 A modern, universal TypeScript/JavaScript client for the Etsy Open API v3 with full OAuth 2.0 PKCE authentication support. Works seamlessly in both browser and Node.js environments.
 
+This repository is heavily based on the official Etsy OpenAPI specification (`https://www.etsy.com/openapi/generated/oas/3.0.0.json`), as referenced in Etsy's API documentation (`https://developers.etsy.com/documentation/reference`).
+
 ## 🚀 Features
 
 - **Universal Compatibility**: Works in browsers, Node.js, and Web Workers

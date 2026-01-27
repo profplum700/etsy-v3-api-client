@@ -2,6 +2,8 @@
 
 React hooks for the Etsy v3 API client. Simplify your Etsy integrations with powerful, type-safe React hooks.
 
+This package is based on the official Etsy OpenAPI specification (`https://www.etsy.com/openapi/generated/oas/3.0.0.json`), as referenced in Etsy's API documentation (`https://developers.etsy.com/documentation/reference`).
+
 ## Installation
 
 ```bash

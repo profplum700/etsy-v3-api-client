@@ -2,6 +2,8 @@
 
 Command-line tool for the Etsy v3 API. Manage your Etsy shop from the terminal with ease.
 
+This package is based on the official Etsy OpenAPI specification (`https://www.etsy.com/openapi/generated/oas/3.0.0.json`), as referenced in Etsy's API documentation (`https://developers.etsy.com/documentation/reference`).
+
 ## Installation
 
 ### Global Installation (Recommended)
