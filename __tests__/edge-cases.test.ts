@@ -8,23 +8,24 @@ import { AuthHelper } from '../src/auth/auth-helper';
 import { TokenManager } from '../src/auth/token-manager';
 import { EtsyApiError, EtsyAuthError, EtsyRateLimitError } from '../src/types';
 import { generateCodeVerifier, generateState, createCodeChallenge } from '../src/utils/crypto';
+import { vi, type Mock } from 'vitest';
 
 // Mock crypto module
-jest.mock('../src/utils/crypto', () => ({
-  generateCodeVerifier: jest.fn().mockResolvedValue('mock-code-verifier'),
-  generateState: jest.fn().mockResolvedValue('mock-state'),
-  createCodeChallenge: jest.fn().mockResolvedValue('mock-code-challenge'),
-  sha256: jest.fn().mockResolvedValue(new Uint8Array(32)),
-  sha256Base64Url: jest.fn().mockResolvedValue('mock-hash')
+vi.mock('../src/utils/crypto', () => ({
+  generateCodeVerifier: vi.fn().mockResolvedValue('mock-code-verifier'),
+  generateState: vi.fn().mockResolvedValue('mock-state'),
+  createCodeChallenge: vi.fn().mockResolvedValue('mock-code-challenge'),
+  sha256: vi.fn().mockResolvedValue(new Uint8Array(32)),
+  sha256Base64Url: vi.fn().mockResolvedValue('mock-hash')
 }));
 
 describe('Edge Cases and Error Handling', () => {
-  let mockFetch: jest.Mock;
+  let mockFetch: Mock;
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    mockFetch = jest.fn();
-    (global as unknown as { fetch: jest.Mock }).fetch = mockFetch;
+    vi.clearAllMocks();
+    mockFetch = vi.fn();
+    (global as unknown as { fetch: Mock }).fetch = mockFetch;
   });
 
   describe('EtsyClient Edge Cases', () => {
@@ -54,7 +55,7 @@ describe('Edge Cases and Error Handling', () => {
       // Mock response with invalid JSON
       mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockRejectedValue(new Error('Invalid JSON'))
+        json: vi.fn().mockRejectedValue(new Error('Invalid JSON'))
       });
 
       await expect(client.getUser()).rejects.toThrow(EtsyApiError);
@@ -76,7 +77,7 @@ describe('Edge Cases and Error Handling', () => {
 
       mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue({ results: largeArray })
+        json: vi.fn().mockResolvedValue({ results: largeArray })
       });
 
       const result = await client.getListingsByShop('12345');
@@ -94,7 +95,7 @@ describe('Edge Cases and Error Handling', () => {
 
       mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue({ user_id: 123 })
+        json: vi.fn().mockResolvedValue({ user_id: 123 })
       });
 
       // Make 100 concurrent requests
@@ -145,7 +146,7 @@ describe('Edge Cases and Error Handling', () => {
           'retry-after': 'invalid-number', // Invalid retry-after
           'x-remaining-today': '1000'
         }),
-        text: jest.fn().mockResolvedValue('Rate limited')
+        text: vi.fn().mockResolvedValue('Rate limited')
       });
 
       // With maxRetries=0, the first 429 will throw EtsyRateLimitError after max retries exceeded
@@ -163,7 +164,7 @@ describe('Edge Cases and Error Handling', () => {
 
       mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(null)
+        json: vi.fn().mockResolvedValue(null)
       });
 
       const result = await client.getUser();
@@ -174,9 +175,9 @@ describe('Edge Cases and Error Handling', () => {
   describe('AuthHelper Edge Cases', () => {
     beforeEach(() => {
       // Reset crypto mocks to success for most tests
-      (generateCodeVerifier as jest.Mock).mockResolvedValue('mock-code-verifier');
-      (generateState as jest.Mock).mockResolvedValue('mock-state');
-      (createCodeChallenge as jest.Mock).mockResolvedValue('mock-code-challenge');
+      (generateCodeVerifier as Mock).mockResolvedValue('mock-code-verifier');
+      (generateState as Mock).mockResolvedValue('mock-state');
+      (createCodeChallenge as Mock).mockResolvedValue('mock-code-challenge');
     });
 
     it('should handle initialization properly', async () => {
@@ -249,7 +250,7 @@ describe('Edge Cases and Error Handling', () => {
         ok: false,
         status: 500,
         statusText: 'Internal Server Error',
-        text: jest.fn().mockResolvedValue('Server is temporarily unavailable')
+        text: vi.fn().mockResolvedValue('Server is temporarily unavailable')
       });
 
       await expect(authHelper.getAccessToken()).rejects.toThrow(EtsyAuthError);
@@ -311,7 +312,7 @@ describe('Edge Cases and Error Handling', () => {
 
       mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue({
+        json: vi.fn().mockResolvedValue({
           access_token: 'new-token',
           refresh_token: 'new-refresh',
           expires_in: 3600,
@@ -336,7 +337,7 @@ describe('Edge Cases and Error Handling', () => {
       // Mock malformed response
       mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue({
+        json: vi.fn().mockResolvedValue({
           // Missing required fields
           access_token: 'new-token'
           // Missing refresh_token, expires_in, etc.
@@ -359,7 +360,7 @@ describe('Edge Cases and Error Handling', () => {
 
       mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue({
+        json: vi.fn().mockResolvedValue({
           access_token: 'new-token',
           refresh_token: 'new-refresh',
           expires_in: 3600,
@@ -408,7 +409,7 @@ describe('Edge Cases and Error Handling', () => {
         }
         return Promise.resolve({
           ok: true,
-          json: jest.fn().mockResolvedValue({
+          json: vi.fn().mockResolvedValue({
             access_token: 'new-token',
             refresh_token: 'new-refresh',
             expires_in: 3600,
@@ -465,7 +466,7 @@ describe('Edge Cases and Error Handling', () => {
       // Simulate many cached responses (smaller number for performance)
       mockFetch.mockImplementation(() => Promise.resolve({
         ok: true,
-        json: jest.fn().mockResolvedValue({ listing_id: Math.floor(Math.random() * 1000) })
+        json: vi.fn().mockResolvedValue({ listing_id: Math.floor(Math.random() * 1000) })
       }));
 
       const promises = [];
@@ -490,7 +491,7 @@ describe('Edge Cases and Error Handling', () => {
 
       mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue({ user_id: 123 })
+        json: vi.fn().mockResolvedValue({ user_id: 123 })
       });
 
       // Make many requests to fill cache
@@ -511,8 +512,8 @@ describe('Edge Cases and Error Handling', () => {
       delete (global as any).localStorage;
 
       // Reset modules to get fresh import
-      jest.resetModules();
-      const { createDefaultTokenStorage } = require('../src/auth/token-manager');
+      vi.resetModules();
+      const { createDefaultTokenStorage } = await import('../src/auth/token-manager');
 
       const storage = createDefaultTokenStorage();
       
@@ -538,12 +539,12 @@ describe('Edge Cases and Error Handling', () => {
     it('should handle quota exceeded errors in browser storage', async () => {
       // Mock localStorage with quota error
       const mockLocalStorage = {
-        setItem: jest.fn(() => {
+        setItem: vi.fn(() => {
           throw new DOMException('QuotaExceededError');
         }),
-        getItem: jest.fn(() => null),
-        removeItem: jest.fn(),
-        clear: jest.fn()
+        getItem: vi.fn(() => null),
+        removeItem: vi.fn(),
+        clear: vi.fn()
       };
 
       Object.defineProperty(global, 'localStorage', {
@@ -552,8 +553,8 @@ describe('Edge Cases and Error Handling', () => {
         configurable: true
       });
 
-      jest.resetModules();
-      const { LocalStorageTokenStorage } = require('../src/auth/token-manager');
+      vi.resetModules();
+      const { LocalStorageTokenStorage } = await import('../src/auth/token-manager');
 
       const storage = new LocalStorageTokenStorage();
       const testTokens = {

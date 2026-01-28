@@ -8,7 +8,7 @@ describe('EtsyClient Listing Variation Images', () => {
   let ctx: MockClientContext;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     ctx = setupClientMocks();
   });
 
@@ -33,7 +33,7 @@ describe('EtsyClient Listing Variation Images', () => {
       };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockVariationImages)
+        json: vi.fn().mockResolvedValue(mockVariationImages)
       });
 
       const result = await ctx.client.getListingVariationImages('123', '789');
@@ -73,7 +73,7 @@ describe('EtsyClient Listing Variation Images', () => {
       };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockVariationImages)
+        json: vi.fn().mockResolvedValue(mockVariationImages)
       });
 
       const result = await ctx.client.updateVariationImages('123', '789', params);

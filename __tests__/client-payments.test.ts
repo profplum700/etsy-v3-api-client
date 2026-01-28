@@ -8,7 +8,7 @@ describe('EtsyClient Payments & Ledger', () => {
   let ctx: MockClientContext;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     ctx = setupClientMocks();
   });
 
@@ -23,7 +23,7 @@ describe('EtsyClient Payments & Ledger', () => {
       };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockEntries)
+        json: vi.fn().mockResolvedValue(mockEntries)
       });
 
       const result = await ctx.client.getShopPaymentAccountLedgerEntries('123', {
@@ -46,7 +46,7 @@ describe('EtsyClient Payments & Ledger', () => {
       const mockEntries = { count: 10, results: [] };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockEntries)
+        json: vi.fn().mockResolvedValue(mockEntries)
       });
 
       await ctx.client.getShopPaymentAccountLedgerEntries('123', {
@@ -72,7 +72,7 @@ describe('EtsyClient Payments & Ledger', () => {
       const mockEntry = { entry_id: 1, amount: { amount: 2999, divisor: 100, currency_code: 'USD' } };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockEntry)
+        json: vi.fn().mockResolvedValue(mockEntry)
       });
 
       const result = await ctx.client.getShopPaymentAccountLedgerEntry('123', '1');
@@ -93,7 +93,7 @@ describe('EtsyClient Payments & Ledger', () => {
       };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue({
+        json: vi.fn().mockResolvedValue({
           count: 1,
           results: [mockPayment]
         })
@@ -120,7 +120,7 @@ describe('EtsyClient Payments & Ledger', () => {
       };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockPayments)
+        json: vi.fn().mockResolvedValue(mockPayments)
       });
 
       const result = await ctx.client.getPaymentAccountLedgerEntryPayments('123', {
@@ -149,7 +149,7 @@ describe('EtsyClient Payments & Ledger', () => {
       };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockPayments)
+        json: vi.fn().mockResolvedValue(mockPayments)
       });
 
       const result = await ctx.client.getShopPaymentByReceiptId('123', '456');

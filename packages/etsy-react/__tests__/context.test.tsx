@@ -1,13 +1,10 @@
-/**
- * @jest-environment jsdom
- */
 import React from 'react';
 import { renderHook } from '@testing-library/react';
 import { EtsyProvider, useEtsyClient } from '../src/context';
 
 describe('EtsyProvider', () => {
   it('should provide client to children', () => {
-    const mockClient: any = { getShop: jest.fn() };
+    const mockClient: any = { getShop: vi.fn() };
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
       <EtsyProvider client={mockClient}>{children}</EtsyProvider>
@@ -21,7 +18,7 @@ describe('EtsyProvider', () => {
   it('should throw error when used outside provider', () => {
     // Suppress console.error for this test
     const originalError = console.error;
-    console.error = jest.fn();
+    console.error = vi.fn();
 
     expect(() => {
       renderHook(() => useEtsyClient());

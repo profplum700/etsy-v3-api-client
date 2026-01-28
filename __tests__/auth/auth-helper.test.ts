@@ -4,22 +4,23 @@
 
 import { AuthHelper, ETSY_SCOPES, COMMON_SCOPE_COMBINATIONS } from '../../src/auth/auth-helper';
 import { EtsyAuthError, AuthHelperConfig } from '../../src/types';
+import { vi, type Mock } from 'vitest';
 
 // Mock universal crypto module
-jest.mock('../../src/utils/crypto', () => ({
-  generateCodeVerifier: jest.fn().mockResolvedValue('mock-code-verifier'),
-  generateState: jest.fn().mockResolvedValue('mock-state'),
-  createCodeChallenge: jest.fn().mockResolvedValue('mock-code-challenge')
+vi.mock('../../src/utils/crypto', () => ({
+  generateCodeVerifier: vi.fn().mockResolvedValue('mock-code-verifier'),
+  generateState: vi.fn().mockResolvedValue('mock-state'),
+  createCodeChallenge: vi.fn().mockResolvedValue('mock-code-challenge')
 }));
 
 
 
 describe('AuthHelper', () => {
   let mockConfig: AuthHelperConfig;
-  let mockFetch: jest.Mock;
+  let mockFetch: Mock;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     mockConfig = {
       keystring: 'test-api-key',
@@ -27,7 +28,7 @@ describe('AuthHelper', () => {
       scopes: ['shops_r', 'listings_r']
     };
 
-    mockFetch = jest.fn();
+    mockFetch = vi.fn();
     global.fetch = mockFetch;
   });
 
@@ -38,7 +39,7 @@ describe('AuthHelper', () => {
     });
 
     it('should generate code verifier and state if not provided', async () => {
-      const { generateCodeVerifier, generateState } = require('../../src/utils/crypto');
+      const { generateCodeVerifier, generateState } = await import('../../src/utils/crypto');
       const authHelper = new AuthHelper(mockConfig);
       
       // Wait for initialization to complete
@@ -150,7 +151,7 @@ describe('AuthHelper', () => {
 
       mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockTokenResponse)
+        json: vi.fn().mockResolvedValue(mockTokenResponse)
       });
 
       const state = await authHelper.getState();
@@ -184,7 +185,7 @@ describe('AuthHelper', () => {
         ok: false,
         status: 400,
         statusText: 'Bad Request',
-        text: jest.fn().mockResolvedValue('Invalid authorization code')
+        text: vi.fn().mockResolvedValue('Invalid authorization code')
       });
 
       const state = await authHelper.getState();
@@ -237,7 +238,7 @@ describe('AuthHelper', () => {
 
   describe('crypto integration', () => {
     it('should use universal crypto functions for initialization', async () => {
-      const { generateCodeVerifier, generateState, createCodeChallenge } = require('../../src/utils/crypto');
+      const { generateCodeVerifier, generateState, createCodeChallenge } = await import('../../src/utils/crypto');
       
       const authHelper = new AuthHelper(mockConfig);
       
@@ -272,7 +273,7 @@ describe('AuthHelper', () => {
 
       mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockTokenResponse)
+        json: vi.fn().mockResolvedValue(mockTokenResponse)
       });
 
       const state = await authHelper.getState();

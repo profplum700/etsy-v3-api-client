@@ -2,20 +2,21 @@
  * Shared test setup for EtsyClient tests
  */
 
+import { vi, type Mock, type Mocked } from 'vitest';
 import { EtsyClient } from '../../src/client';
 import { EtsyClientConfig } from '../../src/types';
 import { TokenManager } from '../../src/auth/token-manager';
 import { EtsyRateLimiter } from '../../src/rate-limiting';
 
 // Mock dependencies
-jest.mock('../../src/auth/token-manager');
-jest.mock('../../src/rate-limiting');
+vi.mock('../../src/auth/token-manager');
+vi.mock('../../src/rate-limiting');
 
 export interface MockClientContext {
   mockConfig: EtsyClientConfig;
-  mockTokenManager: jest.Mocked<TokenManager>;
-  mockRateLimiter: jest.Mocked<EtsyRateLimiter>;
-  mockFetch: jest.Mock;
+  mockTokenManager: Mocked<TokenManager>;
+  mockRateLimiter: Mocked<EtsyRateLimiter>;
+  mockFetch: Mock;
   client: EtsyClient;
 }
 
@@ -29,46 +30,46 @@ export function setupClientMocks(): MockClientContext {
   };
 
   const mockTokenManager = {
-    getAccessToken: jest.fn().mockResolvedValue('test-access-token'),
-    getCurrentTokens: jest.fn().mockReturnValue({
+    getAccessToken: vi.fn().mockResolvedValue('test-access-token'),
+    getCurrentTokens: vi.fn().mockReturnValue({
       access_token: 'test-access-token',
       refresh_token: 'test-refresh-token',
       expires_at: new Date(Date.now() + 3600000),
       token_type: 'Bearer',
       scope: 'shops_r listings_r'
     }),
-    isTokenExpired: jest.fn().mockReturnValue(false),
-    refreshToken: jest.fn().mockResolvedValue({
+    isTokenExpired: vi.fn().mockReturnValue(false),
+    refreshToken: vi.fn().mockResolvedValue({
       access_token: 'new-access-token',
       refresh_token: 'new-refresh-token',
       expires_at: new Date(Date.now() + 3600000),
       token_type: 'Bearer',
       scope: 'shops_r listings_r'
     })
-  } as unknown as jest.Mocked<TokenManager>;
+  } as unknown as Mocked<TokenManager>;
 
   const mockRateLimiter = {
-    waitForRateLimit: jest.fn().mockResolvedValue(undefined),
-    getRemainingRequests: jest.fn().mockReturnValue(9999),
-    getRateLimitStatus: jest.fn().mockReturnValue({
+    waitForRateLimit: vi.fn().mockResolvedValue(undefined),
+    getRemainingRequests: vi.fn().mockReturnValue(9999),
+    getRateLimitStatus: vi.fn().mockReturnValue({
       remainingRequests: 9999,
       resetTime: new Date(Date.now() + 86400000),
       canMakeRequest: true,
       isFromHeaders: false
     }),
-    canMakeRequest: jest.fn().mockReturnValue(true),
-    updateFromHeaders: jest.fn(),
-    resetRetryCount: jest.fn(),
-    handleRateLimitResponse: jest.fn().mockResolvedValue({ shouldRetry: false, delayMs: 1000 }),
-    setApproachingLimitCallback: jest.fn(),
-    setWarningThreshold: jest.fn()
-  } as unknown as jest.Mocked<EtsyRateLimiter>;
+    canMakeRequest: vi.fn().mockReturnValue(true),
+    updateFromHeaders: vi.fn(),
+    resetRetryCount: vi.fn(),
+    handleRateLimitResponse: vi.fn().mockResolvedValue({ shouldRetry: false, delayMs: 1000 }),
+    setApproachingLimitCallback: vi.fn(),
+    setWarningThreshold: vi.fn()
+  } as unknown as Mocked<EtsyRateLimiter>;
 
-  const mockFetch = jest.fn();
-  (global as unknown as { fetch: jest.Mock }).fetch = mockFetch;
+  const mockFetch = vi.fn();
+  (global as unknown as { fetch: Mock }).fetch = mockFetch;
 
-  (TokenManager as jest.Mock).mockImplementation(() => mockTokenManager);
-  (EtsyRateLimiter as jest.Mock).mockImplementation(() => mockRateLimiter);
+  (TokenManager as Mock).mockImplementation(() => mockTokenManager);
+  (EtsyRateLimiter as Mock).mockImplementation(() => mockRateLimiter);
 
   const client = new EtsyClient(mockConfig);
 
@@ -85,7 +86,7 @@ export function createMockResponse<T>(data: T, ok = true, status = 200): Partial
   return {
     ok,
     status,
-    json: jest.fn().mockResolvedValue(data),
+    json: vi.fn().mockResolvedValue(data),
     headers: new Headers({ 'content-length': '100' })
   };
 }
@@ -103,7 +104,7 @@ export function createErrorResponse(status: number, statusText: string, body: st
     ok: false,
     status,
     statusText,
-    text: jest.fn().mockResolvedValue(body),
+    text: vi.fn().mockResolvedValue(body),
     headers: new Headers()
   };
 }

@@ -39,7 +39,8 @@
     "tsBuildInfoFile": "./dist/.tsbuildinfo",
     "removeComments": true,
     "preserveConstEnums": true,
-    "importsNotUsedAsValues": "remove"
+    "importsNotUsedAsValues": "remove",
+    "types": ["vitest/globals"]
   },
   "include": [
     "src/**/*",

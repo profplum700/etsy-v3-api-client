@@ -9,7 +9,7 @@ describe('EtsyClient User & Shop', () => {
   let ctx: MockClientContext;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     ctx = setupClientMocks();
   });
 
@@ -18,7 +18,7 @@ describe('EtsyClient User & Shop', () => {
       const mockUser = { user_id: 123, login_name: 'testuser' };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockUser)
+        json: vi.fn().mockResolvedValue(mockUser)
       });
 
       const result = await ctx.client.getUser();
@@ -36,7 +36,7 @@ describe('EtsyClient User & Shop', () => {
       const mockShop = { shop_id: 456, shop_name: 'Test Shop' };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockShop)
+        json: vi.fn().mockResolvedValue(mockShop)
       });
 
       const result = await ctx.client.getShop('456');
@@ -55,11 +55,11 @@ describe('EtsyClient User & Shop', () => {
       ctx.mockFetch
         .mockResolvedValueOnce({
           ok: true,
-          json: jest.fn().mockResolvedValue(mockUser)
+          json: vi.fn().mockResolvedValue(mockUser)
         })
         .mockResolvedValueOnce({
           ok: true,
-          json: jest.fn().mockResolvedValue(mockShop)
+          json: vi.fn().mockResolvedValue(mockShop)
         });
 
       const result = await ctx.client.getShop();
@@ -79,7 +79,7 @@ describe('EtsyClient User & Shop', () => {
       const mockUser = { user_id: 123 }; // No shop_id
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockUser)
+        json: vi.fn().mockResolvedValue(mockUser)
       });
 
       await expect(ctx.client.getShop()).rejects.toThrow(EtsyApiError);
@@ -92,7 +92,7 @@ describe('EtsyClient User & Shop', () => {
       const mockShop = { shop_id: 456, shop_name: 'Test Shop' };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockShop)
+        json: vi.fn().mockResolvedValue(mockShop)
       });
 
       const result = await ctx.client.getShopByOwnerUserId('123');
@@ -110,7 +110,7 @@ describe('EtsyClient User & Shop', () => {
       const mockShop = { shop_id: 123, title: 'Updated Title' };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockShop)
+        json: vi.fn().mockResolvedValue(mockShop)
       });
 
       const result = await ctx.client.updateShop('123', { title: 'Updated Title' });
@@ -135,7 +135,7 @@ describe('EtsyClient User & Shop', () => {
       const mockShop = { shop_id: 123, ...updateParams };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockShop)
+        json: vi.fn().mockResolvedValue(mockShop)
       });
 
       const result = await ctx.client.updateShop('123', updateParams);
@@ -157,7 +157,7 @@ describe('EtsyClient User & Shop', () => {
         const mockSection = { shop_section_id: 456, title: 'New Section' };
         ctx.mockFetch.mockResolvedValue({
           ok: true,
-          json: jest.fn().mockResolvedValue(mockSection)
+          json: vi.fn().mockResolvedValue(mockSection)
         });
 
         const result = await ctx.client.createShopSection('123', { title: 'New Section' });
@@ -178,7 +178,7 @@ describe('EtsyClient User & Shop', () => {
         const mockSection = { shop_section_id: 456, title: 'Updated Section' };
         ctx.mockFetch.mockResolvedValue({
           ok: true,
-          json: jest.fn().mockResolvedValue(mockSection)
+          json: vi.fn().mockResolvedValue(mockSection)
         });
 
         const result = await ctx.client.updateShopSection('123', '456', { title: 'Updated Section' });
@@ -218,7 +218,7 @@ describe('EtsyClient User & Shop', () => {
         };
         ctx.mockFetch.mockResolvedValue({
           ok: true,
-          json: jest.fn().mockResolvedValue(mockPartners)
+          json: vi.fn().mockResolvedValue(mockPartners)
         });
 
         const result = await ctx.client.getShopProductionPartners('123');
@@ -240,7 +240,7 @@ describe('EtsyClient User & Shop', () => {
       };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockShops)
+        json: vi.fn().mockResolvedValue(mockShops)
       });
 
       const result = await ctx.client.findShops({ shop_name: 'TestShop' });
@@ -255,7 +255,7 @@ describe('EtsyClient User & Shop', () => {
     it('should find shops with pagination', async () => {
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue({ count: 0, results: [] })
+        json: vi.fn().mockResolvedValue({ count: 0, results: [] })
       });
 
       await ctx.client.findShops({ shop_name: 'Test', limit: 10, offset: 5 });
@@ -276,7 +276,7 @@ describe('EtsyClient User & Shop', () => {
       const mockUser = { user_id: 123, login_name: 'testuser' };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockUser)
+        json: vi.fn().mockResolvedValue(mockUser)
       });
 
       const result = await ctx.client.getMe();
@@ -298,7 +298,7 @@ describe('EtsyClient User & Shop', () => {
         };
         ctx.mockFetch.mockResolvedValue({
           ok: true,
-          json: jest.fn().mockResolvedValue(mockAddresses)
+          json: vi.fn().mockResolvedValue(mockAddresses)
         });
 
         const result = await ctx.client.getUserAddresses();
@@ -316,7 +316,7 @@ describe('EtsyClient User & Shop', () => {
         const mockAddress = { user_address_id: 1, name: 'Home', city: 'Portland' };
         ctx.mockFetch.mockResolvedValue({
           ok: true,
-          json: jest.fn().mockResolvedValue(mockAddress)
+          json: vi.fn().mockResolvedValue(mockAddress)
         });
 
         const result = await ctx.client.getUserAddress('1');

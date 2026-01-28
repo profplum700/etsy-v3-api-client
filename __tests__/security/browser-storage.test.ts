@@ -14,11 +14,11 @@ const mockCrypto = {
     return array;
   },
   subtle: {
-    encrypt: jest.fn(),
-    decrypt: jest.fn(),
-    importKey: jest.fn(),
-    deriveKey: jest.fn(),
-    sign: jest.fn(),
+    encrypt: vi.fn(),
+    decrypt: vi.fn(),
+    importKey: vi.fn(),
+    deriveKey: vi.fn(),
+    sign: vi.fn(),
   },
 };
 
@@ -81,9 +81,11 @@ describe('SecureTokenStorage', () => {
       configurable: true,
     });
 
-    global.navigator = {
-      userAgent: 'Test Browser',
-    } as Navigator;
+    Object.defineProperty(global, 'navigator', {
+      value: { userAgent: 'Test Browser' },
+      writable: true,
+      configurable: true,
+    });
 
     // Setup mock crypto functions
     mockCrypto.subtle.importKey.mockResolvedValue('mockKeyMaterial' as unknown as CryptoKey);
@@ -107,7 +109,7 @@ describe('SecureTokenStorage', () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('Constructor', () => {

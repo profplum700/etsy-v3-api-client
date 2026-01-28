@@ -1,6 +1,7 @@
 /**
  * Tests for universal crypto utilities
  */
+export {};
 
 // Store original globals before any imports
 const originalProcess = (global as any).process;
@@ -10,18 +11,32 @@ const originalBtoa = (global as any).btoa;
 const originalAtob = (global as any).atob;
 const originalTextEncoder = (global as any).TextEncoder;
 
+// Save real process for Vitest compatibility — Vitest's error handler needs process.listeners()
+const _savedProcess = globalThis.process;
+/** Creates a process stub without versions/version so isNode detection returns false */
+function createNonNodeProcess() {
+  return {
+    listeners: _savedProcess.listeners.bind(_savedProcess),
+    on: _savedProcess.on.bind(_savedProcess),
+    off: _savedProcess.off.bind(_savedProcess),
+    removeListener: _savedProcess.removeListener.bind(_savedProcess),
+    emit: _savedProcess.emit.bind(_savedProcess),
+    env: {},
+  };
+}
+
 // Mock crypto module before importing main module
-jest.mock('crypto', () => ({
-  randomBytes: jest.fn((length: number) => Buffer.alloc(length, 42)),
-  createHash: jest.fn(() => ({
-    update: jest.fn(),
-    digest: jest.fn(() => Buffer.alloc(32, 123))
+vi.mock('crypto', () => ({
+  randomBytes: vi.fn((length: number) => Buffer.alloc(length, 42)),
+  createHash: vi.fn(() => ({
+    update: vi.fn(),
+    digest: vi.fn(() => Buffer.alloc(32, 123))
   }))
 }));
 
 // Helper function to create browser environment
 const createBrowserEnvironment = () => {
-  delete (global as any).process;
+  Object.defineProperty(global, 'process', { value: createNonNodeProcess(), writable: true, configurable: true });
   
   Object.defineProperty(global, 'window', {
     value: { document: {} },
@@ -30,14 +45,14 @@ const createBrowserEnvironment = () => {
   });
 
   const mockWebCrypto = {
-    getRandomValues: jest.fn((array: Uint8Array) => {
+    getRandomValues: vi.fn((array: Uint8Array) => {
       for (let i = 0; i < array.length; i++) {
         array[i] = i % 256;
       }
       return array;
     }),
     subtle: {
-      digest: jest.fn(async (algorithm: string, data: Uint8Array) => {
+      digest: vi.fn(async (algorithm: string, data: Uint8Array) => {
         const hash = new Uint8Array(32);
         for (let i = 0; i < 32; i++) {
           hash[i] = (data[0] || 0) + i;
@@ -108,7 +123,7 @@ const createNodeEnvironment = () => {
 // Helper function to create unsupported environment
 const createUnsupportedEnvironment = () => {
   delete (global as any).window;
-  delete (global as any).process;
+  Object.defineProperty(global, 'process', { value: createNonNodeProcess(), writable: true, configurable: true });
   delete (global as any).crypto;
   delete (global as any).btoa;
   delete (global as any).atob;
@@ -120,7 +135,7 @@ const restoreEnvironment = () => {
   if (originalProcess !== undefined) {
     (global as any).process = originalProcess;
   } else {
-    delete (global as any).process;
+    Object.defineProperty(global, 'process', { value: createNonNodeProcess(), writable: true, configurable: true });
   }
   if (originalWindow !== undefined) {
     (global as any).window = originalWindow;
@@ -152,8 +167,8 @@ const restoreEnvironment = () => {
 describe('Universal Crypto Module', () => {
   afterEach(() => {
     // Clear module cache and reset mocks
-    jest.resetModules();
-    jest.clearAllMocks();
+    vi.resetModules();
+    vi.clearAllMocks();
     restoreEnvironment();
   });
 
@@ -161,10 +176,10 @@ describe('Universal Crypto Module', () => {
     let mockWebCrypto: ReturnType<typeof createBrowserEnvironment>;
     let cryptoModule: any;
 
-    beforeEach(() => {
+    beforeEach(async () => {
       mockWebCrypto = createBrowserEnvironment();
       // Import fresh module after environment setup
-      cryptoModule = require('../../src/utils/crypto');
+      cryptoModule = await import('../../src/utils/crypto');
     });
 
     describe('generateRandomBytes', () => {
@@ -238,35 +253,35 @@ describe('Universal Crypto Module', () => {
   describe('Node.js Environment', () => {
     let cryptoModule: any;
 
-    beforeEach(() => {
+    beforeEach(async () => {
       createNodeEnvironment();
       // Clear and reset mocks
-      jest.resetModules();
-      jest.clearAllMocks();
+      vi.resetModules();
+      vi.clearAllMocks();
       // Ensure crypto mock is reset to default
-      jest.unmock('crypto');
+      vi.unmock('crypto');
       // Import fresh module after environment setup
-      cryptoModule = require('../../src/utils/crypto');
+      cryptoModule = await import('../../src/utils/crypto');
     });
 
     describe('generateRandomBytes', () => {
       it('should generate random bytes using Node.js crypto', async () => {
         // Re-mock crypto for this test
-        jest.doMock('crypto', () => ({
-          randomBytes: jest.fn((length: number) => Buffer.alloc(length, 42)),
-          createHash: jest.fn(() => ({
-            update: jest.fn(),
-            digest: jest.fn(() => Buffer.alloc(32, 123))
+        vi.doMock('crypto', () => ({
+          randomBytes: vi.fn((length: number) => Buffer.alloc(length, 42)),
+          createHash: vi.fn(() => ({
+            update: vi.fn(),
+            digest: vi.fn(() => Buffer.alloc(32, 123))
           }))
-        }), { virtual: true });
+        }));
         
-        jest.resetModules();
+        vi.resetModules();
         createNodeEnvironment();
-        const freshCryptoModule = require('../../src/utils/crypto');
-        const mockCrypto = require('crypto');
+        const freshCryptoModule = await import('../../src/utils/crypto');
+        const mockCrypto = await import('crypto');
 
         const bytes = await freshCryptoModule.generateRandomBytes(16);
-        
+
         expect(bytes).toBeInstanceOf(Uint8Array);
         expect(bytes.length).toBe(16);
         expect(Array.from(bytes)).toEqual(new Array(16).fill(42));
@@ -275,20 +290,20 @@ describe('Universal Crypto Module', () => {
 
       it('should throw error when Node.js crypto is unavailable', async () => {
         // Create a clean test environment for this error case
-        jest.resetModules();
-        jest.doMock('crypto', () => {
+        vi.resetModules();
+        vi.doMock('crypto', () => {
           throw new Error('Module not found');
-        }, { virtual: true });
+        });
         
         createNodeEnvironment();
-        const failingCryptoModule = require('../../src/utils/crypto');
+        const failingCryptoModule = await import('../../src/utils/crypto');
 
         await expect(failingCryptoModule.generateRandomBytes(16)).rejects.toThrow('Node.js crypto module not available');
-        
+
         // Clean up after this test
-        jest.resetModules();
-        jest.clearAllMocks();
-        jest.unmock('crypto');
+        vi.resetModules();
+        vi.clearAllMocks();
+        vi.unmock('crypto');
       });
     });
 
@@ -296,20 +311,20 @@ describe('Universal Crypto Module', () => {
       it('should hash data using Node.js crypto', async () => {
         // Re-mock crypto for this test
         const mockHash = {
-          update: jest.fn(),
-          digest: jest.fn(() => Buffer.alloc(32, 123))
+          update: vi.fn(),
+          digest: vi.fn(() => Buffer.alloc(32, 123))
         };
         
-        jest.doMock('crypto', () => ({
-          randomBytes: jest.fn((length: number) => Buffer.alloc(length, 42)),
-          createHash: jest.fn(() => mockHash)
-        }), { virtual: true });
+        vi.doMock('crypto', () => ({
+          randomBytes: vi.fn((length: number) => Buffer.alloc(length, 42)),
+          createHash: vi.fn(() => mockHash)
+        }));
         
-        jest.resetModules();
+        vi.resetModules();
         createNodeEnvironment();
-        const freshCryptoModule = require('../../src/utils/crypto');
-        const mockCrypto = require('crypto');
-        
+        const freshCryptoModule = await import('../../src/utils/crypto');
+        const mockCrypto = await import('crypto');
+
         const hash = await freshCryptoModule.sha256('test data');
         
         expect(hash).toBeInstanceOf(Uint8Array);
@@ -322,20 +337,20 @@ describe('Universal Crypto Module', () => {
 
       it('should throw error when Node.js crypto is unavailable', async () => {
         // Create a clean test environment for this error case
-        jest.resetModules();
-        jest.doMock('crypto', () => {
+        vi.resetModules();
+        vi.doMock('crypto', () => {
           throw new Error('Module not found');
-        }, { virtual: true });
+        });
         
         createNodeEnvironment();
-        const failingCryptoModule = require('../../src/utils/crypto');
+        const failingCryptoModule = await import('../../src/utils/crypto');
 
         await expect(failingCryptoModule.sha256('test')).rejects.toThrow('Node.js crypto module not available');
-        
+
         // Clean up after this test
-        jest.resetModules();
-        jest.clearAllMocks();
-        jest.unmock('crypto');
+        vi.resetModules();
+        vi.clearAllMocks();
+        vi.unmock('crypto');
       });
     });
 
@@ -365,11 +380,11 @@ describe('Universal Crypto Module', () => {
   describe('Unsupported Environment', () => {
     let cryptoModule: any;
 
-    beforeEach(() => {
+    beforeEach(async () => {
       createUnsupportedEnvironment();
-      jest.resetModules();
-      jest.clearAllMocks();
-      cryptoModule = require('../../src/utils/crypto');
+      vi.resetModules();
+      vi.clearAllMocks();
+      cryptoModule = await import('../../src/utils/crypto');
     });
 
     it('should throw error for generateRandomBytes', async () => {
@@ -393,11 +408,11 @@ describe('Universal Crypto Module', () => {
   describe('High-level Functions', () => {
     let cryptoModule: any;
 
-    beforeEach(() => {
+    beforeEach(async () => {
       createBrowserEnvironment();
-      jest.resetModules();
-      jest.clearAllMocks();
-      cryptoModule = require('../../src/utils/crypto');
+      vi.resetModules();
+      vi.clearAllMocks();
+      cryptoModule = await import('../../src/utils/crypto');
     });
 
     describe('generateRandomBase64Url', () => {
@@ -464,39 +479,39 @@ describe('Universal Crypto Module', () => {
   });
 
   describe('Cross-platform Compatibility', () => {
-    it('should produce consistent base64url encoding across environments', () => {
+    it('should produce consistent base64url encoding across environments', async () => {
       const testBytes = new Uint8Array([72, 101, 108, 108, 111]); // "Hello"
-      
+
       // Test in browser environment
       createBrowserEnvironment();
-      jest.resetModules();
-      const browserCrypto = require('../../src/utils/crypto');
+      vi.resetModules();
+      const browserCrypto = await import('../../src/utils/crypto');
       const browserResult = browserCrypto.base64UrlEncode(testBytes);
-      
+
       // Test in Node.js environment
       createNodeEnvironment();
-      jest.resetModules();
-      const nodeCrypto = require('../../src/utils/crypto');
+      vi.resetModules();
+      const nodeCrypto = await import('../../src/utils/crypto');
       const nodeResult = nodeCrypto.base64UrlEncode(testBytes);
-      
+
       expect(browserResult).toBe(nodeResult);
     });
 
-    it('should produce consistent base64url decoding across environments', () => {
+    it('should produce consistent base64url decoding across environments', async () => {
       const testString = 'SGVsbG8'; // "Hello" in base64url
-      
+
       // Test in browser environment
       createBrowserEnvironment();
-      jest.resetModules();
-      const browserCrypto = require('../../src/utils/crypto');
+      vi.resetModules();
+      const browserCrypto = await import('../../src/utils/crypto');
       const browserResult = browserCrypto.base64UrlDecode(testString);
-      
+
       // Test in Node.js environment
       createNodeEnvironment();
-      jest.resetModules();
-      const nodeCrypto = require('../../src/utils/crypto');
+      vi.resetModules();
+      const nodeCrypto = await import('../../src/utils/crypto');
       const nodeResult = nodeCrypto.base64UrlDecode(testString);
-      
+
       expect(Array.from(browserResult)).toEqual(Array.from(nodeResult));
     });
   });

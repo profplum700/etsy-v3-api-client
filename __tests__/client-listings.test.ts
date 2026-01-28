@@ -9,7 +9,7 @@ describe('EtsyClient Listings', () => {
   let ctx: MockClientContext;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     ctx = setupClientMocks();
   });
 
@@ -21,7 +21,7 @@ describe('EtsyClient Listings', () => {
       ];
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue({ results: mockListings })
+        json: vi.fn().mockResolvedValue({ results: mockListings })
       });
 
       const result = await ctx.client.getListingsByShop('456');
@@ -37,7 +37,7 @@ describe('EtsyClient Listings', () => {
       const mockListings = [{ listing_id: 1, title: 'Test Listing' }];
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue({ results: mockListings })
+        json: vi.fn().mockResolvedValue({ results: mockListings })
       });
 
       const params: ListingParams = {
@@ -65,11 +65,11 @@ describe('EtsyClient Listings', () => {
       ctx.mockFetch
         .mockResolvedValueOnce({
           ok: true,
-          json: jest.fn().mockResolvedValue(mockUser)
+          json: vi.fn().mockResolvedValue(mockUser)
         })
         .mockResolvedValueOnce({
           ok: true,
-          json: jest.fn().mockResolvedValue({ results: mockListings })
+          json: vi.fn().mockResolvedValue({ results: mockListings })
         });
 
       const result = await ctx.client.getListingsByShop();
@@ -91,7 +91,7 @@ describe('EtsyClient Listings', () => {
       const mockListing = { listing_id: 123, title: 'Test Listing' };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockListing)
+        json: vi.fn().mockResolvedValue(mockListing)
       });
 
       const result = await ctx.client.getListing('123');
@@ -107,7 +107,7 @@ describe('EtsyClient Listings', () => {
       const mockListing = { listing_id: 123, title: 'Test Listing' };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockListing)
+        json: vi.fn().mockResolvedValue(mockListing)
       });
 
       const result = await ctx.client.getListing('123', ['Images', 'Inventory']);
@@ -128,7 +128,7 @@ describe('EtsyClient Listings', () => {
       ];
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue({ results: mockListings })
+        json: vi.fn().mockResolvedValue({ results: mockListings })
       });
 
       const result = await ctx.client.findAllListingsActive();
@@ -144,7 +144,7 @@ describe('EtsyClient Listings', () => {
       const mockListings = [{ listing_id: 1, title: 'Test Listing' }];
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue({ results: mockListings })
+        json: vi.fn().mockResolvedValue({ results: mockListings })
       });
 
       const params = {
@@ -183,7 +183,7 @@ describe('EtsyClient Listings', () => {
       const mockListing = { listing_id: 789, ...listingParams };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockListing)
+        json: vi.fn().mockResolvedValue(mockListing)
       });
 
       const result = await ctx.client.createDraftListing('123', listingParams);
@@ -216,7 +216,7 @@ describe('EtsyClient Listings', () => {
       const mockListing = { listing_id: 789, ...listingParams };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockListing)
+        json: vi.fn().mockResolvedValue(mockListing)
       });
 
       const result = await ctx.client.createDraftListing('123', listingParams);
@@ -235,7 +235,7 @@ describe('EtsyClient Listings', () => {
       const mockListing = { listing_id: 789, ...updateParams };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockListing)
+        json: vi.fn().mockResolvedValue(mockListing)
       });
 
       const result = await ctx.client.updateListing('123', '789', updateParams);
@@ -254,7 +254,7 @@ describe('EtsyClient Listings', () => {
       const mockListing = { listing_id: 789, state: 'active' };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockListing)
+        json: vi.fn().mockResolvedValue(mockListing)
       });
 
       const result = await ctx.client.updateListing('123', '789', { state: 'active' });
@@ -291,7 +291,7 @@ describe('EtsyClient Listings', () => {
       const mockInventory = { products: inventoryParams.products };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockInventory)
+        json: vi.fn().mockResolvedValue(mockInventory)
       });
 
       const result = await ctx.client.updateListingInventory('789', inventoryParams);
@@ -313,7 +313,7 @@ describe('EtsyClient Listings', () => {
         const mockImage = { listing_image_id: 999, url_fullxfull: 'https://example.com/image.jpg' };
         ctx.mockFetch.mockResolvedValue({
           ok: true,
-          json: jest.fn().mockResolvedValue(mockImage)
+          json: vi.fn().mockResolvedValue(mockImage)
         });
 
         const blob = new Blob(['fake image data'], { type: 'image/jpeg' });
@@ -330,7 +330,7 @@ describe('EtsyClient Listings', () => {
         const mockImage = { listing_image_id: 999, alt_text: 'Test alt text' };
         ctx.mockFetch.mockResolvedValue({
           ok: true,
-          json: jest.fn().mockResolvedValue(mockImage)
+          json: vi.fn().mockResolvedValue(mockImage)
         });
 
         const blob = new Blob(['fake image data'], { type: 'image/jpeg' });
@@ -349,7 +349,7 @@ describe('EtsyClient Listings', () => {
         const mockImage = { listing_image_id: 999, url_fullxfull: 'https://example.com/image.jpg' };
         ctx.mockFetch.mockResolvedValue({
           ok: true,
-          json: jest.fn().mockResolvedValue(mockImage)
+          json: vi.fn().mockResolvedValue(mockImage)
         });
 
         const result = await ctx.client.getListingImage('789', '999');
@@ -386,7 +386,7 @@ describe('EtsyClient Listings', () => {
         };
         ctx.mockFetch.mockResolvedValue({
           ok: true,
-          json: jest.fn().mockResolvedValue(mockProperties)
+          json: vi.fn().mockResolvedValue(mockProperties)
         });
 
         const result = await ctx.client.getListingProperties('123', '789');
@@ -410,7 +410,7 @@ describe('EtsyClient Listings', () => {
         ctx.mockFetch.mockResolvedValue({
           ok: true,
           headers: new Headers(),
-          json: jest.fn().mockResolvedValue(mockProperty)
+          json: vi.fn().mockResolvedValue(mockProperty)
         });
 
         const result = await ctx.client.updateListingProperty({
@@ -447,7 +447,7 @@ describe('EtsyClient Listings', () => {
         ctx.mockFetch.mockResolvedValue({
           ok: true,
           headers: new Headers(),
-          json: jest.fn().mockResolvedValue(mockProperty)
+          json: vi.fn().mockResolvedValue(mockProperty)
         });
 
         const result = await ctx.client.updateListingProperty({
@@ -458,7 +458,7 @@ describe('EtsyClient Listings', () => {
           values: ['Abstract', 'Animals', 'Architecture']
         });
 
-        const callArgs = ctx.mockFetch.mock.calls[0];
+        const callArgs = ctx.mockFetch.mock.calls[0]!;
         const body = callArgs[1].body as string;
         expect(body).toContain('value_ids=1');
         expect(body).toContain('value_ids=60');
@@ -475,7 +475,7 @@ describe('EtsyClient Listings', () => {
           status: 400,
           statusText: 'Bad Request',
           headers: new Headers(),
-          text: jest.fn().mockResolvedValue('Invalid property value')
+          text: vi.fn().mockResolvedValue('Invalid property value')
         });
 
         await expect(ctx.client.updateListingProperty({
@@ -498,7 +498,7 @@ describe('EtsyClient Listings', () => {
       const mockListings = [{ listing_id: 1, title: 'Active Listing' }];
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue({ count: 1, results: mockListings })
+        json: vi.fn().mockResolvedValue({ count: 1, results: mockListings })
       });
 
       const result = await ctx.client.findAllActiveListingsByShop('456');
@@ -514,7 +514,7 @@ describe('EtsyClient Listings', () => {
       const mockListings = [{ listing_id: 1, title: 'Active Listing' }];
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue({ count: 1, results: mockListings })
+        json: vi.fn().mockResolvedValue({ count: 1, results: mockListings })
       });
 
       await ctx.client.findAllActiveListingsByShop('456', {
@@ -540,7 +540,7 @@ describe('EtsyClient Listings', () => {
       const mockListings = [{ listing_id: 1, title: 'Featured Listing' }];
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue({ count: 1, results: mockListings })
+        json: vi.fn().mockResolvedValue({ count: 1, results: mockListings })
       });
 
       const result = await ctx.client.getFeaturedListingsByShop('456');
@@ -561,7 +561,7 @@ describe('EtsyClient Listings', () => {
       ];
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue({ count: 2, results: mockListings })
+        json: vi.fn().mockResolvedValue({ count: 2, results: mockListings })
       });
 
       const result = await ctx.client.getListingsByListingIds({ listing_ids: [1, 2] });
@@ -577,7 +577,7 @@ describe('EtsyClient Listings', () => {
       const mockListings = [{ listing_id: 1, title: 'Listing 1' }];
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue({ count: 1, results: mockListings })
+        json: vi.fn().mockResolvedValue({ count: 1, results: mockListings })
       });
 
       await ctx.client.getListingsByListingIds({
@@ -597,7 +597,7 @@ describe('EtsyClient Listings', () => {
       const mockListings = [{ listing_id: 1, title: 'Receipt Listing' }];
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue({ count: 1, results: mockListings })
+        json: vi.fn().mockResolvedValue({ count: 1, results: mockListings })
       });
 
       const result = await ctx.client.getListingsByShopReceipt('123', '456');
@@ -615,7 +615,7 @@ describe('EtsyClient Listings', () => {
       const mockListings = [{ listing_id: 1, title: 'Section Listing' }];
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue({ count: 1, results: mockListings })
+        json: vi.fn().mockResolvedValue({ count: 1, results: mockListings })
       });
 
       const result = await ctx.client.getListingsByShopSectionId('123', {
@@ -635,7 +635,7 @@ describe('EtsyClient Listings', () => {
       const mockListings = [{ listing_id: 1, title: 'Policy Listing' }];
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue({ count: 1, results: mockListings })
+        json: vi.fn().mockResolvedValue({ count: 1, results: mockListings })
       });
 
       const result = await ctx.client.getListingsByShopReturnPolicy('123', '456');
@@ -653,7 +653,7 @@ describe('EtsyClient Listings', () => {
       const mockProperty = { property_id: 1, name: 'color', display_name: 'Color' };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockProperty)
+        json: vi.fn().mockResolvedValue(mockProperty)
       });
 
       const result = await ctx.client.getListingProperty('789', '1');
@@ -685,7 +685,7 @@ describe('EtsyClient Listings', () => {
       const mockProduct = { product_id: 1, sku: 'SKU-001', offerings: [] };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockProduct)
+        json: vi.fn().mockResolvedValue(mockProduct)
       });
 
       const result = await ctx.client.getListingProduct('789', '1');
@@ -709,7 +709,7 @@ describe('EtsyClient Listings', () => {
       };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockOffering)
+        json: vi.fn().mockResolvedValue(mockOffering)
       });
 
       const result = await ctx.client.getListingOffering('789', '1', '100');

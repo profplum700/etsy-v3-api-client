@@ -13,6 +13,9 @@ export default [
       "**/eslint.config.js",
       "**/jest.config.cjs",
       "**/rollup.config.js",
+      "**/vitest.config.ts",
+      "**/vitest.setup.ts",
+      "**/vitest.workspace.ts",
       "**/*.d.ts", // Ignore TypeScript declaration files
       "**/examples/**", // Ignore example applications
     ],
@@ -93,6 +96,8 @@ export default [
       globals: {
         ...globals.jest,
         ...globals.node,
+        // Vitest globals
+        vi: "readonly",
       },
     },
     plugins: {

@@ -8,7 +8,7 @@ describe('EtsyClient Listing Translations', () => {
   let ctx: MockClientContext;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     ctx = setupClientMocks();
   });
 
@@ -23,7 +23,7 @@ describe('EtsyClient Listing Translations', () => {
       };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockTranslation)
+        json: vi.fn().mockResolvedValue(mockTranslation)
       });
 
       const result = await ctx.client.createListingTranslation('123', '789', 'fr', {
@@ -52,7 +52,7 @@ describe('EtsyClient Listing Translations', () => {
       };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockTranslation)
+        json: vi.fn().mockResolvedValue(mockTranslation)
       });
 
       const result = await ctx.client.createListingTranslation('123', '789', 'de', {
@@ -82,7 +82,7 @@ describe('EtsyClient Listing Translations', () => {
       };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockTranslation)
+        json: vi.fn().mockResolvedValue(mockTranslation)
       });
 
       const result = await ctx.client.getListingTranslation('123', '789', 'fr');
@@ -106,7 +106,7 @@ describe('EtsyClient Listing Translations', () => {
       };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockTranslation)
+        json: vi.fn().mockResolvedValue(mockTranslation)
       });
 
       const result = await ctx.client.updateListingTranslation('123', '789', 'fr', {

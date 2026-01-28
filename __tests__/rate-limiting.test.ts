@@ -7,11 +7,11 @@ import { EtsyRateLimitError } from '../src/types';
 
 describe('EtsyRateLimiter', () => {
   beforeEach(() => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
   });
 
   afterEach(() => {
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   describe('constructor', () => {
@@ -75,7 +75,7 @@ describe('EtsyRateLimiter', () => {
       const waitPromise = rateLimiter.waitForRateLimit();
       
       // Fast-forward time to simulate waiting
-      jest.advanceTimersByTime(200);
+      vi.advanceTimersByTime(200);
       
       await waitPromise;
       
@@ -250,7 +250,7 @@ describe('EtsyRateLimiter', () => {
       expect(rateLimiter.canMakeRequest()).toBe(false);
       
       // Fast-forward time
-      jest.advanceTimersByTime(1000);
+      vi.advanceTimersByTime(1000);
       expect(rateLimiter.canMakeRequest()).toBe(true);
     });
   });
@@ -273,7 +273,7 @@ describe('EtsyRateLimiter', () => {
       expect(timeUntilNext).toBeLessThanOrEqual(1000);
       
       // Fast-forward time
-      jest.advanceTimersByTime(500);
+      vi.advanceTimersByTime(500);
       const timeUntilNext2 = rateLimiter.getTimeUntilNextRequest();
       expect(timeUntilNext2).toBeLessThan(timeUntilNext);
     });
@@ -286,7 +286,7 @@ describe('EtsyRateLimiter', () => {
       await rateLimiter.waitForRateLimit();
       
       // Fast-forward time beyond minimum interval
-      jest.advanceTimersByTime(500);
+      vi.advanceTimersByTime(500);
       
       expect(rateLimiter.getTimeUntilNextRequest()).toBe(0);
     });
@@ -324,7 +324,7 @@ describe('EtsyRateLimiter', () => {
       for (let i = 0; i < 5; i++) {
         promises.push(rateLimiter.waitForRateLimit());
         // Advance timers to allow the setTimeout to complete
-        jest.advanceTimersByTime(100);
+        vi.advanceTimersByTime(100);
       }
       await Promise.all(promises);
       
@@ -456,7 +456,7 @@ describe('EtsyRateLimiter', () => {
 
   describe('onApproachingLimit callback', () => {
     it('should fire callback when threshold exceeded', () => {
-      const mockCallback = jest.fn();
+      const mockCallback = vi.fn();
       const rateLimiter = new EtsyRateLimiter({
         qpdWarningThreshold: 80,
         onApproachingLimit: mockCallback
@@ -474,7 +474,7 @@ describe('EtsyRateLimiter', () => {
     });
 
     it('should not fire callback when under threshold', () => {
-      const mockCallback = jest.fn();
+      const mockCallback = vi.fn();
       const rateLimiter = new EtsyRateLimiter({
         qpdWarningThreshold: 80,
         onApproachingLimit: mockCallback
@@ -495,7 +495,7 @@ describe('EtsyRateLimiter', () => {
       const rateLimiter = new EtsyRateLimiter({
         qpdWarningThreshold: 80
       });
-      const mockCallback = jest.fn();
+      const mockCallback = vi.fn();
 
       rateLimiter.setApproachingLimitCallback(mockCallback);
 

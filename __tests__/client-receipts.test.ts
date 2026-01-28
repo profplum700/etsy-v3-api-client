@@ -8,7 +8,7 @@ describe('EtsyClient Receipts & Transactions', () => {
   let ctx: MockClientContext;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     ctx = setupClientMocks();
   });
 
@@ -23,7 +23,7 @@ describe('EtsyClient Receipts & Transactions', () => {
       };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockReceipts)
+        json: vi.fn().mockResolvedValue(mockReceipts)
       });
 
       const result = await ctx.client.getShopReceipts('123');
@@ -39,7 +39,7 @@ describe('EtsyClient Receipts & Transactions', () => {
       const mockReceipts = { count: 1, results: [{ receipt_id: 1, status: 'completed' }] };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockReceipts)
+        json: vi.fn().mockResolvedValue(mockReceipts)
       });
 
       const result = await ctx.client.getShopReceipts('123', {
@@ -61,7 +61,7 @@ describe('EtsyClient Receipts & Transactions', () => {
       const mockReceipt = { receipt_id: 1, status: 'completed' };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockReceipt)
+        json: vi.fn().mockResolvedValue(mockReceipt)
       });
 
       const result = await ctx.client.getShopReceipt('123', '1');
@@ -79,7 +79,7 @@ describe('EtsyClient Receipts & Transactions', () => {
       const mockReceipt = { receipt_id: 1, was_shipped: true };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockReceipt)
+        json: vi.fn().mockResolvedValue(mockReceipt)
       });
 
       const result = await ctx.client.updateShopReceipt('123', '1', { was_shipped: true });
@@ -106,7 +106,7 @@ describe('EtsyClient Receipts & Transactions', () => {
       };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockTransactions)
+        json: vi.fn().mockResolvedValue(mockTransactions)
       });
 
       const result = await ctx.client.getShopReceiptTransactions('123', '1');
@@ -124,7 +124,7 @@ describe('EtsyClient Receipts & Transactions', () => {
       const mockTransaction = { transaction_id: 1, title: 'Item 1' };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockTransaction)
+        json: vi.fn().mockResolvedValue(mockTransaction)
       });
 
       const result = await ctx.client.getShopTransaction('123', '1');
@@ -147,7 +147,7 @@ describe('EtsyClient Receipts & Transactions', () => {
         const mockShipment = { receipt_shipping_id: 1, ...shipmentParams };
         ctx.mockFetch.mockResolvedValue({
           ok: true,
-          json: jest.fn().mockResolvedValue(mockShipment)
+          json: vi.fn().mockResolvedValue(mockShipment)
         });
 
         const result = await ctx.client.createReceiptShipment('123', '456', shipmentParams);
@@ -172,7 +172,7 @@ describe('EtsyClient Receipts & Transactions', () => {
         const mockShipment = { receipt_shipping_id: 1, ...shipmentParams };
         ctx.mockFetch.mockResolvedValue({
           ok: true,
-          json: jest.fn().mockResolvedValue(mockShipment)
+          json: vi.fn().mockResolvedValue(mockShipment)
         });
 
         const result = await ctx.client.createReceiptShipment('123', '456', shipmentParams);
@@ -193,7 +193,7 @@ describe('EtsyClient Receipts & Transactions', () => {
       };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockTransactions)
+        json: vi.fn().mockResolvedValue(mockTransactions)
       });
 
       const result = await ctx.client.getShopReceiptTransactionsByListing('123', '789');
@@ -208,7 +208,7 @@ describe('EtsyClient Receipts & Transactions', () => {
     it('should get transactions by listing with pagination', async () => {
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue({ count: 0, results: [] })
+        json: vi.fn().mockResolvedValue({ count: 0, results: [] })
       });
 
       await ctx.client.getShopReceiptTransactionsByListing('123', '789', {
@@ -235,7 +235,7 @@ describe('EtsyClient Receipts & Transactions', () => {
       };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockTransactions)
+        json: vi.fn().mockResolvedValue(mockTransactions)
       });
 
       const result = await ctx.client.getShopReceiptTransactionsByShop('123');

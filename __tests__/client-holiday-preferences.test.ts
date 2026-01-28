@@ -8,7 +8,7 @@ describe('EtsyClient Holiday Preferences', () => {
   let ctx: MockClientContext;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     ctx = setupClientMocks();
   });
 
@@ -35,7 +35,7 @@ describe('EtsyClient Holiday Preferences', () => {
       };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockPreferences)
+        json: vi.fn().mockResolvedValue(mockPreferences)
       });
 
       const result = await ctx.client.getHolidayPreferences('123');
@@ -59,7 +59,7 @@ describe('EtsyClient Holiday Preferences', () => {
       };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockPreference)
+        json: vi.fn().mockResolvedValue(mockPreference)
       });
 
       const result = await ctx.client.updateHolidayPreferences('123', '1', {

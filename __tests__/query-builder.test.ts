@@ -2,6 +2,7 @@
  * Tests for Query Builder (Phase 2)
  */
 
+import { type Mocked } from 'vitest';
 import { EtsyClient } from '../src/client';
 import {
   ListingQueryBuilder,
@@ -12,16 +13,16 @@ import {
 import type { EtsyListing, EtsyShopReceipt } from '../src/types';
 
 // Mock EtsyClient
-jest.mock('../src/client');
+vi.mock('../src/client');
 
 describe('Query Builder', () => {
-  let mockClient: jest.Mocked<EtsyClient>;
+  let mockClient: Mocked<EtsyClient>;
 
   beforeEach(() => {
     mockClient = {
-      getListingsByShop: jest.fn(),
-      getShopReceipts: jest.fn(),
-      getShop: jest.fn()
+      getListingsByShop: vi.fn(),
+      getShopReceipts: vi.fn(),
+      getShop: vi.fn()
     } as any;
   });
 
@@ -213,7 +214,7 @@ describe('Query Builder', () => {
     });
 
     it('should support custom queries', async () => {
-      const customQuery = jest.fn().mockResolvedValue('custom result');
+      const customQuery = vi.fn().mockResolvedValue('custom result');
 
       const batch = new BatchQueryExecutor(mockClient);
       const results = await batch.custom(customQuery).execute();

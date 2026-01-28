@@ -66,7 +66,7 @@ describe('Token Rotation (Phase 5)', () => {
 
   describe('rotateToken', () => {
     it('should call onRotation callback when rotating', async () => {
-      const onRotation = jest.fn();
+      const onRotation = vi.fn();
 
       const rotationConfig: TokenRotationConfig = {
         enabled: true,
@@ -77,7 +77,7 @@ describe('Token Rotation (Phase 5)', () => {
       const manager = new TokenManager(mockConfig, undefined, rotationConfig);
 
       // Mock the refresh method
-      const mockRefreshToken = jest.spyOn(manager as any, 'performTokenRefresh');
+      const mockRefreshToken = vi.spyOn(manager as any, 'performTokenRefresh');
       mockRefreshToken.mockResolvedValue({
         access_token: 'new-access-token',
         refresh_token: 'new-refresh-token',
@@ -102,7 +102,7 @@ describe('Token Rotation (Phase 5)', () => {
     });
 
     it('should handle async onRotation callback', async () => {
-      const onRotation = jest.fn().mockImplementation(async () => {
+      const onRotation = vi.fn().mockImplementation(async () => {
         await new Promise(resolve => setTimeout(resolve, 10));
       });
 
@@ -115,7 +115,7 @@ describe('Token Rotation (Phase 5)', () => {
       const manager = new TokenManager(mockConfig, undefined, rotationConfig);
 
       // Mock the refresh method
-      const mockRefreshToken = jest.spyOn(manager as any, 'performTokenRefresh');
+      const mockRefreshToken = vi.spyOn(manager as any, 'performTokenRefresh');
       mockRefreshToken.mockResolvedValue({
         access_token: 'new-access-token',
         refresh_token: 'new-refresh-token',
@@ -132,7 +132,7 @@ describe('Token Rotation (Phase 5)', () => {
     });
 
     it('should continue even if onRotation callback fails', async () => {
-      const onRotation = jest.fn().mockRejectedValue(new Error('Callback error'));
+      const onRotation = vi.fn().mockRejectedValue(new Error('Callback error'));
 
       const rotationConfig: TokenRotationConfig = {
         enabled: true,
@@ -143,7 +143,7 @@ describe('Token Rotation (Phase 5)', () => {
       const manager = new TokenManager(mockConfig, undefined, rotationConfig);
 
       // Mock the refresh method
-      const mockRefreshToken = jest.spyOn(manager as any, 'performTokenRefresh');
+      const mockRefreshToken = vi.spyOn(manager as any, 'performTokenRefresh');
       mockRefreshToken.mockResolvedValue({
         access_token: 'new-access-token',
         refresh_token: 'new-refresh-token',
@@ -179,7 +179,7 @@ describe('Token Rotation (Phase 5)', () => {
     it('should start scheduler when auto-schedule is enabled', () => {
       const manager = new TokenManager(mockConfig);
 
-      const startSpy = jest.spyOn(manager, 'startRotationScheduler');
+      const startSpy = vi.spyOn(manager, 'startRotationScheduler');
 
       const config: TokenRotationConfig = {
         enabled: true,
@@ -204,7 +204,7 @@ describe('Token Rotation (Phase 5)', () => {
 
       const manager = new TokenManager(mockConfig, undefined, rotationConfig);
 
-      const stopSpy = jest.spyOn(manager, 'stopRotationScheduler');
+      const stopSpy = vi.spyOn(manager, 'stopRotationScheduler');
 
       const newConfig: TokenRotationConfig = {
         enabled: false,
@@ -222,11 +222,11 @@ describe('Token Rotation (Phase 5)', () => {
 
   describe('rotation scheduler', () => {
     beforeEach(() => {
-      jest.useFakeTimers();
+      vi.useFakeTimers();
     });
 
     afterEach(() => {
-      jest.useRealTimers();
+      vi.useRealTimers();
     });
 
     it('should start rotation scheduler with autoSchedule', () => {
@@ -251,7 +251,7 @@ describe('Token Rotation (Phase 5)', () => {
         expiresAt: new Date(Date.now() + 10 * 60 * 1000) // 10 minutes from now
       };
 
-      const onRotation = jest.fn();
+      const onRotation = vi.fn();
 
       const rotationConfig: TokenRotationConfig = {
         enabled: true,
@@ -264,7 +264,7 @@ describe('Token Rotation (Phase 5)', () => {
       const manager = new TokenManager(expiringConfig, undefined, rotationConfig);
 
       // Mock the refresh method
-      const mockRefreshToken = jest.spyOn(manager as any, 'performTokenRefresh');
+      const mockRefreshToken = vi.spyOn(manager as any, 'performTokenRefresh');
       mockRefreshToken.mockResolvedValue({
         access_token: 'new-access-token',
         refresh_token: 'new-refresh-token',
@@ -274,7 +274,7 @@ describe('Token Rotation (Phase 5)', () => {
       } as EtsyTokens);
 
       // Fast-forward time
-      jest.advanceTimersByTime(1000);
+      vi.advanceTimersByTime(1000);
 
       // Clean up
       manager.stopRotationScheduler();
@@ -300,7 +300,7 @@ describe('Token Rotation (Phase 5)', () => {
   describe('integration with storage', () => {
     it('should save rotated tokens to storage', async () => {
       const storage = new MemoryTokenStorage();
-      const onRotation = jest.fn();
+      const onRotation = vi.fn();
 
       const rotationConfig: TokenRotationConfig = {
         enabled: true,
@@ -311,7 +311,7 @@ describe('Token Rotation (Phase 5)', () => {
       const manager = new TokenManager(mockConfig, storage, rotationConfig);
 
       // Mock the refresh method
-      const mockRefreshToken = jest.spyOn(manager as any, 'performTokenRefresh');
+      const mockRefreshToken = vi.spyOn(manager as any, 'performTokenRefresh');
       mockRefreshToken.mockResolvedValue({
         access_token: 'new-access-token',
         refresh_token: 'new-refresh-token',

@@ -7,27 +7,42 @@ import { EtsyClient } from '../src/client';
 import { AuthHelper } from '../src/auth/auth-helper';
 import { TokenManager, MemoryTokenStorage } from '../src/auth/token-manager';
 import { EtsyApiError, EtsyAuthError, EtsyRateLimitError } from '../src/types';
+import { vi, type Mock } from 'vitest';
+
+// Save real process for Vitest compatibility — Vitest's error handler needs process.listeners()
+const _savedProcess = globalThis.process;
+/** Creates a process stub without versions/version so isNode detection returns false */
+function createNonNodeProcess() {
+  return {
+    listeners: _savedProcess.listeners.bind(_savedProcess),
+    on: _savedProcess.on.bind(_savedProcess),
+    off: _savedProcess.off.bind(_savedProcess),
+    removeListener: _savedProcess.removeListener.bind(_savedProcess),
+    emit: _savedProcess.emit.bind(_savedProcess),
+    env: {},
+  };
+}
 
 // Mock crypto module
-jest.mock('crypto', () => ({
-  createHash: jest.fn(),
-  randomBytes: jest.fn()
+vi.mock('crypto', () => ({
+  createHash: vi.fn(),
+  randomBytes: vi.fn()
 }));
 
 // Mock the crypto utils to return predictable values
-jest.mock('../src/utils/crypto', () => ({
-  generateState: jest.fn().mockResolvedValue('mock-state-123'),
-  generateCodeVerifier: jest.fn().mockResolvedValue('mock-code-verifier-123'),
-  createCodeChallenge: jest.fn().mockResolvedValue('mock-code-challenge-123')
+vi.mock('../src/utils/crypto', () => ({
+  generateState: vi.fn().mockResolvedValue('mock-state-123'),
+  generateCodeVerifier: vi.fn().mockResolvedValue('mock-code-verifier-123'),
+  createCodeChallenge: vi.fn().mockResolvedValue('mock-code-challenge-123')
 }));
 
 describe('Integration Tests', () => {
-  let mockFetch: jest.Mock;
+  let mockFetch: Mock;
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    mockFetch = jest.fn();
-    (global as unknown as { fetch: jest.Mock }).fetch = mockFetch;
+    vi.clearAllMocks();
+    mockFetch = vi.fn();
+    (global as unknown as { fetch: Mock }).fetch = mockFetch;
   });
 
   describe('Authentication Flow Integration', () => {
@@ -48,7 +63,7 @@ describe('Integration Tests', () => {
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: jest.fn().mockResolvedValue({
+        json: vi.fn().mockResolvedValue({
           access_token: 'test-access-token',
           refresh_token: 'test-refresh-token',
           expires_in: 3600,
@@ -71,7 +86,7 @@ describe('Integration Tests', () => {
       // Step 4: Use client to make API calls
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: jest.fn().mockResolvedValue({
+        json: vi.fn().mockResolvedValue({
           user_id: 123,
           login_name: 'testuser',
           shop_id: 456
@@ -96,7 +111,7 @@ describe('Integration Tests', () => {
       // Mock token refresh response
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: jest.fn().mockResolvedValue({
+        json: vi.fn().mockResolvedValue({
           access_token: 'new-access-token',
           refresh_token: 'new-refresh-token',
           expires_in: 3600,
@@ -108,7 +123,7 @@ describe('Integration Tests', () => {
       // Mock API call after token refresh
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: jest.fn().mockResolvedValue({
+        json: vi.fn().mockResolvedValue({
           user_id: 123,
           login_name: 'testuser'
         })
@@ -125,8 +140,8 @@ describe('Integration Tests', () => {
   describe('Rate Limiting Integration', () => {
     it('should enforce rate limits during API calls', async () => {
       // Setup fresh mock for this test
-      const testMockFetch = jest.fn();
-      (global as unknown as { fetch: jest.Mock }).fetch = testMockFetch;
+      const testMockFetch = vi.fn();
+      (global as unknown as { fetch: Mock }).fetch = testMockFetch;
       
       const client = new EtsyClient({
         keystring: 'test-api-key',
@@ -147,7 +162,7 @@ describe('Integration Tests', () => {
       // Mock successful responses
       testMockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue({ user_id: 123 })
+        json: vi.fn().mockResolvedValue({ user_id: 123 })
       });
 
       // Make requests within the daily limit
@@ -164,8 +179,8 @@ describe('Integration Tests', () => {
 
     it('should throw rate limit error when daily limit exceeded', async () => {
       // Setup fresh mock for this test
-      const testMockFetch = jest.fn();
-      (global as unknown as { fetch: jest.Mock }).fetch = testMockFetch;
+      const testMockFetch = vi.fn();
+      (global as unknown as { fetch: Mock }).fetch = testMockFetch;
       
       const client = new EtsyClient({
         keystring: 'test-api-key',
@@ -184,7 +199,7 @@ describe('Integration Tests', () => {
 
       testMockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue({ user_id: 123 })
+        json: vi.fn().mockResolvedValue({ user_id: 123 })
       });
 
       // First request should succeed
@@ -214,7 +229,7 @@ describe('Integration Tests', () => {
       // Mock token refresh
       mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue({
+        json: vi.fn().mockResolvedValue({
           access_token: 'new-access-token',
           refresh_token: 'new-refresh-token',
           expires_in: 3600,
@@ -251,7 +266,7 @@ describe('Integration Tests', () => {
         ok: false,
         status: 404,
         statusText: 'Not Found',
-        text: jest.fn().mockResolvedValue('User not found')
+        text: vi.fn().mockResolvedValue('User not found')
       });
 
       await expect(client.getUser()).rejects.toThrow(EtsyApiError);
@@ -271,7 +286,7 @@ describe('Integration Tests', () => {
         ok: false,
         status: 401,
         statusText: 'Unauthorized',
-        text: jest.fn().mockResolvedValue('Invalid refresh token')
+        text: vi.fn().mockResolvedValue('Invalid refresh token')
       });
 
       await expect(client.getUser()).rejects.toThrow(EtsyAuthError);
@@ -315,7 +330,7 @@ describe('Integration Tests', () => {
       // Mock API response
       mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockUser)
+        json: vi.fn().mockResolvedValue(mockUser)
       });
 
       // First call - should hit API
@@ -349,7 +364,7 @@ describe('Integration Tests', () => {
       
       mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockUser)
+        json: vi.fn().mockResolvedValue(mockUser)
       });
 
       // First call
@@ -379,7 +394,7 @@ describe('Integration Tests', () => {
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: jest.fn().mockResolvedValue({
+        json: vi.fn().mockResolvedValue({
           access_token: 'test-access-token',
           refresh_token: 'test-refresh-token',
           expires_in: 3600,
@@ -405,7 +420,7 @@ describe('Integration Tests', () => {
       // Step 3: Fetch user and shop
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: jest.fn().mockResolvedValue({
+        json: vi.fn().mockResolvedValue({
           user_id: 123,
           shop_id: 456
         })
@@ -416,7 +431,7 @@ describe('Integration Tests', () => {
       // Step 4: Fetch listings
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: jest.fn().mockResolvedValue({
+        json: vi.fn().mockResolvedValue({
           results: [{
             listing_id: 789,
             title: 'Vintage Botanical Print',
@@ -464,7 +479,7 @@ describe('Integration Tests', () => {
       if (originalProcess !== undefined) {
         (global as any).process = originalProcess;
       } else {
-        delete (global as any).process;
+        Object.defineProperty(global, 'process', { value: createNonNodeProcess(), writable: true, configurable: true });
       }
       if (originalWindow !== undefined) {
         (global as any).window = originalWindow;
@@ -490,7 +505,7 @@ describe('Integration Tests', () => {
 
     const setupBrowserEnvironment = () => {
       // Clear Node.js environment
-      delete (global as any).process;
+      Object.defineProperty(global, 'process', { value: createNonNodeProcess(), writable: true, configurable: true });
       
       // Setup browser environment
       Object.defineProperty(global, 'window', {
@@ -502,14 +517,14 @@ describe('Integration Tests', () => {
       // Mock Web Crypto API
       Object.defineProperty(global, 'crypto', {
         value: {
-          getRandomValues: jest.fn((array: Uint8Array) => {
+          getRandomValues: vi.fn((array: Uint8Array) => {
             for (let i = 0; i < array.length; i++) {
               array[i] = i % 256;
             }
             return array;
           }),
           subtle: {
-            digest: jest.fn(async (algorithm: string, data: Uint8Array) => {
+            digest: vi.fn(async (algorithm: string, data: Uint8Array) => {
               const hash = new Uint8Array(32);
               for (let i = 0; i < 32; i++) {
                 hash[i] = (data[0] || 0) + i;
@@ -524,10 +539,10 @@ describe('Integration Tests', () => {
 
       // Mock browser storage
       const mockStorage = {
-        getItem: jest.fn(() => null),
-        setItem: jest.fn(),
-        removeItem: jest.fn(),
-        clear: jest.fn(),
+        getItem: vi.fn(() => null),
+        setItem: vi.fn(),
+        removeItem: vi.fn(),
+        clear: vi.fn(),
       };
 
       Object.defineProperty(global, 'localStorage', {
@@ -571,10 +586,10 @@ describe('Integration Tests', () => {
       setupBrowserEnvironment();
       
       // Reset modules to get fresh imports with browser environment
-      jest.resetModules();
-      const { EtsyClient } = require('../src/client');
-      const { AuthHelper } = require('../src/auth/auth-helper');
-      const { LocalStorageTokenStorage } = require('../src/auth/token-manager');
+      vi.resetModules();
+      const { EtsyClient } = await import('../src/client');
+      const { AuthHelper } = await import('../src/auth/auth-helper');
+      const { LocalStorageTokenStorage } = await import('../src/auth/token-manager');
 
       // Step 1: Authentication in browser
       const authHelper = new AuthHelper({
@@ -592,7 +607,7 @@ describe('Integration Tests', () => {
       // Mock token exchange
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: jest.fn().mockResolvedValue({
+        json: vi.fn().mockResolvedValue({
           access_token: 'browser-access-token',
           refresh_token: 'browser-refresh-token',
           expires_in: 3600,
@@ -606,6 +621,7 @@ describe('Integration Tests', () => {
 
       // Step 2: Create client with localStorage storage
       const storage = new LocalStorageTokenStorage();
+      expect(storage).toBeInstanceOf(LocalStorageTokenStorage);
       const client = new EtsyClient({
         keystring: 'test-api-key',
         accessToken: tokens.access_token,
@@ -615,12 +631,12 @@ describe('Integration Tests', () => {
           enabled: true,
           minRequestInterval: 0
         }
-      }, storage);
+      });
 
       // Step 3: Make API call
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: jest.fn().mockResolvedValue({
+        json: vi.fn().mockResolvedValue({
           user_id: 999,
           login_name: 'browseruser',
           shop_id: 888
@@ -645,14 +661,14 @@ describe('Integration Tests', () => {
       const mockSessionStorage: { [key: string]: string } = {};
       Object.defineProperty(global, 'sessionStorage', {
         value: {
-          getItem: jest.fn((key: string) => mockSessionStorage[key] || null),
-          setItem: jest.fn((key: string, value: string) => {
+          getItem: vi.fn((key: string) => mockSessionStorage[key] || null),
+          setItem: vi.fn((key: string, value: string) => {
             mockSessionStorage[key] = value;
           }),
-          removeItem: jest.fn((key: string) => {
+          removeItem: vi.fn((key: string) => {
             delete mockSessionStorage[key];
           }),
-          clear: jest.fn(() => {
+          clear: vi.fn(() => {
             Object.keys(mockSessionStorage).forEach(key => delete mockSessionStorage[key]);
           }),
         },
@@ -660,8 +676,8 @@ describe('Integration Tests', () => {
         configurable: true,
       });
       
-      jest.resetModules();
-      const { createDefaultTokenStorage, SessionStorageTokenStorage } = require('../src/auth/token-manager');
+      vi.resetModules();
+      const { createDefaultTokenStorage, SessionStorageTokenStorage } = await import('../src/auth/token-manager');
 
       const storage = createDefaultTokenStorage();
       expect(storage).toBeInstanceOf(SessionStorageTokenStorage);
@@ -689,8 +705,8 @@ describe('Integration Tests', () => {
       delete (global as any).localStorage;
       delete (global as any).sessionStorage;
       
-      jest.resetModules();
-      const { createDefaultTokenStorage, MemoryTokenStorage } = require('../src/auth/token-manager');
+      vi.resetModules();
+      const { createDefaultTokenStorage, MemoryTokenStorage } = await import('../src/auth/token-manager');
 
       const storage = createDefaultTokenStorage();
       expect(storage).toBeInstanceOf(MemoryTokenStorage);
@@ -712,9 +728,9 @@ describe('Integration Tests', () => {
     it('should handle crypto operations in browser environment', async () => {
       setupBrowserEnvironment();
       
-      jest.resetModules();
-      const { AuthHelper } = require('../src/auth/auth-helper');
-      const { createCodeChallenge } = require('../src/utils/crypto');
+      vi.resetModules();
+      const { AuthHelper } = await import('../src/auth/auth-helper');
+      const { createCodeChallenge } = await import('../src/utils/crypto');
 
       // Test that crypto operations work by creating an AuthHelper
       // This will internally use the crypto functions with our browser environment
@@ -747,19 +763,19 @@ describe('Integration Tests', () => {
       // Mock storage quota exceeded error
       Object.defineProperty(global, 'localStorage', {
         value: {
-          setItem: jest.fn(() => {
+          setItem: vi.fn(() => {
             throw new Error('QuotaExceededError: localStorage quota exceeded');
           }),
-          getItem: jest.fn(() => null),
-          removeItem: jest.fn(),
-          clear: jest.fn(),
+          getItem: vi.fn(() => null),
+          removeItem: vi.fn(),
+          clear: vi.fn(),
         },
         writable: true,
         configurable: true,
       });
 
-      jest.resetModules();
-      const { LocalStorageTokenStorage } = require('../src/auth/token-manager');
+      vi.resetModules();
+      const { LocalStorageTokenStorage } = await import('../src/auth/token-manager');
 
       const storage = new LocalStorageTokenStorage();
       const mockTokens = {
@@ -776,7 +792,7 @@ describe('Integration Tests', () => {
 
     it('should work in Web Worker environment', async () => {
       // Clean up all environment indicators
-      delete (global as any).process;
+      Object.defineProperty(global, 'process', { value: createNonNodeProcess(), writable: true, configurable: true });
       delete (global as any).window;
       delete (global as any).localStorage;
       delete (global as any).sessionStorage;
@@ -785,7 +801,7 @@ describe('Integration Tests', () => {
       
       // Setup Web Worker environment
       Object.defineProperty(globalThis, 'importScripts', {
-        value: jest.fn(),
+        value: vi.fn(),
         writable: true,
         configurable: true,
       });
@@ -799,23 +815,23 @@ describe('Integration Tests', () => {
       // Mock Web Crypto API (available in Web Workers)
       Object.defineProperty(global, 'crypto', {
         value: {
-          getRandomValues: jest.fn((array: Uint8Array) => {
+          getRandomValues: vi.fn((array: Uint8Array) => {
             for (let i = 0; i < array.length; i++) {
               array[i] = i % 256;
             }
             return array;
           }),
           subtle: {
-            digest: jest.fn(async () => new ArrayBuffer(32))
+            digest: vi.fn(async () => new ArrayBuffer(32))
           }
         },
         writable: true,
         configurable: true,
       });
 
-      jest.resetModules();
-      const { createDefaultTokenStorage, MemoryTokenStorage } = require('../src/auth/token-manager');
-      const { getEnvironmentInfo } = require('../src/utils/environment');
+      vi.resetModules();
+      const { createDefaultTokenStorage, MemoryTokenStorage } = await import('../src/auth/token-manager');
+      const { getEnvironmentInfo } = await import('../src/utils/environment');
 
       // Should detect Web Worker environment
       const envInfo = getEnvironmentInfo();

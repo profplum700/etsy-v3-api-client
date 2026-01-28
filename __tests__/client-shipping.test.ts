@@ -8,7 +8,7 @@ describe('EtsyClient Shipping Profiles', () => {
   let ctx: MockClientContext;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     ctx = setupClientMocks();
   });
 
@@ -23,7 +23,7 @@ describe('EtsyClient Shipping Profiles', () => {
       };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockProfiles)
+        json: vi.fn().mockResolvedValue(mockProfiles)
       });
 
       const result = await ctx.client.getShopShippingProfiles('123');
@@ -49,7 +49,7 @@ describe('EtsyClient Shipping Profiles', () => {
       const mockProfile = { shipping_profile_id: 1, ...profileParams };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockProfile)
+        json: vi.fn().mockResolvedValue(mockProfile)
       });
 
       const result = await ctx.client.createShopShippingProfile('123', profileParams);
@@ -71,7 +71,7 @@ describe('EtsyClient Shipping Profiles', () => {
       const mockProfile = { shipping_profile_id: 1, title: 'Updated Title' };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockProfile)
+        json: vi.fn().mockResolvedValue(mockProfile)
       });
 
       const result = await ctx.client.updateShopShippingProfile('123', '1', {
@@ -111,7 +111,7 @@ describe('EtsyClient Shipping Profiles', () => {
       };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockDestinations)
+        json: vi.fn().mockResolvedValue(mockDestinations)
       });
 
       const result = await ctx.client.getShopShippingProfileDestinations('123', '1');
@@ -132,7 +132,7 @@ describe('EtsyClient Shipping Profiles', () => {
       const mockDest = { shipping_profile_destination_id: 1, ...destParams };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockDest)
+        json: vi.fn().mockResolvedValue(mockDest)
       });
 
       const result = await ctx.client.createShopShippingProfileDestination('123', '1', destParams);
@@ -168,7 +168,7 @@ describe('EtsyClient Shipping Profiles', () => {
       };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockUpgrades)
+        json: vi.fn().mockResolvedValue(mockUpgrades)
       });
 
       const result = await ctx.client.getShopShippingProfileUpgrades('123', '1');
@@ -192,7 +192,7 @@ describe('EtsyClient Shipping Profiles', () => {
       const mockUpgrade = { upgrade_id: 1, ...upgradeParams };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockUpgrade)
+        json: vi.fn().mockResolvedValue(mockUpgrade)
       });
 
       const result = await ctx.client.createShopShippingProfileUpgrade('123', '1', upgradeParams);
@@ -213,7 +213,7 @@ describe('EtsyClient Shipping Profiles', () => {
       const mockUpgrade = { upgrade_id: 1, upgrade_name: 'Priority Shipping' };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockUpgrade)
+        json: vi.fn().mockResolvedValue(mockUpgrade)
       });
 
       const result = await ctx.client.updateShopShippingProfileUpgrade('123', '1', '1', {
@@ -257,7 +257,7 @@ describe('EtsyClient Shipping Profiles', () => {
       };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockCarriers)
+        json: vi.fn().mockResolvedValue(mockCarriers)
       });
 
       const result = await ctx.client.getShippingCarriers('US');

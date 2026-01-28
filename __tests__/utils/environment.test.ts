@@ -1,6 +1,21 @@
 /**
  * Tests for environment detection utilities
  */
+export {};
+
+// Save real process for Vitest compatibility — Vitest's error handler needs process.listeners()
+const _savedProcess = globalThis.process;
+/** Creates a process stub without versions/version so isNode detection returns false */
+function createNonNodeProcess() {
+  return {
+    listeners: _savedProcess.listeners.bind(_savedProcess),
+    on: _savedProcess.on.bind(_savedProcess),
+    off: _savedProcess.off.bind(_savedProcess),
+    removeListener: _savedProcess.removeListener.bind(_savedProcess),
+    emit: _savedProcess.emit.bind(_savedProcess),
+    env: {},
+  };
+}
 
 describe('Environment Detection', () => {
   let originalProcess: any;
@@ -29,7 +44,7 @@ describe('Environment Detection', () => {
     if (originalProcess !== undefined) {
       (global as any).process = originalProcess;
     } else {
-      delete (global as any).process;
+      Object.defineProperty(global, 'process', { value: createNonNodeProcess(), writable: true, configurable: true });
     }
     if (originalWindow !== undefined) {
       (global as any).window = originalWindow;
@@ -69,7 +84,7 @@ describe('Environment Detection', () => {
   });
 
   const mockBrowserEnvironment = () => {
-    delete (global as any).process;
+    Object.defineProperty(global, 'process', { value: createNonNodeProcess(), writable: true, configurable: true });
     Object.defineProperty(global, 'window', {
       value: { document: {} },
       writable: true,
@@ -86,26 +101,26 @@ describe('Environment Detection', () => {
       configurable: true,
     });
     Object.defineProperty(global, 'fetch', {
-      value: jest.fn(),
+      value: vi.fn(),
       writable: true,
       configurable: true,
     });
     Object.defineProperty(global, 'localStorage', {
       value: {
-        getItem: jest.fn(),
-        setItem: jest.fn(),
-        removeItem: jest.fn(),
-        clear: jest.fn(),
+        getItem: vi.fn(),
+        setItem: vi.fn(),
+        removeItem: vi.fn(),
+        clear: vi.fn(),
       },
       writable: true,
       configurable: true,
     });
     Object.defineProperty(global, 'sessionStorage', {
       value: {
-        getItem: jest.fn(),
-        setItem: jest.fn(),
-        removeItem: jest.fn(),
-        clear: jest.fn(),
+        getItem: vi.fn(),
+        setItem: vi.fn(),
+        removeItem: vi.fn(),
+        clear: vi.fn(),
       },
       writable: true,
       configurable: true,
@@ -133,10 +148,10 @@ describe('Environment Detection', () => {
 
   const mockWebWorkerEnvironment = () => {
     delete (global as any).window;
-    delete (global as any).process;
+    Object.defineProperty(global, 'process', { value: createNonNodeProcess(), writable: true, configurable: true });
     
     Object.defineProperty(globalThis, 'importScripts', {
-      value: jest.fn(),
+      value: vi.fn(),
       writable: true,
       configurable: true,
     });
@@ -154,7 +169,7 @@ describe('Environment Detection', () => {
 
   const mockUnsupportedEnvironment = () => {
     delete (global as any).window;
-    delete (global as any).process;
+    Object.defineProperty(global, 'process', { value: createNonNodeProcess(), writable: true, configurable: true });
     delete (global as any).navigator;
     delete (global as any).crypto;
     delete (global as any).fetch;
@@ -167,28 +182,28 @@ describe('Environment Detection', () => {
     beforeEach(() => {
       mockBrowserEnvironment();
       // Force re-evaluation by requiring fresh module
-      jest.resetModules();
+      vi.resetModules();
     });
 
-    it('should detect browser environment correctly', () => {
-      const env = require('../../src/utils/environment');
+    it('should detect browser environment correctly', async () => {
+      const env = await import('../../src/utils/environment');
       expect(env.isBrowser).toBe(true);
       expect(env.isNode).toBe(false);
       expect(env.isWebWorker).toBe(false);
     });
 
-    it('should detect browser features correctly', () => {
-      const env = require('../../src/utils/environment');
+    it('should detect browser features correctly', async () => {
+      const env = await import('../../src/utils/environment');
       expect(env.hasFetch).toBe(true);
       expect(env.hasWebCrypto).toBe(true);
       expect(env.hasLocalStorage).toBe(true);
       expect(env.hasSessionStorage).toBe(true);
     });
 
-    it('should return correct environment info', () => {
-      const env = require('../../src/utils/environment');
+    it('should return correct environment info', async () => {
+      const env = await import('../../src/utils/environment');
       const info = env.getEnvironmentInfo();
-      
+
       expect(info).toEqual({
         isBrowser: true,
         isNode: false,
@@ -202,8 +217,8 @@ describe('Environment Detection', () => {
       });
     });
 
-    it('should return localStorage as available storage', () => {
-      const env = require('../../src/utils/environment');
+    it('should return localStorage as available storage', async () => {
+      const env = await import('../../src/utils/environment');
       expect(env.getAvailableStorage()).toBe('localStorage');
     });
   });
@@ -211,28 +226,28 @@ describe('Environment Detection', () => {
   describe('Node.js Environment Detection', () => {
     beforeEach(() => {
       mockNodeEnvironment();
-      jest.resetModules();
+      vi.resetModules();
     });
 
-    it('should detect Node.js environment correctly', () => {
-      const env = require('../../src/utils/environment');
+    it('should detect Node.js environment correctly', async () => {
+      const env = await import('../../src/utils/environment');
       expect(env.isBrowser).toBe(false);
       expect(env.isNode).toBe(true);
       expect(env.isWebWorker).toBe(false);
     });
 
-    it('should detect missing browser features', () => {
-      const env = require('../../src/utils/environment');
+    it('should detect missing browser features', async () => {
+      const env = await import('../../src/utils/environment');
       expect(env.hasFetch).toBe(false);
       expect(env.hasWebCrypto).toBe(false);
       expect(env.hasLocalStorage).toBe(false);
       expect(env.hasSessionStorage).toBe(false);
     });
 
-    it('should return correct environment info', () => {
-      const env = require('../../src/utils/environment');
+    it('should return correct environment info', async () => {
+      const env = await import('../../src/utils/environment');
       const info = env.getEnvironmentInfo();
-      
+
       expect(info).toEqual({
         isBrowser: false,
         isNode: true,
@@ -246,8 +261,8 @@ describe('Environment Detection', () => {
       });
     });
 
-    it('should return file as available storage', () => {
-      const env = require('../../src/utils/environment');
+    it('should return file as available storage', async () => {
+      const env = await import('../../src/utils/environment');
       expect(env.getAvailableStorage()).toBe('file');
     });
   });
@@ -255,25 +270,25 @@ describe('Environment Detection', () => {
   describe('Web Worker Environment Detection', () => {
     beforeEach(() => {
       mockWebWorkerEnvironment();
-      jest.resetModules();
+      vi.resetModules();
     });
 
-    it('should detect Web Worker environment correctly', () => {
-      const env = require('../../src/utils/environment');
+    it('should detect Web Worker environment correctly', async () => {
+      const env = await import('../../src/utils/environment');
       expect(env.isBrowser).toBe(false);
       expect(env.isNode).toBe(false);
       expect(env.isWebWorker).toBe(true);
     });
 
-    it('should detect available features in Web Worker', () => {
-      const env = require('../../src/utils/environment');
+    it('should detect available features in Web Worker', async () => {
+      const env = await import('../../src/utils/environment');
       expect(env.hasWebCrypto).toBe(true);
       expect(env.hasLocalStorage).toBe(false);
       expect(env.hasSessionStorage).toBe(false);
     });
 
-    it('should return memory as available storage', () => {
-      const env = require('../../src/utils/environment');
+    it('should return memory as available storage', async () => {
+      const env = await import('../../src/utils/environment');
       expect(env.getAvailableStorage()).toBe('memory');
     });
   });
@@ -281,34 +296,34 @@ describe('Environment Detection', () => {
   describe('Unsupported Environment', () => {
     beforeEach(() => {
       mockUnsupportedEnvironment();
-      jest.resetModules();
+      vi.resetModules();
     });
 
-    it('should detect no supported environment', () => {
-      const env = require('../../src/utils/environment');
+    it('should detect no supported environment', async () => {
+      const env = await import('../../src/utils/environment');
       expect(env.isBrowser).toBe(false);
       expect(env.isNode).toBe(false);
       expect(env.isWebWorker).toBe(false);
     });
 
-    it('should detect no available features', () => {
-      const env = require('../../src/utils/environment');
+    it('should detect no available features', async () => {
+      const env = await import('../../src/utils/environment');
       expect(env.hasFetch).toBe(false);
       expect(env.hasWebCrypto).toBe(false);
       expect(env.hasLocalStorage).toBe(false);
       expect(env.hasSessionStorage).toBe(false);
     });
 
-    it('should return memory as fallback storage', () => {
-      const env = require('../../src/utils/environment');
+    it('should return memory as fallback storage', async () => {
+      const env = await import('../../src/utils/environment');
       expect(env.getAvailableStorage()).toBe('memory');
     });
   });
 
   describe('Storage Detection Edge Cases', () => {
-    it('should handle localStorage access errors', () => {
+    it('should handle localStorage access errors', async () => {
       mockBrowserEnvironment();
-      
+
       // Mock localStorage to throw on access
       Object.defineProperty(global, 'localStorage', {
         get: () => {
@@ -316,15 +331,15 @@ describe('Environment Detection', () => {
         },
         configurable: true,
       });
-      
-      jest.resetModules();
-      const env = require('../../src/utils/environment');
+
+      vi.resetModules();
+      const env = await import('../../src/utils/environment');
       expect(env.hasLocalStorage).toBe(false);
     });
 
-    it('should handle sessionStorage access errors', () => {
+    it('should handle sessionStorage access errors', async () => {
       mockBrowserEnvironment();
-      
+
       // Mock sessionStorage to throw on access
       Object.defineProperty(global, 'sessionStorage', {
         get: () => {
@@ -332,66 +347,66 @@ describe('Environment Detection', () => {
         },
         configurable: true,
       });
-      
-      jest.resetModules();
-      const env = require('../../src/utils/environment');
+
+      vi.resetModules();
+      const env = await import('../../src/utils/environment');
       expect(env.hasSessionStorage).toBe(false);
     });
 
-    it('should fallback to sessionStorage when localStorage unavailable', () => {
+    it('should fallback to sessionStorage when localStorage unavailable', async () => {
       mockBrowserEnvironment();
       delete (global as any).localStorage;
-      
-      jest.resetModules();
-      const env = require('../../src/utils/environment');
+
+      vi.resetModules();
+      const env = await import('../../src/utils/environment');
       expect(env.getAvailableStorage()).toBe('sessionStorage');
     });
 
-    it('should fallback to memory when no storage available', () => {
+    it('should fallback to memory when no storage available', async () => {
       mockBrowserEnvironment();
       delete (global as any).localStorage;
       delete (global as any).sessionStorage;
-      
-      jest.resetModules();
-      const env = require('../../src/utils/environment');
+
+      vi.resetModules();
+      const env = await import('../../src/utils/environment');
       expect(env.getAvailableStorage()).toBe('memory');
     });
   });
 
   describe('Assertion Functions', () => {
     describe('assertCryptoSupport', () => {
-      it('should not throw in browser with WebCrypto', () => {
+      it('should not throw in browser with WebCrypto', async () => {
         mockBrowserEnvironment();
-        jest.resetModules();
-        const env = require('../../src/utils/environment');
-        
+        vi.resetModules();
+        const env = await import('../../src/utils/environment');
+
         expect(() => env.assertCryptoSupport()).not.toThrow();
       });
 
-      it('should not throw in Node.js environment', () => {
+      it('should not throw in Node.js environment', async () => {
         mockNodeEnvironment();
-        jest.resetModules();
-        const env = require('../../src/utils/environment');
-        
+        vi.resetModules();
+        const env = await import('../../src/utils/environment');
+
         expect(() => env.assertCryptoSupport()).not.toThrow();
       });
 
-      it('should throw in unsupported environment', () => {
+      it('should throw in unsupported environment', async () => {
         mockUnsupportedEnvironment();
-        jest.resetModules();
-        const env = require('../../src/utils/environment');
-        
+        vi.resetModules();
+        const env = await import('../../src/utils/environment');
+
         expect(() => env.assertCryptoSupport()).toThrow(
           'Crypto operations require Web Crypto API in browsers or Node.js crypto module'
         );
       });
 
-      it('should throw in browser without WebCrypto', () => {
+      it('should throw in browser without WebCrypto', async () => {
         mockBrowserEnvironment();
         delete (global as any).crypto;
-        jest.resetModules();
-        const env = require('../../src/utils/environment');
-        
+        vi.resetModules();
+        const env = await import('../../src/utils/environment');
+
         expect(() => env.assertCryptoSupport()).toThrow(
           'Crypto operations require Web Crypto API in browsers or Node.js crypto module'
         );
@@ -399,19 +414,19 @@ describe('Environment Detection', () => {
     });
 
     describe('assertFetchSupport', () => {
-      it('should not throw when fetch is available', () => {
+      it('should not throw when fetch is available', async () => {
         mockBrowserEnvironment();
-        jest.resetModules();
-        const env = require('../../src/utils/environment');
-        
+        vi.resetModules();
+        const env = await import('../../src/utils/environment');
+
         expect(() => env.assertFetchSupport()).not.toThrow();
       });
 
-      it('should throw when fetch is not available', () => {
+      it('should throw when fetch is not available', async () => {
         mockNodeEnvironment();
-        jest.resetModules();
-        const env = require('../../src/utils/environment');
-        
+        vi.resetModules();
+        const env = await import('../../src/utils/environment');
+
         expect(() => env.assertFetchSupport()).toThrow(
           'Fetch API is not available. Please use Node.js 18+ or a modern browser.'
         );
@@ -420,42 +435,42 @@ describe('Environment Detection', () => {
   });
 
   describe('Feature Detection Robustness', () => {
-    it('should handle partial crypto object', () => {
+    it('should handle partial crypto object', async () => {
       mockBrowserEnvironment();
       Object.defineProperty(global, 'crypto', {
         value: {}, // crypto exists but no subtle
         writable: true,
         configurable: true,
       });
-      
-      jest.resetModules();
-      const env = require('../../src/utils/environment');
+
+      vi.resetModules();
+      const env = await import('../../src/utils/environment');
       expect(env.hasWebCrypto).toBe(false);
     });
 
-    it('should handle Node.js without versions', () => {
+    it('should handle Node.js without versions', async () => {
       Object.defineProperty(global, 'process', {
         value: {}, // process exists but no versions
         writable: true,
         configurable: true,
       });
       delete (global as any).window;
-      
-      jest.resetModules();
-      const env = require('../../src/utils/environment');
+
+      vi.resetModules();
+      const env = await import('../../src/utils/environment');
       expect(env.isNode).toBe(false);
     });
 
-    it('should handle browser without document', () => {
+    it('should handle browser without document', async () => {
       Object.defineProperty(global, 'window', {
         value: {}, // window exists but no document
         writable: true,
         configurable: true,
       });
-      delete (global as any).process;
-      
-      jest.resetModules();
-      const env = require('../../src/utils/environment');
+      Object.defineProperty(global, 'process', { value: createNonNodeProcess(), writable: true, configurable: true });
+
+      vi.resetModules();
+      const env = await import('../../src/utils/environment');
       expect(env.isBrowser).toBe(false);
     });
   });

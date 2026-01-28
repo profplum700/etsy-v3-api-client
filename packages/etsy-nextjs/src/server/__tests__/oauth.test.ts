@@ -2,7 +2,7 @@
  * OAuth Route Handler Tests
  */
 
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+import { vi, type MockedFunction, type MockInstance } from 'vitest';
 import { NextRequest } from 'next/server';
 import { createOAuthRoute } from '../oauth';
 import { configureEtsyServerClient } from '../client';
@@ -11,8 +11,8 @@ import { configureEtsyServerClient } from '../client';
 const cookieStore = new Map<string, { value: string; options?: unknown }>();
 
 // Mock next/headers
-jest.mock('next/headers', () => ({
-  cookies: jest.fn(() => {
+vi.mock('next/headers', () => ({
+  cookies: vi.fn(() => {
     return Promise.resolve({
       get: (name: string) => cookieStore.get(name),
       set: (name: string, value: string, options?: unknown) => {
@@ -26,8 +26,8 @@ jest.mock('next/headers', () => ({
 }));
 
 // Mock crypto utilities
-jest.mock('@profplum700/etsy-v3-api-client', () => {
-  const actual = jest.requireActual('@profplum700/etsy-v3-api-client');
+vi.mock('@profplum700/etsy-v3-api-client', async () => {
+  const actual = await vi.importActual('@profplum700/etsy-v3-api-client');
   return {
     ...actual,
     AuthHelper: class MockAuthHelper {
@@ -90,12 +90,23 @@ jest.mock('@profplum700/etsy-v3-api-client', () => {
   };
 });
 
+// Mock client module to allow controlling serverClientConfig in tests
+let _mockServerClientConfig: any = null;
+vi.mock('../client', async () => {
+  const actual = await vi.importActual<typeof import('../client')>('../client');
+  return {
+    ...actual,
+    get serverClientConfig() { return _mockServerClientConfig; },
+    configureEtsyServerClient: (config: any) => { _mockServerClientConfig = config; },
+  };
+});
+
 // Mock fetch for token exchange
-global.fetch = jest.fn() as jest.MockedFunction<typeof fetch>;
+global.fetch = vi.fn() as MockedFunction<typeof fetch>;
 
 describe('createOAuthRoute', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     cookieStore.clear();
 
     // Configure server client
@@ -141,10 +152,9 @@ describe('createOAuthRoute', () => {
     });
 
     it('should return error if not configured', async () => {
-      // Clear configuration
-      const { serverClientConfig } = await import('../client');
-      const originalConfig = serverClientConfig;
-      (await import('../client')).serverClientConfig = null;
+      // Clear configuration via mock
+      const savedConfig = _mockServerClientConfig;
+      _mockServerClientConfig = null;
 
       const handler = createOAuthRoute();
       const request = new NextRequest('http://localhost:3000/api/etsy/auth/authorize');
@@ -156,15 +166,15 @@ describe('createOAuthRoute', () => {
       expect(json.error).toContain('not configured');
 
       // Restore config
-      (await import('../client')).serverClientConfig = originalConfig;
+      _mockServerClientConfig = savedConfig;
     });
   });
 
   describe('callback handler', () => {
-    let consoleErrorSpy: jest.SpiedFunction<typeof console.error>;
+    let consoleErrorSpy: MockInstance;
 
     beforeEach(() => {
-      consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+      consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     });
 
     afterEach(() => {
@@ -173,7 +183,7 @@ describe('createOAuthRoute', () => {
 
     it('should exchange code for tokens and set cookies', async () => {
       // Mock successful token exchange
-      (global.fetch as jest.MockedFunction<typeof fetch>).mockResolvedValueOnce({
+      (global.fetch as MockedFunction<typeof fetch>).mockResolvedValueOnce({
         ok: true,
         json: async () => ({
           access_token: 'test-access-token',
@@ -246,7 +256,7 @@ describe('createOAuthRoute', () => {
   describe('refresh handler', () => {
     it('should refresh access token', async () => {
       // Mock successful token refresh
-      (global.fetch as jest.MockedFunction<typeof fetch>).mockResolvedValueOnce({
+      (global.fetch as MockedFunction<typeof fetch>).mockResolvedValueOnce({
         ok: true,
         json: async () => ({
           access_token: 'new-access-token',

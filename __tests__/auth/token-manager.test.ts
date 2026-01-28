@@ -9,26 +9,40 @@ import {
   createDefaultTokenStorage
 } from '../../src/auth/token-manager';
 import { EtsyAuthError, EtsyClientConfig, EtsyTokens } from '../../src/types';
-import { promises as fs } from 'fs';
+import { vi, type Mock } from 'vitest';
+
+// Save real process for Vitest compatibility — Vitest's error handler needs process.listeners()
+const _savedProcess = globalThis.process;
+/** Creates a process stub without versions/version so isNode detection returns false */
+function createNonNodeProcess() {
+  return {
+    listeners: _savedProcess.listeners.bind(_savedProcess),
+    on: _savedProcess.on.bind(_savedProcess),
+    off: _savedProcess.off.bind(_savedProcess),
+    removeListener: _savedProcess.removeListener.bind(_savedProcess),
+    emit: _savedProcess.emit.bind(_savedProcess),
+    env: {},
+  };
+}
 
 // Mock fs module
-jest.mock('fs', () => ({
+vi.mock('fs', () => ({
   promises: {
-    writeFile: jest.fn(),
-    readFile: jest.fn(),
-    unlink: jest.fn()
+    writeFile: vi.fn(),
+    readFile: vi.fn(),
+    unlink: vi.fn()
   }
 }));
 
 
 describe('TokenManager', () => {
   let mockConfig: EtsyClientConfig;
-  let mockFetch: jest.Mock;
-  let mockFs: jest.Mocked<typeof fs>;
+  let mockFetch: Mock;
+  let mockFs: any;
 
-  beforeEach(() => {
-    jest.clearAllMocks();
-    jest.useFakeTimers();
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    vi.useFakeTimers();
 
     mockConfig = {
       keystring: 'test-api-key',
@@ -37,18 +51,19 @@ describe('TokenManager', () => {
       expiresAt: new Date(Date.now() + 3600000) // 1 hour from now
     };
 
-    mockFetch = jest.fn();
-    (global as unknown as { fetch: jest.Mock }).fetch = mockFetch;
+    mockFetch = vi.fn();
+    (global as unknown as { fetch: Mock }).fetch = mockFetch;
 
     // Set up fs mocks properly
-    mockFs = require('fs').promises as jest.Mocked<typeof fs>;
-    mockFs.writeFile = jest.fn();
-    mockFs.readFile = jest.fn();
-    mockFs.unlink = jest.fn();
+    const fsModule = await import('fs');
+    mockFs = fsModule.promises as any;
+    mockFs.writeFile = vi.fn();
+    mockFs.readFile = vi.fn();
+    mockFs.unlink = vi.fn();
   });
 
   afterEach(() => {
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   describe('constructor', () => {
@@ -59,7 +74,7 @@ describe('TokenManager', () => {
 
     it('should initialize with storage and callback', () => {
       const mockStorage = new MemoryTokenStorage();
-      const mockCallback = jest.fn();
+      const mockCallback = vi.fn();
       const configWithCallback = {
         ...mockConfig,
         refreshSave: mockCallback
@@ -93,7 +108,7 @@ describe('TokenManager', () => {
 
       mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockTokenResponse)
+        json: vi.fn().mockResolvedValue(mockTokenResponse)
       });
 
       const tokenManager = new TokenManager(expiredConfig);
@@ -129,7 +144,7 @@ describe('TokenManager', () => {
 
       mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockTokenResponse)
+        json: vi.fn().mockResolvedValue(mockTokenResponse)
       });
 
       const tokenManager = new TokenManager(soonToExpireConfig);
@@ -156,7 +171,7 @@ describe('TokenManager', () => {
         scope: 'shops_r listings_r'
       };
 
-      jest.spyOn(mockStorage, 'load').mockResolvedValue(mockTokens);
+      vi.spyOn(mockStorage, 'load').mockResolvedValue(mockTokens);
 
       const tokenManager = new TokenManager(configWithoutTokens, mockStorage);
       // Clear current tokens to simulate loading from storage
@@ -195,7 +210,7 @@ describe('TokenManager', () => {
 
       mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockTokenResponse)
+        json: vi.fn().mockResolvedValue(mockTokenResponse)
       });
 
       const tokenManager = new TokenManager(mockConfig);
@@ -221,7 +236,7 @@ describe('TokenManager', () => {
 
       mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockTokenResponse)
+        json: vi.fn().mockResolvedValue(mockTokenResponse)
       });
 
       const tokenManager = new TokenManager(mockConfig);
@@ -243,7 +258,7 @@ describe('TokenManager', () => {
     });
 
     it('should call refresh callback when provided', async () => {
-      const mockCallback = jest.fn();
+      const mockCallback = vi.fn();
       const configWithCallback = {
         ...mockConfig,
         refreshSave: mockCallback
@@ -259,7 +274,7 @@ describe('TokenManager', () => {
 
       mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockTokenResponse)
+        json: vi.fn().mockResolvedValue(mockTokenResponse)
       });
 
       const tokenManager = new TokenManager(configWithCallback);
@@ -274,7 +289,7 @@ describe('TokenManager', () => {
 
     it('should save to storage when provided', async () => {
       const mockStorage = new MemoryTokenStorage();
-      const saveSpy = jest.spyOn(mockStorage, 'save');
+      const saveSpy = vi.spyOn(mockStorage, 'save');
 
       const mockTokenResponse = {
         access_token: 'new-access-token',
@@ -286,7 +301,7 @@ describe('TokenManager', () => {
 
       mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockTokenResponse)
+        json: vi.fn().mockResolvedValue(mockTokenResponse)
       });
 
       const tokenManager = new TokenManager(mockConfig, mockStorage);
@@ -303,7 +318,7 @@ describe('TokenManager', () => {
         ok: false,
         status: 400,
         statusText: 'Bad Request',
-        text: jest.fn().mockResolvedValue('Invalid refresh token')
+        text: vi.fn().mockResolvedValue('Invalid refresh token')
       });
 
       const tokenManager = new TokenManager(mockConfig);
@@ -451,7 +466,7 @@ describe('TokenManager', () => {
 
     it('should clear storage when provided', async () => {
       const mockStorage = new MemoryTokenStorage();
-      const clearSpy = jest.spyOn(mockStorage, 'clear');
+      const clearSpy = vi.spyOn(mockStorage, 'clear');
 
       const tokenManager = new TokenManager(mockConfig, mockStorage);
       await tokenManager.clearTokens();
@@ -478,9 +493,6 @@ describe('TokenManager', () => {
     });
   });
 
-  describe('fetch method', () => {
-    
-  });
 });
 
 describe('MemoryTokenStorage', () => {
@@ -523,9 +535,9 @@ describe('MemoryTokenStorage', () => {
 describe('FileTokenStorage', () => {
   let storage: FileTokenStorage;
   let mockTokens: EtsyTokens;
-  let mockFs: jest.Mocked<typeof fs>;
+  let mockFs: any;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     storage = new FileTokenStorage('/tmp/test-tokens.json');
     mockTokens = {
       access_token: 'test-access-token',
@@ -536,10 +548,11 @@ describe('FileTokenStorage', () => {
     };
 
     // Set up fs mocks for this describe block
-    mockFs = require('fs').promises as jest.Mocked<typeof fs>;
-    mockFs.writeFile = jest.fn();
-    mockFs.readFile = jest.fn();
-    mockFs.unlink = jest.fn();
+    const fsModule = await import('fs');
+    mockFs = fsModule.promises as any;
+    mockFs.writeFile = vi.fn();
+    mockFs.readFile = vi.fn();
+    mockFs.unlink = vi.fn();
   });
 
   it('should save and load tokens', async () => {
@@ -602,9 +615,9 @@ describe('LocalStorageTokenStorage', () => {
   let mockLocalStorage: { [key: string]: string };
   let LocalStorageTokenStorage: any;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // Mock browser environment first
-    delete (global as any).process;
+    Object.defineProperty(global, 'process', { value: createNonNodeProcess(), writable: true, configurable: true });
     Object.defineProperty(global, 'window', {
       value: { document: {} },
       writable: true,
@@ -615,14 +628,14 @@ describe('LocalStorageTokenStorage', () => {
     mockLocalStorage = {};
     Object.defineProperty(global, 'localStorage', {
       value: {
-        getItem: jest.fn((key: string) => mockLocalStorage[key] || null),
-        setItem: jest.fn((key: string, value: string) => {
+        getItem: vi.fn((key: string) => mockLocalStorage[key] || null),
+        setItem: vi.fn((key: string, value: string) => {
           mockLocalStorage[key] = value;
         }),
-        removeItem: jest.fn((key: string) => {
+        removeItem: vi.fn((key: string) => {
           delete mockLocalStorage[key];
         }),
-        clear: jest.fn(() => {
+        clear: vi.fn(() => {
           Object.keys(mockLocalStorage).forEach(key => delete mockLocalStorage[key]);
         }),
       },
@@ -631,9 +644,9 @@ describe('LocalStorageTokenStorage', () => {
     });
 
     // Reset modules and import with fresh environment
-    jest.resetModules();
-    ({ LocalStorageTokenStorage } = require('../../src/auth/token-manager'));
-    
+    vi.resetModules();
+    ({ LocalStorageTokenStorage } = await import('../../src/auth/token-manager'));
+
     storage = new LocalStorageTokenStorage('test-tokens');
     mockTokens = {
       access_token: 'test-access-token',
@@ -691,7 +704,7 @@ describe('LocalStorageTokenStorage', () => {
 
   it('should handle localStorage errors gracefully', async () => {
     // Mock localStorage to throw errors
-    (localStorage.setItem as jest.Mock).mockImplementation(() => {
+    (localStorage.setItem as Mock).mockImplementation(() => {
       throw new Error('Storage quota exceeded');
     });
 
@@ -712,9 +725,9 @@ describe('SessionStorageTokenStorage', () => {
   let mockSessionStorage: { [key: string]: string };
   let SessionStorageTokenStorage: any;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // Mock browser environment first
-    delete (global as any).process;
+    Object.defineProperty(global, 'process', { value: createNonNodeProcess(), writable: true, configurable: true });
     Object.defineProperty(global, 'window', {
       value: { document: {} },
       writable: true,
@@ -725,14 +738,14 @@ describe('SessionStorageTokenStorage', () => {
     mockSessionStorage = {};
     Object.defineProperty(global, 'sessionStorage', {
       value: {
-        getItem: jest.fn((key: string) => mockSessionStorage[key] || null),
-        setItem: jest.fn((key: string, value: string) => {
+        getItem: vi.fn((key: string) => mockSessionStorage[key] || null),
+        setItem: vi.fn((key: string, value: string) => {
           mockSessionStorage[key] = value;
         }),
-        removeItem: jest.fn((key: string) => {
+        removeItem: vi.fn((key: string) => {
           delete mockSessionStorage[key];
         }),
-        clear: jest.fn(() => {
+        clear: vi.fn(() => {
           Object.keys(mockSessionStorage).forEach(key => delete mockSessionStorage[key]);
         }),
       },
@@ -741,9 +754,9 @@ describe('SessionStorageTokenStorage', () => {
     });
 
     // Reset modules and import with fresh environment
-    jest.resetModules();
-    ({ SessionStorageTokenStorage } = require('../../src/auth/token-manager'));
-    
+    vi.resetModules();
+    ({ SessionStorageTokenStorage } = await import('../../src/auth/token-manager'));
+
     storage = new SessionStorageTokenStorage('test-tokens');
     mockTokens = {
       access_token: 'test-access-token',
@@ -801,7 +814,7 @@ describe('SessionStorageTokenStorage', () => {
 
   it('should handle sessionStorage errors gracefully', async () => {
     // Mock sessionStorage to throw errors
-    (sessionStorage.setItem as jest.Mock).mockImplementation(() => {
+    (sessionStorage.setItem as Mock).mockImplementation(() => {
       throw new Error('Storage quota exceeded');
     });
 
@@ -834,7 +847,7 @@ describe('createDefaultTokenStorage', () => {
     if (originalProcess !== undefined) {
       (global as any).process = originalProcess;
     } else {
-      delete (global as any).process;
+      Object.defineProperty(global, 'process', { value: createNonNodeProcess(), writable: true, configurable: true });
     }
     if (originalWindow !== undefined) {
       (global as any).window = originalWindow;
@@ -854,7 +867,7 @@ describe('createDefaultTokenStorage', () => {
   });
 
   const mockBrowserEnvironment = () => {
-    delete (global as any).process;
+    Object.defineProperty(global, 'process', { value: createNonNodeProcess(), writable: true, configurable: true });
     Object.defineProperty(global, 'window', {
       value: { document: {} },
       writable: true,
@@ -862,20 +875,20 @@ describe('createDefaultTokenStorage', () => {
     });
     Object.defineProperty(global, 'localStorage', {
       value: {
-        getItem: jest.fn(),
-        setItem: jest.fn(),
-        removeItem: jest.fn(),
-        clear: jest.fn(),
+        getItem: vi.fn(),
+        setItem: vi.fn(),
+        removeItem: vi.fn(),
+        clear: vi.fn(),
       },
       writable: true,
       configurable: true,
     });
     Object.defineProperty(global, 'sessionStorage', {
       value: {
-        getItem: jest.fn(),
-        setItem: jest.fn(),
-        removeItem: jest.fn(),
-        clear: jest.fn(),
+        getItem: vi.fn(),
+        setItem: vi.fn(),
+        removeItem: vi.fn(),
+        clear: vi.fn(),
       },
       writable: true,
       configurable: true,
@@ -896,36 +909,36 @@ describe('createDefaultTokenStorage', () => {
     });
   };
 
-  it('should return LocalStorageTokenStorage in browser with localStorage', () => {
+  it('should return LocalStorageTokenStorage in browser with localStorage', async () => {
     mockBrowserEnvironment();
-    
+
     // Reset modules to ensure fresh import with new environment
-    jest.resetModules();
-    const { createDefaultTokenStorage, LocalStorageTokenStorage } = require('../../src/auth/token-manager');
-    
+    vi.resetModules();
+    const { createDefaultTokenStorage, LocalStorageTokenStorage } = await import('../../src/auth/token-manager');
+
     const storage = createDefaultTokenStorage();
     expect(storage).toBeInstanceOf(LocalStorageTokenStorage);
   });
 
-  it('should return SessionStorageTokenStorage in browser without localStorage', () => {
+  it('should return SessionStorageTokenStorage in browser without localStorage', async () => {
     mockBrowserEnvironment();
     delete (global as any).localStorage;
-    
-    jest.resetModules();
-    const { createDefaultTokenStorage, SessionStorageTokenStorage } = require('../../src/auth/token-manager');
-    
+
+    vi.resetModules();
+    const { createDefaultTokenStorage, SessionStorageTokenStorage } = await import('../../src/auth/token-manager');
+
     const storage = createDefaultTokenStorage();
     expect(storage).toBeInstanceOf(SessionStorageTokenStorage);
   });
 
-  it('should return MemoryTokenStorage in browser without any storage', () => {
+  it('should return MemoryTokenStorage in browser without any storage', async () => {
     mockBrowserEnvironment();
     delete (global as any).localStorage;
     delete (global as any).sessionStorage;
-    
-    jest.resetModules();
-    const { createDefaultTokenStorage, MemoryTokenStorage } = require('../../src/auth/token-manager');
-    
+
+    vi.resetModules();
+    const { createDefaultTokenStorage, MemoryTokenStorage } = await import('../../src/auth/token-manager');
+
     const storage = createDefaultTokenStorage();
     expect(storage).toBeInstanceOf(MemoryTokenStorage);
   });
@@ -944,22 +957,22 @@ describe('createDefaultTokenStorage', () => {
     expect(storage).toBeInstanceOf(FileTokenStorage);
   });
 
-  it('should return MemoryTokenStorage in unsupported environment', () => {
+  it('should return MemoryTokenStorage in unsupported environment', async () => {
     delete (global as any).window;
-    delete (global as any).process;
+    Object.defineProperty(global, 'process', { value: createNonNodeProcess(), writable: true, configurable: true });
     delete (global as any).localStorage;
     delete (global as any).sessionStorage;
-    
-    jest.resetModules();
-    const { createDefaultTokenStorage, MemoryTokenStorage } = require('../../src/auth/token-manager');
-    
+
+    vi.resetModules();
+    const { createDefaultTokenStorage, MemoryTokenStorage } = await import('../../src/auth/token-manager');
+
     const storage = createDefaultTokenStorage();
     expect(storage).toBeInstanceOf(MemoryTokenStorage);
   });
 
-  it('should handle localStorage access errors', () => {
+  it('should handle localStorage access errors', async () => {
     mockBrowserEnvironment();
-    
+
     // Mock localStorage to throw on access
     Object.defineProperty(global, 'localStorage', {
       get: () => {
@@ -967,18 +980,18 @@ describe('createDefaultTokenStorage', () => {
       },
       configurable: true,
     });
-    
-    jest.resetModules();
-    const { createDefaultTokenStorage, SessionStorageTokenStorage } = require('../../src/auth/token-manager');
-    
+
+    vi.resetModules();
+    const { createDefaultTokenStorage, SessionStorageTokenStorage } = await import('../../src/auth/token-manager');
+
     const storage = createDefaultTokenStorage();
     expect(storage).toBeInstanceOf(SessionStorageTokenStorage);
   });
 
-  it('should handle sessionStorage access errors', () => {
+  it('should handle sessionStorage access errors', async () => {
     mockBrowserEnvironment();
     delete (global as any).localStorage;
-    
+
     // Mock sessionStorage to throw on access
     Object.defineProperty(global, 'sessionStorage', {
       get: () => {
@@ -986,10 +999,10 @@ describe('createDefaultTokenStorage', () => {
       },
       configurable: true,
     });
-    
-    jest.resetModules();
-    const { createDefaultTokenStorage, MemoryTokenStorage } = require('../../src/auth/token-manager');
-    
+
+    vi.resetModules();
+    const { createDefaultTokenStorage, MemoryTokenStorage } = await import('../../src/auth/token-manager');
+
     const storage = createDefaultTokenStorage();
     expect(storage).toBeInstanceOf(MemoryTokenStorage);
   });

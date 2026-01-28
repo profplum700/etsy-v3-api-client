@@ -8,7 +8,7 @@ describe('EtsyClient Readiness State Definitions', () => {
   let ctx: MockClientContext;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     ctx = setupClientMocks();
   });
 
@@ -29,7 +29,7 @@ describe('EtsyClient Readiness State Definitions', () => {
       };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockProfile)
+        json: vi.fn().mockResolvedValue(mockProfile)
       });
 
       const result = await ctx.client.createShopReadinessStateDefinition('123', createParams);
@@ -70,7 +70,7 @@ describe('EtsyClient Readiness State Definitions', () => {
       };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockDefinitions)
+        json: vi.fn().mockResolvedValue(mockDefinitions)
       });
 
       const result = await ctx.client.getShopReadinessStateDefinitions('123');
@@ -98,7 +98,7 @@ describe('EtsyClient Readiness State Definitions', () => {
       };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockDefinitions)
+        json: vi.fn().mockResolvedValue(mockDefinitions)
       });
 
       const result = await ctx.client.getShopReadinessStateDefinitions('123', {
@@ -126,7 +126,7 @@ describe('EtsyClient Readiness State Definitions', () => {
       };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockProfile)
+        json: vi.fn().mockResolvedValue(mockProfile)
       });
 
       const result = await ctx.client.getShopReadinessStateDefinition('123', '1');
@@ -155,7 +155,7 @@ describe('EtsyClient Readiness State Definitions', () => {
       };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockProfile)
+        json: vi.fn().mockResolvedValue(mockProfile)
       });
 
       const result = await ctx.client.updateShopReadinessStateDefinition('123', '1', updateParams);

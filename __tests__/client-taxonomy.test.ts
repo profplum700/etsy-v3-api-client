@@ -8,7 +8,7 @@ describe('EtsyClient Taxonomy & Reviews', () => {
   let ctx: MockClientContext;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     ctx = setupClientMocks();
   });
 
@@ -23,7 +23,7 @@ describe('EtsyClient Taxonomy & Reviews', () => {
       };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockNodes)
+        json: vi.fn().mockResolvedValue(mockNodes)
       });
 
       const result = await ctx.client.getBuyerTaxonomyNodes();
@@ -47,7 +47,7 @@ describe('EtsyClient Taxonomy & Reviews', () => {
       };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockProperties)
+        json: vi.fn().mockResolvedValue(mockProperties)
       });
 
       const result = await ctx.client.getPropertiesByTaxonomyId(123);
@@ -65,7 +65,7 @@ describe('EtsyClient Taxonomy & Reviews', () => {
       const mockReviews = [{ review_id: 1, rating: 5 }];
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue({ results: mockReviews })
+        json: vi.fn().mockResolvedValue({ results: mockReviews })
       });
 
       const result = await ctx.client.getReviewsByListing('123', {
@@ -86,7 +86,7 @@ describe('EtsyClient Taxonomy & Reviews', () => {
       const mockReviews = [{ review_id: 2, rating: 4 }];
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue({ results: mockReviews })
+        json: vi.fn().mockResolvedValue({ results: mockReviews })
       });
 
       const result = await ctx.client.getReviewsByShop('456');
@@ -110,7 +110,7 @@ describe('EtsyClient Taxonomy & Reviews', () => {
       };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockProperties)
+        json: vi.fn().mockResolvedValue(mockProperties)
       });
 
       const result = await ctx.client.getPropertiesByBuyerTaxonomyId(456);

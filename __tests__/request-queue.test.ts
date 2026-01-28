@@ -42,7 +42,7 @@ describe('GlobalRequestQueue', () => {
   describe('Request Enqueueing', () => {
     it('should enqueue and execute a simple request', async () => {
       const queue = GlobalRequestQueue.getInstance();
-      const mockRequest = jest.fn().mockResolvedValue('success');
+      const mockRequest = vi.fn().mockResolvedValue('success');
 
       const result = await queue.enqueue(mockRequest);
 
@@ -69,7 +69,7 @@ describe('GlobalRequestQueue', () => {
     it('should handle request failures', async () => {
       const queue = GlobalRequestQueue.getInstance();
       const mockError = new Error('Request failed');
-      const mockRequest = jest.fn().mockRejectedValue(mockError);
+      const mockRequest = vi.fn().mockRejectedValue(mockError);
 
       await expect(queue.enqueue(mockRequest)).rejects.toThrow('Request failed');
       expect(mockRequest).toHaveBeenCalledTimes(1);
@@ -78,8 +78,8 @@ describe('GlobalRequestQueue', () => {
     it('should continue processing after a failed request', async () => {
       const queue = GlobalRequestQueue.getInstance();
 
-      const request1 = jest.fn().mockRejectedValue(new Error('Fail'));
-      const request2 = jest.fn().mockResolvedValue('success');
+      const request1 = vi.fn().mockRejectedValue(new Error('Fail'));
+      const request2 = vi.fn().mockResolvedValue('success');
 
       await expect(queue.enqueue(request1)).rejects.toThrow('Fail');
       const result = await queue.enqueue(request2);
@@ -131,7 +131,7 @@ describe('GlobalRequestQueue', () => {
 
     it('should use normal priority by default', async () => {
       const queue = GlobalRequestQueue.getInstance();
-      const mockRequest = jest.fn().mockResolvedValue('success');
+      const mockRequest = vi.fn().mockResolvedValue('success');
 
       await queue.enqueue(mockRequest);
 
@@ -196,7 +196,7 @@ describe('GlobalRequestQueue', () => {
       const slowPromise = queue.enqueue(slowRequest);
 
       // Add a request with a very short timeout that will have expired by the time it's processed
-      const fastRequest = jest.fn().mockResolvedValue('fast');
+      const fastRequest = vi.fn().mockResolvedValue('fast');
       const timedPromise = queue.enqueue(fastRequest, { timeout: 1 });
 
       // Wait for the slow request to complete
@@ -208,7 +208,7 @@ describe('GlobalRequestQueue', () => {
 
     it('should use default timeout of 30 seconds', async () => {
       const queue = GlobalRequestQueue.getInstance();
-      const fastRequest = jest.fn().mockResolvedValue('success');
+      const fastRequest = vi.fn().mockResolvedValue('success');
 
       await queue.enqueue(fastRequest);
 
@@ -239,7 +239,7 @@ describe('GlobalRequestQueue', () => {
       });
 
       // Second request: completes quickly
-      const fastRequest = jest.fn().mockResolvedValue('fast');
+      const fastRequest = vi.fn().mockResolvedValue('fast');
 
       // Enqueue hanging request with 50ms timeout
       const hangingPromise = queue.enqueue(hangingRequest, { timeout: 50 });
@@ -283,7 +283,7 @@ describe('GlobalRequestQueue', () => {
       const queue = GlobalRequestQueue.getInstance();
 
       const rateLimitError = new EtsyRateLimitError('Rate limited', 60);
-      const failingRequest = jest.fn().mockRejectedValue(rateLimitError);
+      const failingRequest = vi.fn().mockRejectedValue(rateLimitError);
 
       await expect(queue.enqueue(failingRequest)).rejects.toThrow('Rate limited');
     });
@@ -345,7 +345,7 @@ describe('GlobalRequestQueue', () => {
 
   describe('withQueue Helper', () => {
     it('should wrap request with queue', async () => {
-      const mockRequest = jest.fn().mockResolvedValue('success');
+      const mockRequest = vi.fn().mockResolvedValue('success');
 
       const result = await withQueue(mockRequest);
 
@@ -354,7 +354,7 @@ describe('GlobalRequestQueue', () => {
     });
 
     it('should accept queue options', async () => {
-      const mockRequest = jest.fn().mockResolvedValue('success');
+      const mockRequest = vi.fn().mockResolvedValue('success');
 
       const result = await withQueue(mockRequest, { priority: 'high' });
 
@@ -363,7 +363,7 @@ describe('GlobalRequestQueue', () => {
 
     it('should handle errors', async () => {
       const mockError = new Error('Request failed');
-      const mockRequest = jest.fn().mockRejectedValue(mockError);
+      const mockRequest = vi.fn().mockRejectedValue(mockError);
 
       await expect(withQueue(mockRequest)).rejects.toThrow('Request failed');
     });
@@ -372,7 +372,7 @@ describe('GlobalRequestQueue', () => {
   describe('Endpoint Tracking', () => {
     it('should track endpoint in queued request', async () => {
       const queue = GlobalRequestQueue.getInstance();
-      const mockRequest = jest.fn().mockResolvedValue('success');
+      const mockRequest = vi.fn().mockResolvedValue('success');
 
       await queue.enqueue(mockRequest, {
         endpoint: '/v3/application/listings/123',
@@ -387,7 +387,7 @@ describe('GlobalRequestQueue', () => {
       const queue = GlobalRequestQueue.getInstance();
 
       const requests = Array.from({ length: 20 }, (_, i) =>
-        jest.fn().mockResolvedValue(`result-${i}`)
+        vi.fn().mockResolvedValue(`result-${i}`)
       );
 
       const results = await Promise.all(
@@ -422,9 +422,9 @@ describe('GlobalRequestQueue', () => {
       const queue = GlobalRequestQueue.getInstance();
 
       const requests = [
-        jest.fn().mockResolvedValue('success-1'),
-        jest.fn().mockRejectedValue(new Error('fail')),
-        jest.fn().mockResolvedValue('success-2'),
+        vi.fn().mockResolvedValue('success-1'),
+        vi.fn().mockRejectedValue(new Error('fail')),
+        vi.fn().mockResolvedValue('success-2'),
       ];
 
       const results = await Promise.allSettled(
@@ -446,12 +446,12 @@ describe('GlobalRequestQueue', () => {
     it('should not leave queue in bad state after errors', async () => {
       const queue = GlobalRequestQueue.getInstance();
 
-      const failingRequest = jest.fn().mockRejectedValue(new Error('fail'));
+      const failingRequest = vi.fn().mockRejectedValue(new Error('fail'));
 
       await expect(queue.enqueue(failingRequest)).rejects.toThrow();
 
       // Queue should still work for new requests
-      const successRequest = jest.fn().mockResolvedValue('success');
+      const successRequest = vi.fn().mockResolvedValue('success');
       const result = await queue.enqueue(successRequest);
 
       expect(result).toBe('success');
@@ -462,7 +462,7 @@ describe('GlobalRequestQueue', () => {
     it('should track request count', async () => {
       const queue = GlobalRequestQueue.getInstance();
 
-      const request = jest.fn().mockResolvedValue('success');
+      const request = vi.fn().mockResolvedValue('success');
 
       const initialStatus = queue.getStatus();
       const initialRemaining = initialStatus.remainingRequests;

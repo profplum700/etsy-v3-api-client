@@ -2,6 +2,7 @@
  * Core EtsyClient tests - constructor, makeRequest, caching, utility methods
  */
 
+import { type Mock } from 'vitest';
 import { EtsyClient } from '../src/client';
 import { EtsyApiError } from '../src/types';
 import { setupClientMocks, MockClientContext } from './helpers/client-test-setup';
@@ -10,7 +11,7 @@ describe('EtsyClient Core', () => {
   let ctx: MockClientContext;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     ctx = setupClientMocks();
   });
 
@@ -56,7 +57,7 @@ describe('EtsyClient Core', () => {
     it('should make successful API request', async () => {
       const mockResponse = {
         ok: true,
-        json: jest.fn().mockResolvedValue({ user_id: 123, login_name: 'testuser' }),
+        json: vi.fn().mockResolvedValue({ user_id: 123, login_name: 'testuser' }),
         headers: new Headers()
       };
       ctx.mockFetch.mockResolvedValue(mockResponse);
@@ -85,47 +86,47 @@ describe('EtsyClient Core', () => {
       };
 
       // Re-setup mocks for this specific test
-      const { TokenManager } = require('../src/auth/token-manager');
-      const { EtsyRateLimiter } = require('../src/rate-limiting');
+      const { TokenManager } = await import('../src/auth/token-manager');
+      const { EtsyRateLimiter } = await import('../src/rate-limiting');
 
       const mockTokenManager = {
-        getAccessToken: jest.fn().mockResolvedValue('test-access-token'),
-        getCurrentTokens: jest.fn().mockReturnValue({
+        getAccessToken: vi.fn().mockResolvedValue('test-access-token'),
+        getCurrentTokens: vi.fn().mockReturnValue({
           access_token: 'test-access-token',
           refresh_token: 'test-refresh-token',
           expires_at: new Date(Date.now() + 3600000),
           token_type: 'Bearer',
           scope: 'shops_r listings_r'
         }),
-        isTokenExpired: jest.fn().mockReturnValue(false),
-        refreshToken: jest.fn()
+        isTokenExpired: vi.fn().mockReturnValue(false),
+        refreshToken: vi.fn()
       };
 
       const mockRateLimiter = {
-        waitForRateLimit: jest.fn().mockResolvedValue(undefined),
-        getRemainingRequests: jest.fn().mockReturnValue(9999),
-        getRateLimitStatus: jest.fn().mockReturnValue({
+        waitForRateLimit: vi.fn().mockResolvedValue(undefined),
+        getRemainingRequests: vi.fn().mockReturnValue(9999),
+        getRateLimitStatus: vi.fn().mockReturnValue({
           remainingRequests: 9999,
           resetTime: new Date(Date.now() + 86400000),
           canMakeRequest: true,
           isFromHeaders: false
         }),
-        canMakeRequest: jest.fn().mockReturnValue(true),
-        updateFromHeaders: jest.fn(),
-        resetRetryCount: jest.fn(),
-        handleRateLimitResponse: jest.fn().mockResolvedValue({ shouldRetry: false, delayMs: 1000 }),
-        setApproachingLimitCallback: jest.fn(),
-        setWarningThreshold: jest.fn()
+        canMakeRequest: vi.fn().mockReturnValue(true),
+        updateFromHeaders: vi.fn(),
+        resetRetryCount: vi.fn(),
+        handleRateLimitResponse: vi.fn().mockResolvedValue({ shouldRetry: false, delayMs: 1000 }),
+        setApproachingLimitCallback: vi.fn(),
+        setWarningThreshold: vi.fn()
       };
 
-      (TokenManager as jest.Mock).mockImplementation(() => mockTokenManager);
-      (EtsyRateLimiter as jest.Mock).mockImplementation(() => mockRateLimiter);
+      (TokenManager as Mock).mockImplementation(() => mockTokenManager);
+      (EtsyRateLimiter as Mock).mockImplementation(() => mockRateLimiter);
 
       const clientWithSecret = new EtsyClient(configWithSecret);
 
       const mockResponse = {
         ok: true,
-        json: jest.fn().mockResolvedValue({ user_id: 123, login_name: 'testuser' }),
+        json: vi.fn().mockResolvedValue({ user_id: 123, login_name: 'testuser' }),
         headers: new Headers()
       };
       ctx.mockFetch.mockResolvedValue(mockResponse);
@@ -150,7 +151,7 @@ describe('EtsyClient Core', () => {
         ok: false,
         status: 404,
         statusText: 'Not Found',
-        text: jest.fn().mockResolvedValue('{"error": "User not found"}'),
+        text: vi.fn().mockResolvedValue('{"error": "User not found"}'),
         headers: new Headers()
       };
       ctx.mockFetch.mockResolvedValue(mockResponse);
@@ -230,7 +231,7 @@ describe('EtsyClient Core', () => {
     it('should ping the API', async () => {
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(1234567890),
+        json: vi.fn().mockResolvedValue(1234567890),
         headers: new Headers({ 'content-length': '10' })
       });
 
@@ -249,7 +250,7 @@ describe('EtsyClient Core', () => {
       const mockScopes = { scopes: ['shops_r', 'listings_r', 'listings_w'] };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockScopes),
+        json: vi.fn().mockResolvedValue(mockScopes),
         headers: new Headers({ 'content-length': '100' })
       });
 

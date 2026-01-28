@@ -6,21 +6,24 @@ import { EtsyWebhookHandler, createWebhookHandler } from '../src/webhooks';
 
 // Mock crypto module for Node.js
 const mockCrypto = {
-  createHmac: jest.fn().mockReturnValue({
-    update: jest.fn().mockReturnThis(),
-    digest: jest.fn().mockReturnValue('mock-signature-hash')
+  createHmac: vi.fn().mockReturnValue({
+    update: vi.fn().mockReturnThis(),
+    digest: vi.fn().mockReturnValue('mock-signature-hash')
   }),
-  timingSafeEqual: jest.fn((a, b) => a.toString() === b.toString())
+  timingSafeEqual: vi.fn((a: any, b: any) => a.toString() === b.toString())
 };
-
-// Mock require for crypto
-jest.mock('crypto', () => mockCrypto, { virtual: true });
 
 describe('EtsyWebhookHandler', () => {
   const mockSecret = 'test-webhook-secret';
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
+    // Restore default mock implementations after clearAllMocks
+    mockCrypto.createHmac.mockReturnValue({
+      update: vi.fn().mockReturnThis(),
+      digest: vi.fn().mockReturnValue('mock-signature-hash')
+    });
+    mockCrypto.timingSafeEqual.mockImplementation((a: any, b: any) => a.toString() === b.toString());
   });
 
   describe('constructor', () => {
@@ -42,11 +45,12 @@ describe('EtsyWebhookHandler', () => {
   describe('verifySignature', () => {
     it('should verify valid signature', () => {
       const handler = new EtsyWebhookHandler({ secret: mockSecret });
+      (handler as any).crypto = mockCrypto;
       const payload = JSON.stringify({ type: 'receipt.updated', data: {} });
 
       mockCrypto.createHmac.mockReturnValueOnce({
-        update: jest.fn().mockReturnThis(),
-        digest: jest.fn().mockReturnValue('valid-signature')
+        update: vi.fn().mockReturnThis(),
+        digest: vi.fn().mockReturnValue('valid-signature')
       });
 
       mockCrypto.timingSafeEqual.mockReturnValueOnce(true);
@@ -59,11 +63,12 @@ describe('EtsyWebhookHandler', () => {
 
     it('should reject invalid signature', () => {
       const handler = new EtsyWebhookHandler({ secret: mockSecret });
+      (handler as any).crypto = mockCrypto;
       const payload = JSON.stringify({ type: 'receipt.updated', data: {} });
 
       mockCrypto.createHmac.mockReturnValueOnce({
-        update: jest.fn().mockReturnThis(),
-        digest: jest.fn().mockReturnValue('expected-signature')
+        update: vi.fn().mockReturnThis(),
+        digest: vi.fn().mockReturnValue('expected-signature')
       });
 
       mockCrypto.timingSafeEqual.mockReturnValueOnce(false);
@@ -157,7 +162,7 @@ describe('EtsyWebhookHandler', () => {
   describe('on/off event handlers', () => {
     it('should register event handler', () => {
       const handler = new EtsyWebhookHandler({ secret: mockSecret });
-      const mockHandler = jest.fn();
+      const mockHandler = vi.fn();
 
       handler.on('receipt.updated', mockHandler);
 
@@ -166,8 +171,8 @@ describe('EtsyWebhookHandler', () => {
 
     it('should register multiple handlers for same event', () => {
       const handler = new EtsyWebhookHandler({ secret: mockSecret });
-      const mockHandler1 = jest.fn();
-      const mockHandler2 = jest.fn();
+      const mockHandler1 = vi.fn();
+      const mockHandler2 = vi.fn();
 
       handler.on('receipt.updated', mockHandler1);
       handler.on('receipt.updated', mockHandler2);
@@ -177,8 +182,8 @@ describe('EtsyWebhookHandler', () => {
 
     it('should remove specific handler', () => {
       const handler = new EtsyWebhookHandler({ secret: mockSecret });
-      const mockHandler1 = jest.fn();
-      const mockHandler2 = jest.fn();
+      const mockHandler1 = vi.fn();
+      const mockHandler2 = vi.fn();
 
       handler.on('receipt.updated', mockHandler1);
       handler.on('receipt.updated', mockHandler2);
@@ -190,7 +195,7 @@ describe('EtsyWebhookHandler', () => {
 
     it('should call handler when event is parsed', async () => {
       const handler = new EtsyWebhookHandler({ secret: mockSecret });
-      const mockHandler = jest.fn();
+      const mockHandler = vi.fn();
 
       handler.on('receipt.updated', mockHandler);
 
@@ -209,8 +214,8 @@ describe('EtsyWebhookHandler', () => {
 
     it('should call all handlers for an event', async () => {
       const handler = new EtsyWebhookHandler({ secret: mockSecret });
-      const mockHandler1 = jest.fn();
-      const mockHandler2 = jest.fn();
+      const mockHandler1 = vi.fn();
+      const mockHandler2 = vi.fn();
 
       handler.on('receipt.updated', mockHandler1);
       handler.on('receipt.updated', mockHandler2);
@@ -230,7 +235,7 @@ describe('EtsyWebhookHandler', () => {
 
     it('should handle async handlers', async () => {
       const handler = new EtsyWebhookHandler({ secret: mockSecret });
-      const mockHandler = jest.fn(async (data) => {
+      const mockHandler = vi.fn(async (data) => {
         await new Promise(resolve => setTimeout(resolve, 5));
         return data;
       });
@@ -251,7 +256,7 @@ describe('EtsyWebhookHandler', () => {
 
     it('should not throw if handler throws', async () => {
       const handler = new EtsyWebhookHandler({ secret: mockSecret });
-      const mockHandler = jest.fn(() => {
+      const mockHandler = vi.fn(() => {
         throw new Error('Handler error');
       });
 
@@ -272,8 +277,8 @@ describe('EtsyWebhookHandler', () => {
   describe('removeAllListeners', () => {
     it('should remove all handlers for specific event', () => {
       const handler = new EtsyWebhookHandler({ secret: mockSecret });
-      const mockHandler1 = jest.fn();
-      const mockHandler2 = jest.fn();
+      const mockHandler1 = vi.fn();
+      const mockHandler2 = vi.fn();
 
       handler.on('receipt.updated', mockHandler1);
       handler.on('listing.created', mockHandler2);
@@ -286,8 +291,8 @@ describe('EtsyWebhookHandler', () => {
 
     it('should remove all handlers for all events', () => {
       const handler = new EtsyWebhookHandler({ secret: mockSecret });
-      const mockHandler1 = jest.fn();
-      const mockHandler2 = jest.fn();
+      const mockHandler1 = vi.fn();
+      const mockHandler2 = vi.fn();
 
       handler.on('receipt.updated', mockHandler1);
       handler.on('listing.created', mockHandler2);
@@ -309,9 +314,9 @@ describe('EtsyWebhookHandler', () => {
     it('should return correct count', () => {
       const handler = new EtsyWebhookHandler({ secret: mockSecret });
 
-      handler.on('receipt.updated', jest.fn());
-      handler.on('receipt.updated', jest.fn());
-      handler.on('listing.created', jest.fn());
+      handler.on('receipt.updated', vi.fn());
+      handler.on('receipt.updated', vi.fn());
+      handler.on('listing.created', vi.fn());
 
       expect(handler.getHandlerCount('receipt.updated')).toBe(2);
       expect(handler.getHandlerCount('listing.created')).toBe(1);
@@ -328,9 +333,9 @@ describe('EtsyWebhookHandler', () => {
     it('should return all registered event types', () => {
       const handler = new EtsyWebhookHandler({ secret: mockSecret });
 
-      handler.on('receipt.updated', jest.fn());
-      handler.on('listing.created', jest.fn());
-      handler.on('shop.updated', jest.fn());
+      handler.on('receipt.updated', vi.fn());
+      handler.on('listing.created', vi.fn());
+      handler.on('shop.updated', vi.fn());
 
       const eventTypes = handler.getRegisteredEventTypes();
 
@@ -352,7 +357,7 @@ describe('EtsyWebhookHandler', () => {
   describe('supported event types', () => {
     it('should handle receipt.updated events', async () => {
       const handler = new EtsyWebhookHandler({ secret: mockSecret });
-      const mockHandler = jest.fn();
+      const mockHandler = vi.fn();
 
       handler.on('receipt.updated', mockHandler);
       handler.parseEvent({ type: 'receipt.updated', data: {} });
@@ -363,7 +368,7 @@ describe('EtsyWebhookHandler', () => {
 
     it('should handle receipt.created events', async () => {
       const handler = new EtsyWebhookHandler({ secret: mockSecret });
-      const mockHandler = jest.fn();
+      const mockHandler = vi.fn();
 
       handler.on('receipt.created', mockHandler);
       handler.parseEvent({ type: 'receipt.created', data: {} });
@@ -375,9 +380,9 @@ describe('EtsyWebhookHandler', () => {
     it('should handle listing events', async () => {
       const handler = new EtsyWebhookHandler({ secret: mockSecret });
       const handlers = {
-        updated: jest.fn(),
-        created: jest.fn(),
-        deactivated: jest.fn()
+        updated: vi.fn(),
+        created: vi.fn(),
+        deactivated: vi.fn()
       };
 
       handler.on('listing.updated', handlers.updated);
@@ -397,7 +402,7 @@ describe('EtsyWebhookHandler', () => {
 
     it('should handle shop.updated events', async () => {
       const handler = new EtsyWebhookHandler({ secret: mockSecret });
-      const mockHandler = jest.fn();
+      const mockHandler = vi.fn();
 
       handler.on('shop.updated', mockHandler);
       handler.parseEvent({ type: 'shop.updated', data: {} });

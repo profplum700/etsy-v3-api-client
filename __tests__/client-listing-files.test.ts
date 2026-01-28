@@ -8,7 +8,7 @@ describe('EtsyClient Listing Files', () => {
   let ctx: MockClientContext;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     ctx = setupClientMocks();
   });
 
@@ -27,7 +27,7 @@ describe('EtsyClient Listing Files', () => {
       };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockFile)
+        json: vi.fn().mockResolvedValue(mockFile)
       });
 
       const blob = new Blob(['fake file data'], { type: 'application/pdf' });
@@ -54,7 +54,7 @@ describe('EtsyClient Listing Files', () => {
       };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockFile)
+        json: vi.fn().mockResolvedValue(mockFile)
       });
 
       const blob = new Blob(['fake file data'], { type: 'application/pdf' });
@@ -102,7 +102,7 @@ describe('EtsyClient Listing Files', () => {
       };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockFiles)
+        json: vi.fn().mockResolvedValue(mockFiles)
       });
 
       const result = await ctx.client.getAllListingFiles('123', '789');
@@ -130,7 +130,7 @@ describe('EtsyClient Listing Files', () => {
       };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockFile)
+        json: vi.fn().mockResolvedValue(mockFile)
       });
 
       const result = await ctx.client.getListingFile('123', '789', '555');

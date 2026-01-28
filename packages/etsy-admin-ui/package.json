@@ -13,9 +13,9 @@
   "scripts": {
     "build": "rollup -c",
     "build:watch": "rollup -c --watch",
-    "test": "pnpm exec jest --passWithNoTests",
-    "test:watch": "pnpm exec jest --watch",
-    "test:coverage": "pnpm exec jest --coverage",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "lint": "eslint --config ../../eslint.config.mjs .",
     "lint:fix": "eslint --fix --config ../../eslint.config.mjs .",
     "type-check": "tsc --noEmit"
@@ -63,16 +63,12 @@
     "@rollup/plugin-typescript": "^12.1.4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.1.0",
-    "@types/jest": "^30.0.0",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
-    "jest": "^30.0.5",
-    "jest-environment-jsdom": "^30.0.5",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "rollup": "^4.45.1",
     "rollup-plugin-dts": "^6.1.1",
-    "ts-jest": "^29.4.0",
     "typescript": "^5.5.3"
   },
   "publishConfig": {

@@ -8,7 +8,7 @@ describe('EtsyClient Listing Videos', () => {
   let ctx: MockClientContext;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     ctx = setupClientMocks();
   });
 
@@ -24,7 +24,7 @@ describe('EtsyClient Listing Videos', () => {
       };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockVideo)
+        json: vi.fn().mockResolvedValue(mockVideo)
       });
 
       const blob = new Blob(['fake video data'], { type: 'video/mp4' });
@@ -48,7 +48,7 @@ describe('EtsyClient Listing Videos', () => {
       };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockVideo)
+        json: vi.fn().mockResolvedValue(mockVideo)
       });
 
       const blob = new Blob(['fake video data'], { type: 'video/mp4' });
@@ -90,7 +90,7 @@ describe('EtsyClient Listing Videos', () => {
       };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockVideos)
+        json: vi.fn().mockResolvedValue(mockVideos)
       });
 
       const result = await ctx.client.getListingVideos('789');
@@ -115,7 +115,7 @@ describe('EtsyClient Listing Videos', () => {
       };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockVideo)
+        json: vi.fn().mockResolvedValue(mockVideo)
       });
 
       const result = await ctx.client.getListingVideo('789', '1');

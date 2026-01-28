@@ -266,9 +266,9 @@ describe('Utility Functions', () => {
       };
 
       const mockStorage = {
-        save: jest.fn(),
-        load: jest.fn(),
-        clear: jest.fn()
+        save: vi.fn(),
+        load: vi.fn(),
+        clear: vi.fn()
       };
 
       const tokenManager = createTokenManager(config, mockStorage);

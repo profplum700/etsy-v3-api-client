@@ -28,11 +28,11 @@ function createAlwaysFailingOperation(errorCode = 500) {
 
 describe('Retry Logic', () => {
   // Increase timeout for retry tests since they involve delays
-  jest.setTimeout(15000);
+  vi.setConfig({ testTimeout: 15000 });
 
   describe('withRetry', () => {
     it('should succeed on first attempt if operation succeeds', async () => {
-      const operation = jest.fn(async () => ({ success: true }));
+      const operation = vi.fn(async () => ({ success: true }));
 
       const result = await withRetry(operation, { maxRetries: 3 });
 
@@ -66,7 +66,7 @@ describe('Retry Logic', () => {
     });
 
     it('should not retry non-retryable errors', async () => {
-      const operation = jest.fn(async () => {
+      const operation = vi.fn(async () => {
         throw new EtsyApiError('Bad request', 400);
       });
 
@@ -163,7 +163,7 @@ describe('Retry Logic', () => {
 
     it('should call onRetry callback', async () => {
       const operation = createFailingOperation(2, 500);
-      const onRetry = jest.fn();
+      const onRetry = vi.fn();
 
       await withRetry(operation, {
         maxRetries: 3,
@@ -315,7 +315,7 @@ describe('Retry Logic', () => {
       const originalSetTimeout = global.setTimeout;
 
       // Mock setTimeout to capture delays
-      global.setTimeout = jest.fn((callback, delay) => {
+      global.setTimeout = vi.fn((callback, delay) => {
         if (typeof delay === 'number' && delay > 0) {
           delays.push(delay);
         }

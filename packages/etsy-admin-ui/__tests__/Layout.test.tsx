@@ -1,6 +1,3 @@
-/**
- * @jest-environment jsdom
- */
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { Layout, Header, Sidebar, SidebarItem } from '../src/components/Layout';
@@ -84,14 +81,14 @@ describe('Layout components', () => {
     });
 
     it('should render as button when onClick provided', () => {
-      const onClick = jest.fn();
+      const onClick = vi.fn();
       render(<SidebarItem label="Test Button" onClick={onClick} />);
       const button = screen.getByText('Test Button').closest('button');
       expect(button).toBeInTheDocument();
     });
 
     it('should call onClick when clicked', () => {
-      const onClick = jest.fn();
+      const onClick = vi.fn();
       render(<SidebarItem label="Test Button" onClick={onClick} />);
       const button = screen.getByText('Test Button').closest('button');
       button?.click();

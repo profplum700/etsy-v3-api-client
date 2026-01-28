@@ -8,7 +8,7 @@ describe('EtsyClient Return Policies', () => {
   let ctx: MockClientContext;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     ctx = setupClientMocks();
   });
 
@@ -22,7 +22,7 @@ describe('EtsyClient Return Policies', () => {
       const mockPolicy = { return_policy_id: 1, shop_id: 123, ...policyParams };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockPolicy)
+        json: vi.fn().mockResolvedValue(mockPolicy)
       });
 
       const result = await ctx.client.createShopReturnPolicy('123', policyParams);
@@ -49,7 +49,7 @@ describe('EtsyClient Return Policies', () => {
       };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockPolicies)
+        json: vi.fn().mockResolvedValue(mockPolicies)
       });
 
       const result = await ctx.client.getShopReturnPolicies('123');
@@ -73,7 +73,7 @@ describe('EtsyClient Return Policies', () => {
       };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockPolicy)
+        json: vi.fn().mockResolvedValue(mockPolicy)
       });
 
       const result = await ctx.client.getShopReturnPolicy('123', '1');
@@ -96,7 +96,7 @@ describe('EtsyClient Return Policies', () => {
       const mockPolicy = { return_policy_id: 1, shop_id: 123, ...updateParams };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockPolicy)
+        json: vi.fn().mockResolvedValue(mockPolicy)
       });
 
       const result = await ctx.client.updateShopReturnPolicy('123', '1', updateParams);
@@ -141,7 +141,7 @@ describe('EtsyClient Return Policies', () => {
       };
       ctx.mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockPolicy)
+        json: vi.fn().mockResolvedValue(mockPolicy)
       });
 
       const result = await ctx.client.consolidateShopReturnPolicies('123', consolidateParams);
