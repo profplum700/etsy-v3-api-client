@@ -305,6 +305,42 @@ describe('EtsyClient Listings', () => {
       );
       expect(result).toEqual(mockInventory);
     });
+
+    it('should include readiness_state_id in offerings for physical listings', async () => {
+      const inventoryParams = {
+        products: [{
+          sku: 'WOOD-001',
+          offerings: [{
+            price: 8.00,
+            quantity: 44,
+            is_enabled: true,
+            readiness_state_id: 18201076875
+          }],
+          property_values: [{
+            property_id: 507,
+            property_name: 'Material',
+            values: ['Walnut']
+          }]
+        }],
+        price_on_property: [507],
+        quantity_on_property: [100],
+        sku_on_property: [100],
+        readiness_state_on_property: [507]
+      };
+      const mockInventory = { products: inventoryParams.products };
+      ctx.mockFetch.mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue(mockInventory)
+      });
+
+      const result = await ctx.client.updateListingInventory('789', inventoryParams);
+
+      const callArgs = ctx.mockFetch.mock.calls[0]!;
+      const sentBody = JSON.parse(callArgs[1].body as string);
+      expect(sentBody.products[0].offerings[0].readiness_state_id).toBe(18201076875);
+      expect(sentBody.readiness_state_on_property).toEqual([507]);
+      expect(result).toEqual(mockInventory);
+    });
   });
 
   describe('Listing Images', () => {

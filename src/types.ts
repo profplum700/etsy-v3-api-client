@@ -356,6 +356,7 @@ export interface EtsyListingOffering {
   quantity: number;
   is_enabled: boolean;
   is_deleted: boolean;
+  readiness_state_id?: number;
 }
 
 export interface EtsyListingPropertyValue {
@@ -1491,11 +1492,13 @@ export interface UpdateListingInventoryParams {
       price: number;
       quantity: number;
       is_enabled: boolean;
+      readiness_state_id?: number;
     }>;
   }>;
   price_on_property?: number[];
   quantity_on_property?: number[];
   sku_on_property?: number[];
+  readiness_state_on_property?: number[];
 }
 
 // ============================================================================
