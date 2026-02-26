@@ -36,7 +36,7 @@ describe('EtsyClient Listing Translations', () => {
         'https://api.etsy.com/v3/application/shops/123/listings/789/translations/fr',
         expect.objectContaining({
           method: 'POST',
-          body: 'title=Titre+du+produit&description=Description+du+produit&tags=fait+main&tags=cadeau'
+          body: 'title=Titre+du+produit&description=Description+du+produit&tags=fait+main%2Ccadeau'
         })
       );
       expect(result).toEqual(mockTranslation);
@@ -119,7 +119,7 @@ describe('EtsyClient Listing Translations', () => {
         'https://api.etsy.com/v3/application/shops/123/listings/789/translations/fr',
         expect.objectContaining({
           method: 'PUT',
-          body: 'title=Titre+mis+a+jour&description=Description+mise+a+jour&tags=nouveau&tags=mis+a+jour'
+          body: 'title=Titre+mis+a+jour&description=Description+mise+a+jour&tags=nouveau%2Cmis+a+jour'
         })
       );
       expect(result).toEqual(mockTranslation);

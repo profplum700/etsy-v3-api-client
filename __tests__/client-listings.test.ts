@@ -221,6 +221,10 @@ describe('EtsyClient Listings', () => {
 
       const result = await ctx.client.createDraftListing('123', listingParams);
 
+      const callArgs = ctx.mockFetch.mock.calls[0]!;
+      const body = callArgs[1].body as string;
+      expect(body).toContain('tags=handmade%2Cgift');
+      expect(body).toContain('materials=wood%2Cmetal');
       expect(result).toEqual(mockListing);
     });
   });

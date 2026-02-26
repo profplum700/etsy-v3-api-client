@@ -360,10 +360,7 @@ export class EtsyClient {
     for (const [key, value] of Object.entries(params as Record<string, unknown>)) {
       if (value === undefined || value === null) continue;
       if (Array.isArray(value)) {
-        for (const item of value) {
-          if (item === undefined || item === null) continue;
-          body.append(key, String(item));
-        }
+        body.append(key, value.filter(item => item !== undefined && item !== null).map(String).join(','));
       } else {
         body.append(key, String(value));
       }
