@@ -1516,8 +1516,8 @@ export class EtsyClient {
 
     // Build form-urlencoded body
     const body = new URLSearchParams();
-    valueIds.forEach(id => body.append('value_ids', id.toString()));
-    values.forEach(val => body.append('values', val));
+    body.append('value_ids', valueIds.map(id => id.toString()).join(','));
+    body.append('values', values.join(','));
     if (scaleId !== undefined) {
       body.append('scale_id', scaleId.toString());
     }

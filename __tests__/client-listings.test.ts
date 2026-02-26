@@ -496,12 +496,8 @@ describe('EtsyClient Listings', () => {
 
         const callArgs = ctx.mockFetch.mock.calls[0]!;
         const body = callArgs[1].body as string;
-        expect(body).toContain('value_ids=1');
-        expect(body).toContain('value_ids=60');
-        expect(body).toContain('value_ids=5022');
-        expect(body).toContain('values=Abstract');
-        expect(body).toContain('values=Animals');
-        expect(body).toContain('values=Architecture');
+        expect(body).toContain('value_ids=1%2C60%2C5022');
+        expect(body).toContain('values=Abstract%2CAnimals%2CArchitecture');
         expect(result.property_id).toBe(4848);
       });
 
