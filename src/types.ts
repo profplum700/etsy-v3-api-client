@@ -31,7 +31,12 @@ export interface EtsyClientConfig {
     maxDelayMs?: number;
     /** Jitter factor 0-1 for randomizing delays (default: 0.1) */
     jitter?: number;
-    /** Percentage threshold (0-100) for firing onApproachingLimit (default: 80) */
+    /**
+     * Percentage of daily quota used at which `onApproachingLimit` fires.
+     * Value is 0-100 representing a **percentage**, not an absolute request count.
+     * For example, 80 means "fire when 80% of the daily quota has been consumed".
+     * @default 80
+     */
     qpdWarningThreshold?: number;
     /** Callback fired when daily remaining falls below threshold */
     onApproachingLimit?: (remainingRequests: number, totalLimit: number, percentageUsed: number) => void;
@@ -470,13 +475,28 @@ export type ApproachingLimitCallback = (
   percentageUsed: number
 ) => void;
 
+/**
+ * Rate limiter configuration.
+ *
+ * `maxRequestsPerDay`, `maxRequestsPerSecond`, and `minRequestInterval` are
+ * used as fallbacks when Etsy response headers are unavailable. On serverless
+ * platforms (Vercel, AWS Lambda, etc.) the process-local request counter
+ * resets on every cold start, so only the header-based tracking
+ * (`x-remaining-today`) is accurate — the local counter is best-effort.
+ *
+ * The daily reset timer assumes Etsy resets at UTC midnight. If Etsy uses a
+ * different window the local counter may reset at the wrong time. Header-based
+ * limits (preferred when available) are unaffected.
+ */
 export interface RateLimitConfig {
-  // Existing fields (used as fallback when headers unavailable)
+  /** Daily request cap (default: 5000 — Etsy's actual limit). Used as fallback when headers unavailable. */
   maxRequestsPerDay: number;
+  /** Per-second request cap (default: 5 — Etsy's actual limit). */
   maxRequestsPerSecond: number;
+  /** Minimum milliseconds between requests (default: 200, i.e. 1000 / 5 QPS). */
   minRequestInterval: number;
 
-  // New fields for retry behavior
+  // Retry behavior
   /** Maximum number of automatic retries for 429 errors (default: 3) */
   maxRetries?: number;
   /** Base delay in milliseconds for exponential backoff (default: 1000) */
@@ -486,8 +506,12 @@ export interface RateLimitConfig {
   /** Jitter factor 0-1 for randomizing delays (default: 0.1) */
   jitter?: number;
 
-  // New fields for warning callback
-  /** Percentage threshold (0-100) for firing onApproachingLimit (default: 80) */
+  /**
+   * Percentage of daily quota used at which `onApproachingLimit` fires.
+   * Value is 0-100 representing a **percentage**, not an absolute request count.
+   * For example, 80 means "fire when 80% of the daily quota has been consumed".
+   * @default 80
+   */
   qpdWarningThreshold?: number;
   /** Callback fired when daily remaining falls below threshold */
   onApproachingLimit?: ApproachingLimitCallback;
@@ -750,9 +774,9 @@ export class EtsyApiError extends Error {
         break;
       }
 
-      case 500:
-      case 502:
-      case 503:
+      case 500: /* falls through */
+      case 502: /* falls through */
+      case 503: /* falls through */
       case 504: // Server Errors
         suggestions.push('This is an Etsy server error, not your code');
         suggestions.push('Retry the request after a short delay (exponential backoff)');

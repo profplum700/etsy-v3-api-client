@@ -1,5 +1,6 @@
 # Dependencies
 node_modules/
+package-lock.json
 
 # Build outputs
 dist/
@@ -103,3 +104,4 @@ examples
 logs/
 
 .claude/settings.local.json
+.ntm/

@@ -104,9 +104,9 @@ describe('EtsyClient Core', () => {
 
       const mockRateLimiter = {
         waitForRateLimit: vi.fn().mockResolvedValue(undefined),
-        getRemainingRequests: vi.fn().mockReturnValue(9999),
+        getRemainingRequests: vi.fn().mockReturnValue(4999),
         getRateLimitStatus: vi.fn().mockReturnValue({
-          remainingRequests: 9999,
+          remainingRequests: 4999,
           resetTime: new Date(Date.now() + 86400000),
           canMakeRequest: true,
           isFromHeaders: false
@@ -254,7 +254,7 @@ describe('EtsyClient Core', () => {
         headers: new Headers({ 'content-length': '100' })
       });
 
-      const result = await ctx.client.tokenScopes({ token: 'test-token-123' });
+      const result = await ctx.client.tokenScopes({ token: 'test-token-123' }); // ubs:ignore — test fixture, not a real secret
 
       expect(ctx.mockFetch).toHaveBeenCalledWith(
         'https://api.etsy.com/v3/application/scopes',

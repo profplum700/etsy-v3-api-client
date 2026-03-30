@@ -163,7 +163,17 @@ export class EtsyWebhookHandler {
    * @returns Parsed webhook event
    */
   parseEvent(payload: string | object): EtsyWebhookEvent {
-    const data = typeof payload === 'string' ? JSON.parse(payload) : payload;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let data: any;
+    if (typeof payload === 'string') {
+      try {
+        data = JSON.parse(payload);
+      } catch {
+        throw new Error('Invalid webhook payload: malformed JSON');
+      }
+    } else {
+      data = payload;
+    }
 
     // Validate event structure
     if (!data.type || !data.data) {

@@ -3,6 +3,7 @@
  */
 
 import { EtsyApiError } from './types';
+import { ETSY_RATE_LIMITS } from './rate-limiting';
 
 /**
  * Request configuration passed to plugins
@@ -414,7 +415,7 @@ export interface RateLimitPluginConfig {
  * Rate limiting plugin
  */
 export function createRateLimitPlugin(config: RateLimitPluginConfig = {}): EtsyPlugin {
-  const maxRequestsPerSecond = config.maxRequestsPerSecond || 10;
+  const maxRequestsPerSecond = config.maxRequestsPerSecond || ETSY_RATE_LIMITS.MAX_REQUESTS_PER_SECOND;
   const requests: number[] = [];
 
   return {

@@ -102,8 +102,8 @@ const client = new EtsyClient({
   // ...
   rateLimiting: {
     enabled: true,
-    maxRequestsPerDay: 10000,
-    maxRequestsPerSecond: 10
+    maxRequestsPerDay: 5000,
+    maxRequestsPerSecond: 5
   }
 });
 ```

@@ -15,6 +15,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Server imports from both `@profplum700/etsy-nextjs` and `@profplum700/etsy-nextjs/server` work identically
   - See MIGRATION.md for upgrade instructions
 
+## [2.5.4] - 2026-03-31
+
+### Fixed
+- Restored the original flexible payload typing in `EtsyWebhookHandler.parseEvent()` so webhook parsing continues to accept existing object payloads without over-constraining the input.
+- Corrected the default Etsy API rate-limiting assumptions to Etsy's actual documented limits: `5` requests per second and `5,000` requests per day.
+
+### Changed
+- Prepared a synchronized patch release across the root package and workspace packages so the published versions stay aligned again.
+
 ## [2.3.1] - 2025-11-07
 
 ### Fixed
@@ -331,7 +340,7 @@ await client.createReceiptShipment(shopId, receiptId, {
 - Initial beta release of the Etsy API v3 client
 - OAuth 2.0 authentication with PKCE flow support
 - Complete TypeScript definitions for all API responses
-- Rate limiting with respect to Etsy's API limits (10,000/day, 10/second)
+- Rate limiting with respect to Etsy's API limits (5,000/day, 5/second)
 - Automatic token refresh with configurable storage
 - Response caching for GET requests
 - Support for all major Etsy API v3 endpoints:

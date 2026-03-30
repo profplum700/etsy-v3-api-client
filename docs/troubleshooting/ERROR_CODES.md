@@ -418,8 +418,8 @@ async function updateListingWithRetry(
 **Meaning:** You've exceeded Etsy's rate limits.
 
 **Etsy Rate Limits:**
-- **10 requests per second** (per API key)
-- **10,000 requests per day** (per API key)
+- **5 requests per second** (per API key)
+- **5,000 requests per day** (per API key)
 
 **Common Causes:**
 
@@ -759,8 +759,8 @@ const client = new EtsyClient({
   ...config,
   rateLimiting: {
     enabled: true,
-    maxRequestsPerDay: 8000, // Lower than default 10,000
-    maxRequestsPerSecond: 5, // Lower than default 10
+    maxRequestsPerDay: 4000, // Lower than default 5,000
+    maxRequestsPerSecond: 3, // Lower than default 5
     minRequestInterval: 200, // 200ms between requests
   },
 });
