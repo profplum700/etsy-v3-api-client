@@ -378,6 +378,45 @@ describe('Integration Tests', () => {
       await client.getUser();
       expect(mockFetch).toHaveBeenCalledTimes(2);
     });
+
+    it('should recover from corrupted cache entries', async () => {
+      // Create a custom cache that returns invalid JSON
+      const corruptCache = {
+        get: vi.fn().mockResolvedValue('not-valid-json{{{'),
+        set: vi.fn().mockResolvedValue(undefined),
+        delete: vi.fn().mockResolvedValue(undefined),
+        clear: vi.fn().mockResolvedValue(undefined)
+      };
+
+      const client = new EtsyClient({
+        keystring: 'test-api-key',
+        accessToken: 'test-token',
+        refreshToken: 'test-refresh-token',
+        expiresAt: new Date(Date.now() + 3600000),
+        caching: {
+          enabled: true,
+          ttl: 300,
+          storage: corruptCache
+        },
+        rateLimiting: {
+          enabled: true,
+          minRequestInterval: 0
+        }
+      });
+
+      const mockUser = { user_id: 123, login_name: 'testuser' };
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue(mockUser)
+      });
+
+      // Should recover: delete corrupt entry and fetch fresh data
+      const user = await client.getUser();
+      expect(user).toEqual(mockUser);
+      expect(corruptCache.delete).toHaveBeenCalled();
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('End-to-End Workflow', () => {

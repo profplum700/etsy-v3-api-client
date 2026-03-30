@@ -69,6 +69,15 @@ describe('Data Validation', () => {
       expect(result3.valid).toBe(false);
     });
 
+    it('should reject NaN values in number validation', () => {
+      const validator = new Validator()
+        .rule(field('price').number({ min: 0 }));
+
+      const result = validator.validate({ price: NaN });
+      expect(result.valid).toBe(false);
+      expect(result.errors[0]!.field).toBe('price');
+    });
+
     it('should validate integers', () => {
       const validator = new Validator()
         .rule(field('quantity').number({ integer: true }));

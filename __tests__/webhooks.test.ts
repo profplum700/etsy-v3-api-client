@@ -157,6 +157,14 @@ describe('EtsyWebhookHandler', () => {
         'Invalid webhook event format'
       );
     });
+
+    it('should throw on malformed JSON string', () => {
+      const handler = new EtsyWebhookHandler({ secret: mockSecret });
+
+      expect(() => handler.parseEvent('not valid json{')).toThrow(
+        'Invalid webhook payload: malformed JSON'
+      );
+    });
   });
 
   describe('on/off event handlers', () => {
