@@ -240,14 +240,16 @@ export class GlobalRequestQueue {
           let result: unknown;
 
           if (item.timeout) {
+            // Capture timeout in local const so the closure cannot see a stale value
+            const timeout = item.timeout;
             // Calculate remaining timeout (total timeout minus time already spent in queue)
-            const remainingTimeout = item.timeout - elapsed;
+            const remainingTimeout = timeout - elapsed;
             let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
             // Race the request against the timeout
             const timeoutPromise = new Promise<never>((_, reject) => {
               timeoutId = setTimeout(() => {
-                reject(new Error(`Request timeout after ${item.timeout}ms (exceeded during execution)`));
+                reject(new Error(`Request timeout after ${timeout}ms (exceeded during execution)`));
               }, remainingTimeout);
 
               // Prevent open handles in Node.js test runners

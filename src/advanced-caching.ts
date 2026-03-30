@@ -581,8 +581,8 @@ export function createCacheStorage(config: AdvancedCachingConfig = {}): CacheSto
     case 'lfu':
       return new LFUCache(config);
     case 'ttl':
-      // TTL strategy uses LRU with strict TTL
-      return new LRUCache(config);
+      // TTL strategy uses LRU with strict TTL — same implementation
+      /* falls through */
     default:
       return new LRUCache(config);
   }
