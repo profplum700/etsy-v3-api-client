@@ -331,7 +331,7 @@ await client.createReceiptShipment(shopId, receiptId, {
 - Initial beta release of the Etsy API v3 client
 - OAuth 2.0 authentication with PKCE flow support
 - Complete TypeScript definitions for all API responses
-- Rate limiting with respect to Etsy's API limits (10,000/day, 10/second)
+- Rate limiting with respect to Etsy's API limits (5,000/day, 5/second)
 - Automatic token refresh with configurable storage
 - Response caching for GET requests
 - Support for all major Etsy API v3 endpoints:

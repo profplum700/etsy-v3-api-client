@@ -227,8 +227,8 @@ await client.getListingsByShop(shopId, { limit: 10 });
 **Problem**: Exceeded rate limit.
 
 **Etsy Rate Limits**:
-- 10 requests per second
-- 10,000 requests per day per app
+- 5 requests per second
+- 5,000 requests per day per app
 
 **Solution**:
 ```typescript

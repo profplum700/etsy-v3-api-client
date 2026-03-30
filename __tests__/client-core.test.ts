@@ -104,9 +104,9 @@ describe('EtsyClient Core', () => {
 
       const mockRateLimiter = {
         waitForRateLimit: vi.fn().mockResolvedValue(undefined),
-        getRemainingRequests: vi.fn().mockReturnValue(9999),
+        getRemainingRequests: vi.fn().mockReturnValue(4999),
         getRateLimitStatus: vi.fn().mockReturnValue({
-          remainingRequests: 9999,
+          remainingRequests: 4999,
           resetTime: new Date(Date.now() + 86400000),
           canMakeRequest: true,
           isFromHeaders: false

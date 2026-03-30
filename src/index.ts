@@ -28,7 +28,7 @@ export {
 // Rate Limiting Exports
 // ============================================================================
 
-export { EtsyRateLimiter, defaultRateLimiter } from './rate-limiting';
+export { EtsyRateLimiter, defaultRateLimiter, ETSY_RATE_LIMITS } from './rate-limiting';
 
 // ============================================================================
 // Request Queue Exports
