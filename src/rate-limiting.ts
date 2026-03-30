@@ -157,7 +157,7 @@ export class EtsyRateLimiter {
     const parseNumber = (value: string | null): number | undefined => {
       if (value === null) return undefined;
       const num = parseInt(value, 10);
-      return isNaN(num) ? undefined : num;
+      return Number.isNaN(num) ? undefined : num;
     };
 
     return {

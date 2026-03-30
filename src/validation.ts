@@ -165,7 +165,7 @@ export class FieldValidator {
       const value = (data as Record<string, unknown>)[this.field];
       if (value === undefined || value === null) return null;
 
-      if (typeof value !== 'number' || isNaN(value)) {
+      if (typeof value !== 'number' || Number.isNaN(value)) {
         return {
           field: this.field,
           message: options.message || `${this.field} must be a number`,

@@ -774,9 +774,9 @@ export class EtsyApiError extends Error {
         break;
       }
 
-      case 500:
-      case 502:
-      case 503:
+      case 500: /* falls through */
+      case 502: /* falls through */
+      case 503: /* falls through */
       case 504: // Server Errors
         suggestions.push('This is an Etsy server error, not your code');
         suggestions.push('Retry the request after a short delay (exponential backoff)');

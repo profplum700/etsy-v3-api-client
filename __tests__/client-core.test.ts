@@ -254,7 +254,7 @@ describe('EtsyClient Core', () => {
         headers: new Headers({ 'content-length': '100' })
       });
 
-      const result = await ctx.client.tokenScopes({ token: 'test-token-123' });
+      const result = await ctx.client.tokenScopes({ token: 'test-token-123' }); // ubs:ignore — test fixture, not a real secret
 
       expect(ctx.mockFetch).toHaveBeenCalledWith(
         'https://api.etsy.com/v3/application/scopes',

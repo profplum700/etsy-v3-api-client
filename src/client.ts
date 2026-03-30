@@ -119,9 +119,13 @@ import {
 class DefaultLogger implements LoggerInterface {
   debug(message: string, ...args: unknown[]): void {
     // Only log debug in development (check both browser and Node.js)
-    const isDevelopment = isNode 
-      ? process.env.NODE_ENV === 'development'
-      : window.location?.hostname === 'localhost' || window.location?.hostname === '127.0.0.1';
+    let isDevelopment: boolean;
+    if (isNode) {
+      isDevelopment = process.env.NODE_ENV === 'development';
+    } else {
+      const host = window.location?.hostname;
+      isDevelopment = host === 'localhost' || host === '127.0.0.1';
+    }
     
     if (isDevelopment) {
       console.log(`[DEBUG] ${message}`, ...args);
@@ -247,7 +251,12 @@ export class EtsyClient {
     if (useCache && this.cache && requestOptions.method === 'GET') {
       const cached = await this.cache.get(cacheKey);
       if (cached) {
-        return JSON.parse(cached);
+        try {
+          return JSON.parse(cached);
+        } catch {
+          // Corrupted cache entry — fall through to fresh fetch
+          await this.cache.delete(cacheKey);
+        }
       }
     }
 
