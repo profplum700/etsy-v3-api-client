@@ -96,7 +96,7 @@ import {
   TokenScopesResponse
 } from './types';
 import { TokenManager } from './auth/token-manager';
-import { EtsyRateLimiter } from './rate-limiting';
+import { EtsyRateLimiter, ETSY_RATE_LIMITS } from './rate-limiting';
 import { assertFetchSupport, isNode } from './utils/environment';
 import {
   BulkOperationManager,
@@ -197,9 +197,9 @@ export class EtsyClient {
     // Set up rate limiting
     if (config.rateLimiting?.enabled !== false) {
       this.rateLimiter = new EtsyRateLimiter({
-        maxRequestsPerDay: config.rateLimiting?.maxRequestsPerDay || 10000,
-        maxRequestsPerSecond: config.rateLimiting?.maxRequestsPerSecond || 10,
-        minRequestInterval: config.rateLimiting?.minRequestInterval ?? 100,
+        maxRequestsPerDay: config.rateLimiting?.maxRequestsPerDay || ETSY_RATE_LIMITS.MAX_REQUESTS_PER_DAY,
+        maxRequestsPerSecond: config.rateLimiting?.maxRequestsPerSecond || ETSY_RATE_LIMITS.MAX_REQUESTS_PER_SECOND,
+        minRequestInterval: config.rateLimiting?.minRequestInterval ?? ETSY_RATE_LIMITS.MIN_REQUEST_INTERVAL,
         // New retry and callback options
         maxRetries: config.rateLimiting?.maxRetries,
         baseDelayMs: config.rateLimiting?.baseDelayMs,

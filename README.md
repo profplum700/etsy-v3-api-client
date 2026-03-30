@@ -172,7 +172,7 @@ const client = new EtsyClient({
   // Optional configuration
   rateLimiting: {
     enabled: true,
-    maxRequestsPerSecond: 10,
+    maxRequestsPerSecond: 5,
     maxRequestsPerDay: 5000
   },
   caching: {
@@ -292,9 +292,9 @@ const client = new EtsyClient({
   // ... other config
   rateLimiting: {
     enabled: true,
-    maxRequestsPerSecond: 10,    // Requests per second
-    maxRequestsPerDay: 5000,     // Requests per day
-    minRequestInterval: 100      // Minimum ms between requests
+    maxRequestsPerSecond: 5,     // Requests per second (Etsy's limit)
+    maxRequestsPerDay: 5000,     // Requests per day (Etsy's limit)
+    minRequestInterval: 200      // Minimum ms between requests (1000 / 5 QPS)
   }
 });
 

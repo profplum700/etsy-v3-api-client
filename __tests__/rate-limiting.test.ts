@@ -19,9 +19,9 @@ describe('EtsyRateLimiter', () => {
       const rateLimiter = new EtsyRateLimiter();
       const config = rateLimiter.getConfig();
       
-      expect(config.maxRequestsPerDay).toBe(10000);
-      expect(config.maxRequestsPerSecond).toBe(10);
-      expect(config.minRequestInterval).toBe(100);
+      expect(config.maxRequestsPerDay).toBe(5000);
+      expect(config.maxRequestsPerSecond).toBe(5);
+      expect(config.minRequestInterval).toBe(200);
     });
 
     it('should initialize with custom configuration', () => {
@@ -48,8 +48,8 @@ describe('EtsyRateLimiter', () => {
       const config = rateLimiter.getConfig();
       
       expect(config.maxRequestsPerDay).toBe(8000);
-      expect(config.maxRequestsPerSecond).toBe(10); // default
-      expect(config.minRequestInterval).toBe(100); // default
+      expect(config.maxRequestsPerSecond).toBe(5); // default
+      expect(config.minRequestInterval).toBe(200); // default
     });
   });
 
@@ -60,26 +60,26 @@ describe('EtsyRateLimiter', () => {
       // Should not throw or wait
       await rateLimiter.waitForRateLimit();
       
-      expect(rateLimiter.getRemainingRequests()).toBe(9999);
+      expect(rateLimiter.getRemainingRequests()).toBe(4999);
     });
 
     it('should wait for minimum interval between requests', async () => {
       const rateLimiter = new EtsyRateLimiter({
         minRequestInterval: 200
       });
-      
+
       // Make first request
       await rateLimiter.waitForRateLimit();
-      
+
       // Start second request immediately - should wait
       const waitPromise = rateLimiter.waitForRateLimit();
-      
+
       // Fast-forward time to simulate waiting
       vi.advanceTimersByTime(200);
-      
+
       await waitPromise;
-      
-      expect(rateLimiter.getRemainingRequests()).toBe(9998);
+
+      expect(rateLimiter.getRemainingRequests()).toBe(4998);
     });
 
     it('should throw error when daily limit exceeded', async () => {
@@ -122,7 +122,7 @@ describe('EtsyRateLimiter', () => {
       const rateLimiter = new EtsyRateLimiter();
       const status = rateLimiter.getRateLimitStatus();
       
-      expect(status.remainingRequests).toBe(10000);
+      expect(status.remainingRequests).toBe(5000);
       expect(status.resetTime).toBeInstanceOf(Date);
       expect(status.canMakeRequest).toBe(true);
     });
@@ -135,7 +135,7 @@ describe('EtsyRateLimiter', () => {
       await rateLimiter.waitForRateLimit();
       
       const status = rateLimiter.getRateLimitStatus();
-      expect(status.remainingRequests).toBe(9999);
+      expect(status.remainingRequests).toBe(4999);
       expect(status.canMakeRequest).toBe(true);
     });
 
@@ -178,10 +178,10 @@ describe('EtsyRateLimiter', () => {
       });
       
       await rateLimiter.waitForRateLimit();
-      expect(rateLimiter.getRemainingRequests()).toBe(9999);
-      
+      expect(rateLimiter.getRemainingRequests()).toBe(4999);
+
       await rateLimiter.waitForRateLimit();
-      expect(rateLimiter.getRemainingRequests()).toBe(9998);
+      expect(rateLimiter.getRemainingRequests()).toBe(4998);
     });
 
     it('should not go below zero', async () => {
@@ -204,12 +204,12 @@ describe('EtsyRateLimiter', () => {
       await rateLimiter.waitForRateLimit();
       await rateLimiter.waitForRateLimit();
       
-      expect(rateLimiter.getRemainingRequests()).toBe(9998);
-      
+      expect(rateLimiter.getRemainingRequests()).toBe(4998);
+
       // Reset
       rateLimiter.reset();
-      
-      expect(rateLimiter.getRemainingRequests()).toBe(10000);
+
+      expect(rateLimiter.getRemainingRequests()).toBe(5000);
       expect(rateLimiter.canMakeRequest()).toBe(true);
     });
 
@@ -329,7 +329,7 @@ describe('EtsyRateLimiter', () => {
       await Promise.all(promises);
       
       // Should have processed all requests
-      expect(rateLimiter.getRemainingRequests()).toBe(9995);
+      expect(rateLimiter.getRemainingRequests()).toBe(4995);
     });
 
     it('should handle error scenarios gracefully', async () => {
@@ -358,8 +358,8 @@ describe('EtsyRateLimiter', () => {
       await rateLimiter1.waitForRateLimit();
       await rateLimiter1.waitForRateLimit();
       
-      expect(rateLimiter1.getRemainingRequests()).toBe(9998);
-      expect(rateLimiter2.getRemainingRequests()).toBe(10000);
+      expect(rateLimiter1.getRemainingRequests()).toBe(4998);
+      expect(rateLimiter2.getRemainingRequests()).toBe(5000);
     });
   });
 
@@ -373,7 +373,7 @@ describe('EtsyRateLimiter', () => {
       await rateLimiter.waitForRateLimit();
       await rateLimiter.waitForRateLimit();
       
-      expect(rateLimiter.getRemainingRequests()).toBe(9998);
+      expect(rateLimiter.getRemainingRequests()).toBe(4998);
     });
 
     it('should handle very large daily limits', async () => {
@@ -440,7 +440,7 @@ describe('EtsyRateLimiter', () => {
       const status = rateLimiter.getRateLimitStatus();
 
       expect(status.isFromHeaders).toBe(false);
-      expect(status.remainingRequests).toBe(10000); // Fallback to config
+      expect(status.remainingRequests).toBe(5000); // Fallback to config
     });
 
     it('should handle invalid header values', () => {
@@ -624,7 +624,7 @@ describe('EtsyRateLimiter', () => {
   describe('header-based limits in waitForRateLimit', () => {
     it('should use header-based QPS limit', async () => {
       const rateLimiter = new EtsyRateLimiter({
-        minRequestInterval: 100 // Default 10 QPS
+        minRequestInterval: 200 // Default 5 QPS
       });
 
       // Update with higher limit from headers (150 QPS = ~7ms interval)
@@ -637,13 +637,13 @@ describe('EtsyRateLimiter', () => {
       await rateLimiter.waitForRateLimit();
       const timeUntilNext = rateLimiter.getTimeUntilNextRequest();
 
-      // Should be much less than 100ms (likely ~7ms)
-      expect(timeUntilNext).toBeLessThan(100);
+      // Should be much less than 200ms (likely ~7ms)
+      expect(timeUntilNext).toBeLessThan(200);
     });
 
     it('should use header-based remaining today', async () => {
       const rateLimiter = new EtsyRateLimiter({
-        maxRequestsPerDay: 10000,
+        maxRequestsPerDay: 5000,
         minRequestInterval: 0
       });
 
@@ -751,8 +751,8 @@ describe('defaultRateLimiter', () => {
 
   it('should use default configuration', () => {
     const config = defaultRateLimiter.getConfig();
-    expect(config.maxRequestsPerDay).toBe(10000);
-    expect(config.maxRequestsPerSecond).toBe(10);
-    expect(config.minRequestInterval).toBe(100);
+    expect(config.maxRequestsPerDay).toBe(5000);
+    expect(config.maxRequestsPerSecond).toBe(5);
+    expect(config.minRequestInterval).toBe(200);
   });
 });

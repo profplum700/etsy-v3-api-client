@@ -4,6 +4,7 @@
  */
 
 import { EtsyRateLimitError } from './types';
+import { ETSY_RATE_LIMITS } from './rate-limiting';
 
 /**
  * Priority levels for requests
@@ -94,10 +95,10 @@ export class GlobalRequestQueue {
   private dailyReset = new Date();
   private lastRequestTime = 0;
 
-  // Configuration
-  private readonly maxRequestsPerDay = 10000;
-  private readonly maxRequestsPerSecond = 10;
-  private readonly minRequestInterval = 100; // 100ms = 10 req/sec
+  // Configuration — sourced from the shared ETSY_RATE_LIMITS constant
+  private readonly maxRequestsPerDay = ETSY_RATE_LIMITS.MAX_REQUESTS_PER_DAY;
+  private readonly maxRequestsPerSecond = ETSY_RATE_LIMITS.MAX_REQUESTS_PER_SECOND;
+  private readonly minRequestInterval = ETSY_RATE_LIMITS.MIN_REQUEST_INTERVAL;
 
   private constructor() {
     this.setNextDailyReset();

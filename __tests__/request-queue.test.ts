@@ -175,7 +175,7 @@ describe('GlobalRequestQueue', () => {
       const status = queue.getStatus();
 
       expect(status.remainingRequests).toBeGreaterThan(0);
-      expect(status.remainingRequests).toBeLessThanOrEqual(10000); // Max per day
+      expect(status.remainingRequests).toBeLessThanOrEqual(5000); // Max per day
     });
 
     it('should provide reset time', () => {

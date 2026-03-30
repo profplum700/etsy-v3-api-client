@@ -139,7 +139,7 @@ interface EtsyClientConfig {
 
 ### Advanced Features
 - **Token Management**: Automatic token refresh, validation, secure storage patterns
-- **Rate Limiting**: Configurable limits (10 requests/second, 10,000/day), queue management
+- **Rate Limiting**: Configurable limits (5 requests/second, 5,000/day), queue management
 - **Error Handling**: Comprehensive error types, retry logic with exponential backoff
 - **Caching**: Configurable strategies, Memory/Redis/custom storage support
 - **Environment Support**: Node.js, browser, framework integrations

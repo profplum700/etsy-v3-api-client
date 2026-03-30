@@ -1,12 +1,25 @@
 /**
  * Rate limiting implementation for Etsy API v3
- * Etsy API limits: 10,000 requests per day, 10 requests per second
+ * Etsy API limits: 5,000 requests per day, 5 requests per second
  *
  * This implementation supports:
  * - Header-based rate limiting using Etsy's response headers
  * - Automatic retry on 429 errors with exponential backoff
  * - Callback notification when approaching daily limit
  * - Fallback to configured values when headers are unavailable
+ *
+ * **Serverless caveat:** The local request counter (`requestCount`) is
+ * process-local. On serverless platforms (Vercel, AWS Lambda, etc.), each
+ * cold start resets it to 0, so the local QPD counter is essentially
+ * fictional in that environment. Only header-based tracking
+ * (`x-remaining-today` from Etsy responses) is accurate on serverless.
+ * The local counter serves as a best-effort fallback when headers are
+ * unavailable (e.g. the very first request of a process).
+ *
+ * **Daily reset assumption:** `setNextDailyReset()` assumes Etsy resets
+ * daily quotas at UTC midnight. If Etsy uses a different reset window, the
+ * local counter may reset at the wrong time. The library prefers
+ * header-based limits when available, which reflect Etsy's actual reset.
  */
 
 import {
@@ -16,6 +29,17 @@ import {
   EtsyRateLimitHeaders,
   ApproachingLimitCallback
 } from './types';
+
+/**
+ * Etsy's official API rate limits.
+ * Shared by EtsyRateLimiter and GlobalRequestQueue to keep defaults in sync.
+ */
+export const ETSY_RATE_LIMITS = {
+  MAX_REQUESTS_PER_DAY: 5000,
+  MAX_REQUESTS_PER_SECOND: 5,
+  /** 1000ms / 5 QPS */
+  MIN_REQUEST_INTERVAL: 200,
+} as const;
 
 /**
  * Required configuration fields with defaults applied
@@ -51,11 +75,11 @@ export class EtsyRateLimiter {
 
   constructor(config?: Partial<RateLimitConfig>) {
     this.config = {
-      // Existing defaults
-      maxRequestsPerDay: 10000,
-      maxRequestsPerSecond: 10,
-      minRequestInterval: 100, // 100ms = 10 requests per second
-      // New defaults
+      // Etsy API defaults (see ETSY_RATE_LIMITS)
+      maxRequestsPerDay: ETSY_RATE_LIMITS.MAX_REQUESTS_PER_DAY,
+      maxRequestsPerSecond: ETSY_RATE_LIMITS.MAX_REQUESTS_PER_SECOND,
+      minRequestInterval: ETSY_RATE_LIMITS.MIN_REQUEST_INTERVAL,
+      // Retry/backoff defaults
       maxRetries: 3,
       baseDelayMs: 1000,
       maxDelayMs: 30000,
