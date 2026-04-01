@@ -93,7 +93,9 @@ import {
   EtsyListingProduct,
   EtsyListingOffering,
   TokenScopesParams,
-  TokenScopesResponse
+  TokenScopesResponse,
+  EtsyListingPersonalization,
+  UpdatePersonalizationParams
 } from './types';
 import { TokenManager } from './auth/token-manager';
 import { EtsyRateLimiter, ETSY_RATE_LIMITS } from './rate-limiting';
@@ -188,10 +190,14 @@ export class EtsyClient {
   private cache?: CacheStorage;
   private cacheTtl!: number;
   private keystring: string;
-  private sharedSecret?: string;
+  private sharedSecret: string;
   private bulkOperationManager: BulkOperationManager;
 
   constructor(config: EtsyClientConfig) {
+    if (!config.sharedSecret) {
+      throw new EtsyAuthError('sharedSecret is REQUIRED for Etsy API v3 application usage. See: https://github.com/profplum700/etsy-v3-api-client/issues/21');
+    }
+
     this.tokenManager = new TokenManager(config);
     this.baseUrl = config.baseUrl || 'https://api.etsy.com/v3/application';
     this.logger = new DefaultLogger();
@@ -378,15 +384,11 @@ export class EtsyClient {
   }
 
   /**
-   * Get API key in the format required by Etsy.
-   * If sharedSecret is provided, returns "keystring:secret" format.
-   * Otherwise, returns just the keystring for backwards compatibility.
+   * Get API key in the format required by Etsy v3.
+   * Format: "keystring:sharedSecret"
    */
   private getApiKey(): string {
-    if (this.sharedSecret) {
-      return `${this.keystring}:${this.sharedSecret}`;
-    }
-    return this.keystring;
+    return `${this.keystring}:${this.sharedSecret}`;
   }
 
   // ============================================================================
@@ -1993,6 +1995,66 @@ export class EtsyClient {
   ): Promise<void> {
     await this.makeRequest<void>(
       `/shops/${shopId}/listings/${listingId}/videos/${videoId}`,
+      { method: 'DELETE' },
+      false
+    );
+  }
+
+  // ============================================================================
+  // Personalization Methods
+  // ============================================================================
+
+  /**
+   * Get personalization for a listing
+   * Endpoint: GET /v3/application/listings/{listing_id}/personalization
+   */
+  public async getListingPersonalizations(
+    listingId: string
+  ): Promise<EtsyListingPersonalization> {
+    return this.makeRequest<EtsyListingPersonalization>(
+      `/listings/${listingId}/personalization`
+    );
+  }
+
+  /**
+   * Update personalization for a listing (create or replace questions)
+   * Endpoint: POST /v3/application/shops/{shop_id}/listings/{listing_id}/personalization
+   * Scopes: listings_w
+   *
+   * Accepts an array of personalization questions via JSON body.
+   * Include question_id to update existing questions; omit it to create new ones.
+   * Set supports_multiple_personalization_questions to true for up to 5 questions.
+   */
+  public async updateListingPersonalization(
+    shopId: string,
+    listingId: string,
+    params: UpdatePersonalizationParams
+  ): Promise<EtsyListingPersonalization> {
+    const { supports_multiple_personalization_questions, ...body } = params;
+    const query = supports_multiple_personalization_questions
+      ? '?supports_multiple_personalization_questions=true'
+      : '';
+    return this.makeRequest<EtsyListingPersonalization>(
+      `/shops/${shopId}/listings/${listingId}/personalization${query}`,
+      {
+        method: 'POST',
+        body: JSON.stringify(body)
+      },
+      false
+    );
+  }
+
+  /**
+   * Delete personalization for a listing
+   * Endpoint: DELETE /v3/application/shops/{shop_id}/listings/{listing_id}/personalization
+   * Scopes: listings_w
+   */
+  public async deleteListingPersonalization(
+    shopId: string,
+    listingId: string
+  ): Promise<void> {
+    await this.makeRequest<void>(
+      `/shops/${shopId}/listings/${listingId}/personalization`,
       { method: 'DELETE' },
       false
     );

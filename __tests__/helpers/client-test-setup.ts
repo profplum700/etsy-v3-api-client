@@ -23,6 +23,7 @@ export interface MockClientContext {
 export function setupClientMocks(): MockClientContext {
   const mockConfig: EtsyClientConfig = {
     keystring: 'test-api-key',
+    sharedSecret: 'test-shared-secret',
     accessToken: 'test-access-token',
     refreshToken: 'test-refresh-token',
     expiresAt: new Date(Date.now() + 3600000),

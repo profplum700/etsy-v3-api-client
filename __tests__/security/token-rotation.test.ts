@@ -8,6 +8,7 @@ import { EtsyClientConfig, EtsyTokens, TokenRotationConfig } from '../../src/typ
 describe('Token Rotation (Phase 5)', () => {
   const mockConfig: EtsyClientConfig = {
     keystring: 'test-key',
+    sharedSecret: 'test-secret',
     accessToken: 'test-access-token',
     refreshToken: 'test-refresh-token',
     expiresAt: new Date(Date.now() + 3600 * 1000) // 1 hour from now

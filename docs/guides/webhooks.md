@@ -49,11 +49,14 @@ Select which events you want to receive:
 |-------|-------------|
 | `receipt.created` | New order placed |
 | `receipt.updated` | Order details changed |
-| `receipt.paid` | Order payment received |
 | `listing.created` | New listing created |
 | `listing.updated` | Listing details changed |
 | `listing.deactivated` | Listing deactivated |
-| `transaction.created` | New transaction in an order |
+| `shop.updated` | Shop details changed |
+| `order.shipped` | Order has been shipped |
+| `order.delivered` | Order has been delivered |
+| `order.paid` | Order payment received |
+| `order.canceled` | Order has been canceled |
 
 ### Event Payload Structure
 

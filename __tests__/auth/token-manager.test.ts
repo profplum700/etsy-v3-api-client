@@ -46,6 +46,7 @@ describe('TokenManager', () => {
 
     mockConfig = {
       keystring: 'test-api-key',
+      sharedSecret: 'test-shared-secret',
       accessToken: 'test-access-token',
       refreshToken: 'test-refresh-token',
       expiresAt: new Date(Date.now() + 3600000) // 1 hour from now
@@ -157,6 +158,7 @@ describe('TokenManager', () => {
     it('should load tokens from storage when not initialized', async () => {
       const configWithoutTokens = {
         keystring: 'test-api-key',
+        sharedSecret: 'test-shared-secret',
         accessToken: 'test-access-token',
         refreshToken: 'test-refresh-token',
         expiresAt: new Date(Date.now() + 3600000)
@@ -185,6 +187,7 @@ describe('TokenManager', () => {
     it('should throw error when no tokens available', async () => {
       const configWithoutTokens = {
         keystring: 'test-api-key',
+        sharedSecret: 'test-shared-secret',
         accessToken: 'test-access-token',
         refreshToken: 'test-refresh-token',
         expiresAt: new Date(Date.now() + 3600000)
@@ -339,6 +342,7 @@ describe('TokenManager', () => {
     it('should throw error when no tokens available', async () => {
       const configWithoutTokens = {
         keystring: 'test-api-key',
+        sharedSecret: 'test-shared-secret',
         accessToken: 'test-access-token',
         refreshToken: 'test-refresh-token',
         expiresAt: new Date(Date.now() + 3600000)

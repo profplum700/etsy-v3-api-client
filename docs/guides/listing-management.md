@@ -431,6 +431,61 @@ await client.deleteListing(listingId);
 console.log('Listing deleted');
 ```
 
+## Personalization
+
+Etsy now uses dedicated personalization-question endpoints instead of the legacy inline fields (`is_personalizable`, `personalization_instructions`, etc.). Use the new methods to manage personalization on listings.
+
+### Get Personalization Questions
+
+```typescript
+const personalization = await client.getListingPersonalizations(listingId);
+
+personalization.personalization_questions.forEach(q => {
+  console.log(`${q.question_type}: ${q.question_text} (required: ${q.required})`);
+  if (q.options) {
+    console.log('  Options:', q.options.map(o => o.label).join(', '));
+  }
+});
+```
+
+### Add Personalization Questions
+
+```typescript
+await client.updateListingPersonalization(shopId, listingId, {
+  personalization_questions: [
+    {
+      question_type: 'text_input',
+      question_text: 'What name should be engraved?',
+      instructions: 'Enter up to 20 characters',
+      required: true,
+      max_allowed_characters: 20
+    },
+    {
+      question_type: 'dropdown',
+      question_text: 'Choose a font',
+      required: true,
+      options: [
+        { label: 'Script' },
+        { label: 'Block' },
+        { label: 'Serif' }
+      ]
+    }
+  ],
+  supports_multiple_personalization_questions: true
+});
+```
+
+### Delete Personalization
+
+```typescript
+await client.deleteListingPersonalization(shopId, listingId);
+```
+
+> **Note:** The legacy fields `is_personalizable`, `personalization_is_required`,
+> `personalization_char_count_max`, and `personalization_instructions` on
+> `createDraftListing`/`updateListing` are deprecated and scheduled for removal.
+> Use these dedicated endpoints instead.
+
 ## Best Practices
 
 ### 1. Use Draft State for New Listings

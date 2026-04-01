@@ -21,6 +21,14 @@ describe('EtsyClient Core', () => {
       expect(client).toBeInstanceOf(EtsyClient);
     });
 
+    it('should throw error if sharedSecret is missing', () => {
+      const configWithoutSecret = { ...ctx.mockConfig };
+      // @ts-ignore
+      delete configWithoutSecret.sharedSecret;
+      
+      expect(() => new EtsyClient(configWithoutSecret as any)).toThrow('sharedSecret is REQUIRED');
+    });
+
     it('should use default base URL if not provided', () => {
       const configWithoutBaseUrl = { ...ctx.mockConfig };
       delete configWithoutBaseUrl.baseUrl;
@@ -69,7 +77,7 @@ describe('EtsyClient Core', () => {
         expect.objectContaining({
           headers: expect.objectContaining({
             'Authorization': 'Bearer test-access-token',
-            'x-api-key': 'test-api-key',
+            'x-api-key': 'test-api-key:test-shared-secret',
             'Content-Type': 'application/json',
             'Accept': 'application/json'
           })

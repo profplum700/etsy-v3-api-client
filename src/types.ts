@@ -8,8 +8,11 @@
 
 export interface EtsyClientConfig {
   keystring: string;
-  /** Shared secret for the new API key format (keystring:secret) */
-  sharedSecret?: string;
+  /** 
+   * Shared secret for the new API key format (keystring:secret). 
+   * REQUIRED for all application API usage in v3.
+   */
+  sharedSecret: string;
   accessToken: string;
   refreshToken: string;
   expiresAt: Date;
@@ -282,6 +285,14 @@ export interface EtsyListing {
   occasion?: string;
   style_id?: number[];
   non_taxable?: boolean;
+  /** @deprecated Use dedicated personalization endpoints instead */
+  is_personalizable?: boolean;
+  /** @deprecated Use dedicated personalization endpoints instead */
+  personalization_is_required?: boolean;
+  /** @deprecated Use dedicated personalization endpoints instead */
+  personalization_char_count_max?: number;
+  /** @deprecated Use dedicated personalization endpoints instead */
+  personalization_instructions?: string;
   is_customizable?: boolean;
   is_digital?: boolean;
   file_data?: string;
@@ -405,6 +416,37 @@ export type ListingIncludes =
   | 'Translations'
   | 'Inventory'
   | 'Videos';
+
+// ============================================================================
+// Personalization Types
+// ============================================================================
+
+export type EtsyPersonalizationQuestionType = 'text_input' | 'dropdown' | 'unlabeled_upload' | 'labeled_upload';
+
+export interface EtsyPersonalizationOption {
+  option_id?: number | null;
+  label: string;
+}
+
+export interface EtsyPersonalizationQuestion {
+  question_id?: number | null;
+  question_type: EtsyPersonalizationQuestionType;
+  question_text: string;
+  instructions?: string | null;
+  required: boolean;
+  max_allowed_characters?: number | null;
+  max_allowed_files?: number | null;
+  options?: EtsyPersonalizationOption[] | null;
+}
+
+export interface EtsyListingPersonalization {
+  personalization_questions: EtsyPersonalizationQuestion[];
+}
+
+export interface UpdatePersonalizationParams {
+  personalization_questions: EtsyPersonalizationQuestion[];
+  supports_multiple_personalization_questions?: boolean;
+}
 
 export interface SearchParams {
   limit?: number;
@@ -1455,9 +1497,13 @@ export interface CreateDraftListingParams {
   item_height?: number;
   item_weight_unit?: 'oz' | 'lb' | 'g' | 'kg';
   item_dimensions_unit?: 'in' | 'ft' | 'mm' | 'cm' | 'm' | 'yd' | 'inches';
+  /** @deprecated Use dedicated personalization endpoints */
   is_personalizable?: boolean;
+  /** @deprecated Use dedicated personalization endpoints */
   personalization_is_required?: boolean;
+  /** @deprecated Use dedicated personalization endpoints */
   personalization_char_count_max?: number;
+  /** @deprecated Use dedicated personalization endpoints */
   personalization_instructions?: string;
   production_partner_ids?: number[];
   image_ids?: number[];
@@ -1490,9 +1536,13 @@ export interface UpdateListingParams {
   who_made?: 'i_did' | 'someone_else' | 'collective';
   when_made?: typeof ETSY_WHEN_MADE_VALUES[number] | 'made_to_order';
   featured_rank?: number;
+  /** @deprecated Use dedicated personalization endpoints instead */
   is_personalizable?: boolean;
+  /** @deprecated Use dedicated personalization endpoints instead */
   personalization_is_required?: boolean;
+  /** @deprecated Use dedicated personalization endpoints instead */
   personalization_char_count_max?: number;
+  /** @deprecated Use dedicated personalization endpoints instead */
   personalization_instructions?: string;
   state?: 'active' | 'inactive';
   is_supply?: boolean;

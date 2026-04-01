@@ -59,7 +59,7 @@ const tokens = await authHelper.getAccessToken();
 // Create API client
 const client = new EtsyClient({
   keystring: 'your-api-key',
-  sharedSecret: 'your-shared-secret', // Required for new API key format
+  sharedSecret: 'your-shared-secret', // REQUIRED for v3 API compliance
   accessToken: tokens.access_token,
   refreshToken: tokens.refresh_token,
   expiresAt: tokens.expires_at
@@ -356,6 +356,11 @@ The package provides optimized builds for different environments:
 - `getShop(shopId)` - Get shop details
 - `getShopByOwnerUserId(userId)` - Get shop by owner user ID
 
+#### Personalization Methods (New)
+- `getListingPersonalizations(listingId)` - Get personalization questions for a listing
+- `updateListingPersonalization(shopId, listingId, params)` - Create or update personalization questions
+- `deleteListingPersonalization(shopId, listingId)` - Delete personalization
+
 #### Listing Methods
 - `getListing(listingId)` - Get listing details
 - `getListingsByShop(shopId, options?)` - Get shop's listings
@@ -384,6 +389,9 @@ The package provides optimized builds for different environments:
 | ShopListing | getListingsByShopReceipt | No |
 | ShopListing | getListingsByShopReturnPolicy | No |
 | ShopListing | getListingsByShopSectionId | No |
+| ShopListing | getListingPersonalization | Yes |
+| ShopListing | updateListingPersonalization | Yes |
+| ShopListing | deleteListingPersonalization | Yes |
 | ShopListing File | deleteListingFile | No |
 | ShopListing File | getListingFile | No |
 | ShopListing File | getAllListingFiles | No |
@@ -491,7 +499,7 @@ The package provides optimized builds for different environments:
 ```typescript
 interface EtsyClientConfig {
   keystring: string;                    // Required: Your API key
-  sharedSecret?: string;                // Your shared secret (from Your Apps page)
+  sharedSecret: string;                 // Required: Your shared secret (from Your Apps page)
   accessToken?: string;                 // User's access token
   refreshToken?: string;                // User's refresh token
   expiresAt?: Date;                     // Token expiration date
