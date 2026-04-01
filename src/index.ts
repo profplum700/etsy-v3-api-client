@@ -289,6 +289,13 @@ export type {
   UpdateListingParams,
   UpdateListingInventoryParams,
 
+  // Personalization Types
+  EtsyPersonalizationQuestionType,
+  EtsyPersonalizationOption,
+  EtsyPersonalizationQuestion,
+  EtsyListingPersonalization,
+  UpdatePersonalizationParams,
+
   // Listing Property Types
   EtsyListingProperty,
   EtsyListingPropertyScale,

@@ -112,6 +112,7 @@ describe('createOAuthRoute', () => {
     // Configure server client
     configureEtsyServerClient({
       apiKey: 'test-api-key',
+      sharedSecret: 'test-shared-secret',
       redirectUri: 'http://localhost:3000/api/etsy/auth/callback',
       scopes: ['listings_r', 'shops_r'],
     });

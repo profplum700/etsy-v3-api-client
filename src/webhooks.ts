@@ -37,7 +37,11 @@ export type EtsyWebhookEventType =
   | 'listing.updated'
   | 'listing.created'
   | 'listing.deactivated'
-  | 'shop.updated';
+  | 'shop.updated'
+  | 'order.shipped'
+  | 'order.delivered'
+  | 'order.paid'
+  | 'order.canceled';
 
 /**
  * Webhook event data

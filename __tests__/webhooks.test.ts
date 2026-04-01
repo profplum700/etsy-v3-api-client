@@ -410,5 +410,32 @@ describe('EtsyWebhookHandler', () => {
       await new Promise(resolve => setTimeout(resolve, 10));
       expect(mockHandler).toHaveBeenCalled();
     });
+
+    it('should handle order-related events', async () => {
+      const handler = new EtsyWebhookHandler({ secret: mockSecret });
+      const handlers = {
+        shipped: vi.fn(),
+        delivered: vi.fn(),
+        paid: vi.fn(),
+        canceled: vi.fn()
+      };
+
+      handler.on('order.shipped', handlers.shipped);
+      handler.on('order.delivered', handlers.delivered);
+      handler.on('order.paid', handlers.paid);
+      handler.on('order.canceled', handlers.canceled);
+
+      handler.parseEvent({ type: 'order.shipped', data: {} });
+      handler.parseEvent({ type: 'order.delivered', data: {} });
+      handler.parseEvent({ type: 'order.paid', data: {} });
+      handler.parseEvent({ type: 'order.canceled', data: {} });
+
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      expect(handlers.shipped).toHaveBeenCalled();
+      expect(handlers.delivered).toHaveBeenCalled();
+      expect(handlers.paid).toHaveBeenCalled();
+      expect(handlers.canceled).toHaveBeenCalled();
+    });
   });
 });

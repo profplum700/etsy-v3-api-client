@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 
 export interface EtsyServerClientConfig {
   apiKey: string;
+  sharedSecret: string;
   redirectUri?: string;
   scopes?: string[];
   cookieName?: string;
@@ -33,7 +34,7 @@ export async function getEtsyServerClient(): Promise<EtsyClient> {
 
   // Create a new client instance if needed
   if (!serverClientInstance) {
-    const { apiKey } = serverClientConfig;
+    const { apiKey, sharedSecret } = serverClientConfig;
 
     // Load tokens from cookies
     const cookieStore = await cookies();
@@ -73,6 +74,7 @@ export async function getEtsyServerClient(): Promise<EtsyClient> {
 
     serverClientInstance = new EtsyClient({
       keystring: apiKey,
+      sharedSecret,
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
       expiresAt: new Date(tokens.expiresAt),
@@ -88,7 +90,7 @@ export async function getEtsyServerClient(): Promise<EtsyClient> {
  * Useful when you need multiple clients or custom settings
  */
 export async function createEtsyServerClient(config: EtsyServerClientConfig): Promise<EtsyClient> {
-  const { apiKey, cookieName } = config;
+  const { apiKey, sharedSecret, cookieName } = config;
 
   // Load tokens from cookies
   const cookieStore = await cookies();
@@ -127,6 +129,7 @@ export async function createEtsyServerClient(config: EtsyServerClientConfig): Pr
 
   return new EtsyClient({
     keystring: apiKey,
+    sharedSecret,
     accessToken: tokens.accessToken,
     refreshToken: tokens.refreshToken,
     expiresAt: new Date(tokens.expiresAt),

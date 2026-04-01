@@ -195,6 +195,7 @@ describe('Utility Functions', () => {
     it('should create an EtsyClient instance', () => {
       const config = {
         keystring: 'test-key',
+        sharedSecret: 'test-secret',
         accessToken: 'test-token',
         refreshToken: 'test-refresh',
         expiresAt: new Date()
@@ -207,6 +208,7 @@ describe('Utility Functions', () => {
     it('should pass configuration to EtsyClient', () => {
       const config = {
         keystring: 'test-key',
+        sharedSecret: 'test-secret',
         accessToken: 'test-token',
         refreshToken: 'test-refresh',
         expiresAt: new Date(),
@@ -248,6 +250,7 @@ describe('Utility Functions', () => {
     it('should create a TokenManager instance', () => {
       const config = {
         keystring: 'test-key',
+        sharedSecret: 'test-secret',
         accessToken: 'test-token',
         refreshToken: 'test-refresh',
         expiresAt: new Date()
@@ -260,6 +263,7 @@ describe('Utility Functions', () => {
     it('should create TokenManager with storage', () => {
       const config = {
         keystring: 'test-key',
+        sharedSecret: 'test-secret',
         accessToken: 'test-token',
         refreshToken: 'test-refresh',
         expiresAt: new Date()
@@ -304,6 +308,7 @@ describe('Type Definitions', () => {
     it('should have all required properties in EtsyClientConfig', () => {
       const config = {
         keystring: 'test-key',
+        sharedSecret: 'test-secret',
         accessToken: 'test-token',
         refreshToken: 'test-refresh',
         expiresAt: new Date()
@@ -359,6 +364,7 @@ describe('Integration with other modules', () => {
   it('should work correctly with EtsyClient', () => {
     const config = {
       keystring: 'test-key',
+      sharedSecret: 'test-secret',
       accessToken: 'test-token',
       refreshToken: 'test-refresh',
       expiresAt: new Date()
@@ -420,7 +426,7 @@ describe('Error handling scenarios', () => {
 });
 
 describe('Edge cases and boundary conditions', () => {
-  it('should handle empty configurations gracefully', () => {
+  it('should throw when sharedSecret is missing from config', () => {
     expect(() => {
       const config = {
         keystring: '',
@@ -428,13 +434,14 @@ describe('Edge cases and boundary conditions', () => {
         refreshToken: '',
         expiresAt: new Date()
       };
-      createEtsyClient(config);
-    }).not.toThrow();
+      createEtsyClient(config as any);
+    }).toThrow('sharedSecret is REQUIRED');
   });
 
   it('should handle undefined optional properties', () => {
     const config = {
       keystring: 'test-key',
+      sharedSecret: 'test-secret',
       accessToken: 'test-token',
       refreshToken: 'test-refresh',
       expiresAt: new Date(),

@@ -29,13 +29,14 @@ describe('Edge Cases and Error Handling', () => {
   });
 
   describe('EtsyClient Edge Cases', () => {
-    it('should handle missing required configuration gracefully', () => {
-      expect(() => new EtsyClient({} as any)).not.toThrow();
+    it('should throw when sharedSecret is missing', () => {
+      expect(() => new EtsyClient({} as any)).toThrow('sharedSecret is REQUIRED');
     });
 
     it('should handle null/undefined tokens gracefully', async () => {
       const client = new EtsyClient({
         keystring: 'test-key',
+        sharedSecret: 'test-secret',
         accessToken: null as any,
         refreshToken: null as any,
         expiresAt: null as any
@@ -47,6 +48,7 @@ describe('Edge Cases and Error Handling', () => {
     it('should handle malformed API responses', async () => {
       const client = new EtsyClient({
         keystring: 'test-key',
+        sharedSecret: 'test-secret',
         accessToken: 'test-token',
         refreshToken: 'test-refresh',
         expiresAt: new Date(Date.now() + 3600000)
@@ -64,6 +66,7 @@ describe('Edge Cases and Error Handling', () => {
     it('should handle extremely large API responses', async () => {
       const client = new EtsyClient({
         keystring: 'test-key',
+        sharedSecret: 'test-secret',
         accessToken: 'test-token',
         refreshToken: 'test-refresh',
         expiresAt: new Date(Date.now() + 3600000)
@@ -87,6 +90,7 @@ describe('Edge Cases and Error Handling', () => {
     it('should handle concurrent requests gracefully', async () => {
       const client = new EtsyClient({
         keystring: 'test-key',
+        sharedSecret: 'test-secret',
         accessToken: 'test-token',
         refreshToken: 'test-refresh',
         expiresAt: new Date(Date.now() + 3600000),
@@ -111,6 +115,7 @@ describe('Edge Cases and Error Handling', () => {
     it('should handle network timeouts gracefully', async () => {
       const client = new EtsyClient({
         keystring: 'test-key',
+        sharedSecret: 'test-secret',
         accessToken: 'test-token',
         refreshToken: 'test-refresh',
         expiresAt: new Date(Date.now() + 3600000)
@@ -129,6 +134,7 @@ describe('Edge Cases and Error Handling', () => {
     it('should handle rate limiting with malformed retry-after header', async () => {
       const client = new EtsyClient({
         keystring: 'test-key',
+        sharedSecret: 'test-secret',
         accessToken: 'test-token',
         refreshToken: 'test-refresh',
         expiresAt: new Date(Date.now() + 3600000),
@@ -157,6 +163,7 @@ describe('Edge Cases and Error Handling', () => {
     it('should handle empty response bodies', async () => {
       const client = new EtsyClient({
         keystring: 'test-key',
+        sharedSecret: 'test-secret',
         accessToken: 'test-token',
         refreshToken: 'test-refresh',
         expiresAt: new Date(Date.now() + 3600000)
@@ -305,6 +312,7 @@ describe('Edge Cases and Error Handling', () => {
       // Test without storage
       const tokenManager = new TokenManager({
         keystring: 'test-key',
+        sharedSecret: 'test-secret',
         accessToken: 'test-token',
         refreshToken: 'test-refresh',
         expiresAt: new Date(Date.now() - 1000) // Expired to trigger refresh
@@ -329,6 +337,7 @@ describe('Edge Cases and Error Handling', () => {
     it('should handle malformed token responses', async () => {
       const tokenManager = new TokenManager({
         keystring: 'test-key',
+        sharedSecret: 'test-secret',
         accessToken: 'test-token',
         refreshToken: 'test-refresh',
         expiresAt: new Date(Date.now() - 1000) // Expired
@@ -353,6 +362,7 @@ describe('Edge Cases and Error Handling', () => {
     it('should handle extremely early token expiration', async () => {
       const tokenManager = new TokenManager({
         keystring: 'test-key',
+        sharedSecret: 'test-secret',
         accessToken: 'test-token',
         refreshToken: 'test-refresh',
         expiresAt: new Date(Date.now() + 1) // Expires in 1ms
@@ -378,6 +388,7 @@ describe('Edge Cases and Error Handling', () => {
       const invalidDate = new Date('invalid-date-string');
       const tokenManager = new TokenManager({
         keystring: 'test-key',
+        sharedSecret: 'test-secret',
         accessToken: 'test-token',
         refreshToken: 'test-refresh',
         expiresAt: invalidDate // Invalid date
@@ -396,6 +407,7 @@ describe('Edge Cases and Error Handling', () => {
     it('should handle concurrent refresh attempts with failures', async () => {
       const tokenManager = new TokenManager({
         keystring: 'test-key',
+        sharedSecret: 'test-secret',
         accessToken: 'test-token',
         refreshToken: 'test-refresh',
         expiresAt: new Date(Date.now() - 1000)
@@ -457,6 +469,7 @@ describe('Edge Cases and Error Handling', () => {
     it('should handle memory pressure during large operations', async () => {
       const client = new EtsyClient({
         keystring: 'test-key',
+        sharedSecret: 'test-secret',
         accessToken: 'test-token',
         refreshToken: 'test-refresh',
         expiresAt: new Date(Date.now() + 3600000),
@@ -483,6 +496,7 @@ describe('Edge Cases and Error Handling', () => {
     it('should handle cache overflow gracefully', async () => {
       const client = new EtsyClient({
         keystring: 'test-key',
+        sharedSecret: 'test-secret',
         accessToken: 'test-token',
         refreshToken: 'test-refresh',
         expiresAt: new Date(Date.now() + 3600000),

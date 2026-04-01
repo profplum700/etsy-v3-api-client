@@ -105,3 +105,6 @@ logs/
 
 .claude/settings.local.json
 .ntm/
+
+# Temporary debug/output artifacts
+git-output*.txt

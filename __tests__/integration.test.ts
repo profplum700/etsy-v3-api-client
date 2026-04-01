@@ -78,6 +78,7 @@ describe('Integration Tests', () => {
       // Step 3: Create client with obtained tokens
       const client = new EtsyClient({
         keystring: 'test-api-key',
+        sharedSecret: 'test-shared-secret',
         accessToken: tokens.access_token,
         refreshToken: tokens.refresh_token,
         expiresAt: tokens.expires_at
@@ -103,6 +104,7 @@ describe('Integration Tests', () => {
       const expiredDate = new Date(Date.now() - 1000);
       const client = new EtsyClient({
         keystring: 'test-api-key',
+        sharedSecret: 'test-shared-secret',
         accessToken: 'expired-token',
         refreshToken: 'test-refresh-token',
         expiresAt: expiredDate
@@ -145,6 +147,7 @@ describe('Integration Tests', () => {
       
       const client = new EtsyClient({
         keystring: 'test-api-key',
+        sharedSecret: 'test-shared-secret',
         accessToken: 'test-token',
         refreshToken: 'test-refresh-token',
         expiresAt: new Date(Date.now() + 3600000),
@@ -184,6 +187,7 @@ describe('Integration Tests', () => {
       
       const client = new EtsyClient({
         keystring: 'test-api-key',
+        sharedSecret: 'test-shared-secret',
         accessToken: 'test-token',
         refreshToken: 'test-refresh-token',
         expiresAt: new Date(Date.now() + 3600000),
@@ -217,6 +221,7 @@ describe('Integration Tests', () => {
       
       const tokenManager = new TokenManager({
         keystring: 'test-api-key',
+        sharedSecret: 'test-shared-secret',
         accessToken: 'test-token',
         refreshToken: 'test-refresh-token',
         expiresAt: new Date(Date.now() + 3600000)
@@ -252,6 +257,7 @@ describe('Integration Tests', () => {
     it('should handle API errors gracefully throughout the stack', async () => {
       const client = new EtsyClient({
         keystring: 'test-api-key',
+        sharedSecret: 'test-shared-secret',
         accessToken: 'test-token',
         refreshToken: 'test-refresh-token',
         expiresAt: new Date(Date.now() + 3600000),
@@ -276,6 +282,7 @@ describe('Integration Tests', () => {
     it('should handle auth errors during token refresh', async () => {
       const client = new EtsyClient({
         keystring: 'test-api-key',
+        sharedSecret: 'test-shared-secret',
         accessToken: 'expired-token',
         refreshToken: 'invalid-refresh-token',
         expiresAt: new Date(Date.now() - 1000) // Expired
@@ -295,6 +302,7 @@ describe('Integration Tests', () => {
     it('should handle network errors consistently', async () => {
       const client = new EtsyClient({
         keystring: 'test-api-key',
+        sharedSecret: 'test-shared-secret',
         accessToken: 'test-token',
         refreshToken: 'test-refresh-token',
         expiresAt: new Date(Date.now() + 3600000),
@@ -316,6 +324,7 @@ describe('Integration Tests', () => {
     it('should cache API responses correctly', async () => {
       const client = new EtsyClient({
         keystring: 'test-api-key',
+        sharedSecret: 'test-shared-secret',
         accessToken: 'test-token',
         refreshToken: 'test-refresh-token',
         expiresAt: new Date(Date.now() + 3600000),
@@ -347,6 +356,7 @@ describe('Integration Tests', () => {
     it('should clear cache when requested', async () => {
       const client = new EtsyClient({
         keystring: 'test-api-key',
+        sharedSecret: 'test-shared-secret',
         accessToken: 'test-token',
         refreshToken: 'test-refresh-token',
         expiresAt: new Date(Date.now() + 3600000),
@@ -408,6 +418,7 @@ describe('Integration Tests', () => {
       // Step 2: Create client
       const client = new EtsyClient({
         keystring: 'test-api-key',
+        sharedSecret: 'test-shared-secret',
         accessToken: tokens.access_token,
         refreshToken: tokens.refresh_token,
         expiresAt: tokens.expires_at,
@@ -624,6 +635,7 @@ describe('Integration Tests', () => {
       expect(storage).toBeInstanceOf(LocalStorageTokenStorage);
       const client = new EtsyClient({
         keystring: 'test-api-key',
+        sharedSecret: 'test-shared-secret',
         accessToken: tokens.access_token,
         refreshToken: tokens.refresh_token,
         expiresAt: tokens.expires_at,

@@ -10,6 +10,7 @@ const TOKENS_FILE = join(CONFIG_DIR, 'tokens.json');
 
 export interface CliConfig {
   apiKey?: string;
+  sharedSecret?: string;
   redirectUri?: string;
   scopes?: string[];
 }
@@ -45,6 +46,12 @@ export async function getClient(): Promise<EtsyClient> {
     process.exit(1);
   }
 
+  if (!config.sharedSecret) {
+    console.error(chalk.red('Error: Shared secret not configured'));
+    console.log(chalk.yellow('Run `etsy auth configure` to set up your shared secret'));
+    process.exit(1);
+  }
+
   // Load tokens from storage
   let tokens: Record<string, unknown> | null = null;
   try {
@@ -72,6 +79,7 @@ export async function getClient(): Promise<EtsyClient> {
 
   return new EtsyClient({
     keystring: config.apiKey,
+    sharedSecret: config.sharedSecret,
     accessToken: tokens.accessToken as string,
     refreshToken: tokens.refreshToken as string,
     expiresAt: new Date(tokens.expiresAt as string),
