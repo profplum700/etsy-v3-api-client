@@ -62,6 +62,7 @@ export {
 
 export type {
   EtsyClientConfig,
+  TokenProvider,
   EtsyApiResponse,
   EtsyPagination,
   EtsyUser,

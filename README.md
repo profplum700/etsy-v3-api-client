@@ -106,16 +106,31 @@ Cloudflare Workers and other Worker-runtime deployments should import the
 explicit Worker-safe entrypoint:
 
 ```typescript
-import { EtsyClient } from '@profplum700/etsy-v3-api-client/worker';
+import { EtsyClient, type TokenProvider } from '@profplum700/etsy-v3-api-client/worker';
+
+const tokenProvider: TokenProvider = {
+  async getAccessToken() {
+    // Load the latest user token from your Worker-owned storage layer
+    // (for example, a Durable Object, D1, or KV-backed token service).
+    return await env.TOKEN_VAULT.getAccessToken();
+  },
+};
 
 const client = new EtsyClient({
   keystring: env.ETSY_API_KEY,
   sharedSecret: env.ETSY_SHARED_SECRET,
-  accessToken: tokenBundle.accessToken,
-  refreshToken: tokenBundle.refreshToken,
-  expiresAt: tokenBundle.expiresAt,
+  tokenProvider,
 });
 ```
+
+`EtsyClient` asks `tokenProvider.getAccessToken()` at request time for every
+uncached API request, so Worker consumers do not need to keep OAuth tokens in
+module globals or construct a client per refresh. The provider can optionally
+implement `refreshToken()`, `getCurrentTokens()`, and `isTokenExpired()` if your
+application calls the matching client helper methods. Provider failures are
+surfaced as `EtsyAuthError` values with stable `TOKEN_PROVIDER_*` codes; the
+client does not include provider-thrown error text in those messages so vault or
+OAuth secrets are not copied into SDK errors.
 
 The Worker entrypoint publishes `dist/worker.esm.js` and is ESM-only. It exports
 the request client, core error classes, validation helpers, pagination/retry
@@ -530,6 +545,7 @@ interface EtsyClientConfig {
   accessToken?: string;                 // User's access token
   refreshToken?: string;                // User's refresh token
   expiresAt?: Date;                     // Token expiration date
+  tokenProvider?: TokenProvider;        // Request-time token source
   refreshSave?: (token, refresh, expires) => void; // Token save callback
 
   rateLimiting?: {

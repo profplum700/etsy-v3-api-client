@@ -9,6 +9,7 @@ import {
   EtsyAuthError,
   EtsyClientConfig,
   TokenRefreshCallback,
+  TokenProvider,
   TokenStorage,
   TokenRotationConfig
 } from '../types';
@@ -36,7 +37,7 @@ export class MemoryTokenStorage implements TokenStorage {
 /**
  * Token manager handles token lifecycle, refresh, and proactive rotation
  */
-export class TokenManager {
+export class TokenManager implements TokenProvider {
   private keystring: string;
   private currentTokens: EtsyTokens | null = null;
   private refreshCallback?: TokenRefreshCallback;
@@ -51,14 +52,24 @@ export class TokenManager {
     this.storage = storage;
     this.rotationConfig = rotationConfig;
 
-    // Initialize with provided tokens
-    this.currentTokens = {
-      access_token: config.accessToken,
-      refresh_token: config.refreshToken,
-      expires_at: config.expiresAt,
-      token_type: 'Bearer',
-      scope: ''
-    };
+    // Initialize with provided tokens. TokenProvider-backed clients can omit
+    // these fields and rely on their provider for request-time token lookup.
+    if (
+      config.accessToken !== undefined &&
+      config.accessToken !== null &&
+      config.refreshToken !== undefined &&
+      config.refreshToken !== null &&
+      config.expiresAt !== undefined &&
+      config.expiresAt !== null
+    ) {
+      this.currentTokens = {
+        access_token: config.accessToken,
+        refresh_token: config.refreshToken,
+        expires_at: config.expiresAt,
+        token_type: 'Bearer',
+        scope: ''
+      };
+    }
 
     // Start proactive rotation if enabled and autoSchedule is true
     if (this.rotationConfig?.enabled && this.rotationConfig?.autoSchedule) {

@@ -8,7 +8,7 @@ import {
   FileTokenStorage,
   createDefaultTokenStorage
 } from '../../src/auth/token-manager';
-import { EtsyAuthError, EtsyClientConfig, EtsyTokens } from '../../src/types';
+import { EtsyAuthError, EtsyClientConfig, EtsyTokens, TokenProvider } from '../../src/types';
 import { vi, type Mock } from 'vitest';
 
 // Save real process for Vitest compatibility — Vitest's error handler needs process.listeners()
@@ -127,6 +127,37 @@ describe('TokenManager', () => {
         })
       );
       expect(accessToken).toBe('new-access-token');
+    });
+
+    it('should satisfy TokenProvider and preserve expired-token refresh handling', async () => {
+      const expiredConfig: EtsyClientConfig = {
+        ...mockConfig,
+        expiresAt: new Date(Date.now() - 1000)
+      };
+      const mockTokenResponse = {
+        access_token: 'provider-refreshed-access-token',
+        refresh_token: 'provider-refreshed-refresh-token',
+        expires_in: 3600,
+        token_type: 'Bearer',
+        scope: 'shops_r listings_r'
+      };
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue(mockTokenResponse)
+      });
+
+      const tokenProvider: TokenProvider = new TokenManager(expiredConfig);
+
+      await expect(tokenProvider.getAccessToken()).resolves.toBe('provider-refreshed-access-token');
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.etsy.com/v3/public/oauth/token',
+        expect.objectContaining({
+          method: 'POST',
+          body: expect.stringContaining('refresh_token=test-refresh-token')
+        })
+      );
     });
 
     it('should refresh token when expires soon (within 1 minute)', async () => {

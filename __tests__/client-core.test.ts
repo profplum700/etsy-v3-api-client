@@ -4,7 +4,7 @@
 
 import { type Mock } from 'vitest';
 import { EtsyClient } from '../src/client';
-import { EtsyApiError } from '../src/types';
+import { EtsyApiError, EtsyAuthError } from '../src/types';
 import { setupClientMocks, MockClientContext } from './helpers/client-test-setup';
 
 describe('EtsyClient Core', () => {
@@ -173,6 +173,128 @@ describe('EtsyClient Core', () => {
 
       await expect(ctx.client.getUser()).rejects.toThrow(EtsyApiError);
       await expect(ctx.client.getUser()).rejects.toThrow('Request failed: Network error');
+    });
+  });
+
+  describe('tokenProvider', () => {
+    it('should retrieve provider tokens lazily at request time', async () => {
+      const getAccessToken = vi.fn()
+        .mockResolvedValueOnce('first-request-token')
+        .mockResolvedValueOnce('second-request-token');
+      const client = new EtsyClient({
+        keystring: 'test-api-key',
+        sharedSecret: 'test-shared-secret',
+        tokenProvider: { getAccessToken },
+        baseUrl: 'https://api.etsy.com/v3/application',
+        caching: { enabled: false }
+      });
+
+      expect(getAccessToken).not.toHaveBeenCalled();
+
+      ctx.mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: vi.fn().mockResolvedValue({ user_id: 123, login_name: 'testuser' }),
+          headers: new Headers()
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: vi.fn().mockResolvedValue({ user_id: 456, login_name: 'otheruser' }),
+          headers: new Headers()
+        });
+
+      await client.getUser();
+      await client.getUser();
+
+      expect(getAccessToken).toHaveBeenCalledTimes(2);
+      expect(ctx.mockFetch).toHaveBeenNthCalledWith(
+        1,
+        'https://api.etsy.com/v3/application/users/me',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'Authorization': 'Bearer first-request-token'
+          })
+        })
+      );
+      expect(ctx.mockFetch).toHaveBeenNthCalledWith(
+        2,
+        'https://api.etsy.com/v3/application/users/me',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'Authorization': 'Bearer second-request-token'
+          })
+        })
+      );
+    });
+
+    it('should propagate provider failures as explicit secret-safe auth errors', async () => {
+      const leakedSecret = 'provider-secret-refresh-token';
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const client = new EtsyClient({
+        keystring: 'test-api-key',
+        sharedSecret: 'test-shared-secret',
+        tokenProvider: {
+          getAccessToken: vi.fn().mockRejectedValue(
+            new Error(`vault rejected ${leakedSecret}`)
+          )
+        },
+        baseUrl: 'https://api.etsy.com/v3/application'
+      });
+
+      let thrown: unknown;
+      try {
+        await client.getUser();
+      } catch (error) {
+        thrown = error;
+      }
+
+      expect(thrown).toBeInstanceOf(EtsyAuthError);
+      expect((thrown as EtsyAuthError).code).toBe('TOKEN_PROVIDER_FAILED');
+      expect((thrown as Error).message).toBe('Token provider failed to supply an access token');
+      expect((thrown as Error).message).not.toContain(leakedSecret);
+      expect(errorSpy).not.toHaveBeenCalled();
+      expect(ctx.mockFetch).not.toHaveBeenCalled();
+      errorSpy.mockRestore();
+    });
+
+    it('should reject empty provider tokens before making a request', async () => {
+      const client = new EtsyClient({
+        keystring: 'test-api-key',
+        sharedSecret: 'test-shared-secret',
+        tokenProvider: {
+          getAccessToken: vi.fn().mockResolvedValue('')
+        },
+        baseUrl: 'https://api.etsy.com/v3/application'
+      });
+
+      await expect(client.getUser()).rejects.toMatchObject({
+        name: 'EtsyAuthError',
+        code: 'TOKEN_PROVIDER_EMPTY_TOKEN'
+      });
+      expect(ctx.mockFetch).not.toHaveBeenCalled();
+    });
+
+    it('should invoke optional provider refresh hooks from refreshToken', async () => {
+      const refreshedTokens = {
+        access_token: 'fresh-access-token',
+        refresh_token: 'fresh-refresh-token',
+        expires_at: new Date(Date.now() + 3600000),
+        token_type: 'Bearer',
+        scope: 'shops_r'
+      };
+      const refreshToken = vi.fn().mockResolvedValue(refreshedTokens);
+      const client = new EtsyClient({
+        keystring: 'test-api-key',
+        sharedSecret: 'test-shared-secret',
+        tokenProvider: {
+          getAccessToken: vi.fn().mockResolvedValue('request-token'),
+          refreshToken
+        },
+        baseUrl: 'https://api.etsy.com/v3/application'
+      });
+
+      await expect(client.refreshToken()).resolves.toEqual(refreshedTokens);
+      expect(refreshToken).toHaveBeenCalledTimes(1);
     });
   });
 

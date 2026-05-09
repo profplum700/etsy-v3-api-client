@@ -234,6 +234,7 @@ export type {
   // Authentication Types
   EtsyTokens,
   EtsyTokenResponse,
+  TokenProvider,
   TokenRefreshCallback,
   TokenRotationCallback,
   TokenStorage,

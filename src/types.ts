@@ -8,16 +8,34 @@
 
 export interface EtsyClientConfig {
   keystring: string;
-  /** 
-   * Shared secret for the new API key format (keystring:secret). 
+  /**
+   * Shared secret for the new API key format (keystring:secret).
    * REQUIRED for all application API usage in v3.
    */
   sharedSecret: string;
-  accessToken: string;
-  refreshToken: string;
-  expiresAt: Date;
-   
+  /**
+   * Static bootstrap access token used by the built-in TokenManager.
+   * Worker consumers can omit this when `tokenProvider` is supplied.
+   */
+  accessToken?: string;
+  /**
+   * Static bootstrap refresh token used by the built-in TokenManager.
+   * Worker consumers can omit this when `tokenProvider` is supplied.
+   */
+  refreshToken?: string;
+  /**
+   * Expiration timestamp for the static bootstrap access token.
+   * Worker consumers can omit this when `tokenProvider` is supplied.
+   */
+  expiresAt?: Date;
+
   refreshSave?: (_accessToken: string, _refreshToken: string, _expiresAt: Date) => void;
+  /**
+   * Optional request-time token provider. When supplied, EtsyClient calls this
+   * provider for every uncached API request instead of constructing its own
+   * TokenManager from static tokens.
+   */
+  tokenProvider?: TokenProvider;
   
   // Optional configuration
   baseUrl?: string;
@@ -84,6 +102,13 @@ export interface EtsyTokenResponse {
 export type TokenRefreshCallback = (_accessToken: string, _refreshToken: string, _expiresAt: Date) => void;
 
 export type TokenRotationCallback = (oldTokens: EtsyTokens, newTokens: EtsyTokens) => void | Promise<void>;
+
+export interface TokenProvider {
+  getAccessToken(): Promise<string>;
+  getCurrentTokens?(): EtsyTokens | null;
+  isTokenExpired?(): boolean;
+  refreshToken?(): Promise<EtsyTokens>;
+}
 
 export interface TokenStorage {
 

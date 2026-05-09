@@ -22,6 +22,7 @@ import {
   EtsyAuthError,
   EtsyRateLimitError,
   EtsyTokens,
+  TokenProvider,
   RateLimitStatus,
   LoggerInterface,
   CacheStorage,
@@ -185,7 +186,8 @@ class MemoryCache implements CacheStorage {
  * Main Etsy API v3 Client
  */
 export class EtsyClient {
-  private tokenManager: TokenManager;
+  private tokenProvider: TokenProvider;
+  private usesExternalTokenProvider: boolean;
   private rateLimiter: EtsyRateLimiter;
   private baseUrl: string;
   private logger: LoggerInterface;
@@ -200,7 +202,13 @@ export class EtsyClient {
       throw new EtsyAuthError('sharedSecret is REQUIRED for Etsy API v3 application usage. See: https://github.com/profplum700/etsy-v3-api-client/issues/21');
     }
 
-    this.tokenManager = new TokenManager(config);
+    if (config.tokenProvider) {
+      this.tokenProvider = config.tokenProvider;
+      this.usesExternalTokenProvider = true;
+    } else {
+      this.tokenProvider = new TokenManager(config);
+      this.usesExternalTokenProvider = false;
+    }
     this.baseUrl = config.baseUrl || 'https://api.etsy.com/v3/application';
     this.logger = new DefaultLogger();
     this.keystring = config.keystring;
@@ -272,7 +280,7 @@ export class EtsyClient {
     await this.rateLimiter.waitForRateLimit();
 
     // Get access token
-    const accessToken = await this.tokenManager.getAccessToken();
+    const accessToken = await this.getAccessToken();
 
     // Prepare request
     const headers = {
@@ -370,6 +378,38 @@ export class EtsyClient {
    */
   private sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Resolve an access token at request time.
+   *
+   * Provider failures are wrapped in a stable EtsyAuthError code without
+   * including provider-supplied error text, which may contain OAuth secrets.
+   */
+  private async getAccessToken(): Promise<string> {
+    try {
+      const accessToken = await this.tokenProvider.getAccessToken();
+      if (typeof accessToken !== 'string' || accessToken.length === 0) {
+        throw new EtsyAuthError('Token provider returned an empty access token', 'TOKEN_PROVIDER_EMPTY_TOKEN');
+      }
+      return accessToken;
+    } catch (error) {
+      if (
+        error instanceof EtsyAuthError &&
+        error.code === 'TOKEN_PROVIDER_EMPTY_TOKEN'
+      ) {
+        throw error;
+      }
+
+      if (!this.usesExternalTokenProvider && error instanceof EtsyAuthError) {
+        throw error;
+      }
+
+      throw new EtsyAuthError(
+        'Token provider failed to supply an access token',
+        'TOKEN_PROVIDER_FAILED'
+      );
+    }
   }
 
   private buildFormBody(params: Record<string, unknown> | object): URLSearchParams {
@@ -914,7 +954,7 @@ export class EtsyClient {
 
     const url = `${this.baseUrl}/shops/${shopId}/listings/${listingId}/images`;
     await this.rateLimiter.waitForRateLimit();
-    const accessToken = await this.tokenManager.getAccessToken();
+    const accessToken = await this.getAccessToken();
 
     const response = await this.fetch(url, {
       method: 'POST',
@@ -1535,7 +1575,7 @@ export class EtsyClient {
 
     const url = `${this.baseUrl}/shops/${shopId}/listings/${listingId}/properties/${propertyId}`;
     await this.rateLimiter.waitForRateLimit();
-    const accessToken = await this.tokenManager.getAccessToken();
+    const accessToken = await this.getAccessToken();
 
     const response = await this.fetch(url, {
       method: 'PUT',
@@ -1847,7 +1887,7 @@ export class EtsyClient {
 
     const url = `${this.baseUrl}/shops/${shopId}/listings/${listingId}/files`;
     await this.rateLimiter.waitForRateLimit();
-    const accessToken = await this.tokenManager.getAccessToken();
+    const accessToken = await this.getAccessToken();
 
     const response = await this.fetch(url, {
       method: 'POST',
@@ -1939,7 +1979,7 @@ export class EtsyClient {
 
     const url = `${this.baseUrl}/shops/${shopId}/listings/${listingId}/videos`;
     await this.rateLimiter.waitForRateLimit();
-    const accessToken = await this.tokenManager.getAccessToken();
+    const accessToken = await this.getAccessToken();
 
     const response = await this.fetch(url, {
       method: 'POST',
@@ -2669,21 +2709,39 @@ export class EtsyClient {
    * Get current tokens
    */
   public getCurrentTokens(): EtsyTokens | null {
-    return this.tokenManager.getCurrentTokens();
+    if (!this.tokenProvider.getCurrentTokens) {
+      throw new EtsyAuthError(
+        'Token provider does not support reading current tokens',
+        'TOKEN_PROVIDER_GET_TOKENS_UNSUPPORTED'
+      );
+    }
+    return this.tokenProvider.getCurrentTokens();
   }
 
   /**
    * Check if token is expired
    */
   public isTokenExpired(): boolean {
-    return this.tokenManager.isTokenExpired();
+    if (!this.tokenProvider.isTokenExpired) {
+      throw new EtsyAuthError(
+        'Token provider does not support token expiration checks',
+        'TOKEN_PROVIDER_EXPIRATION_UNSUPPORTED'
+      );
+    }
+    return this.tokenProvider.isTokenExpired();
   }
 
   /**
    * Refresh token manually
    */
   public async refreshToken(): Promise<EtsyTokens> {
-    return this.tokenManager.refreshToken();
+    if (!this.tokenProvider.refreshToken) {
+      throw new EtsyAuthError(
+        'Token provider does not support manual token refresh',
+        'TOKEN_PROVIDER_REFRESH_UNSUPPORTED'
+      );
+    }
+    return this.tokenProvider.refreshToken();
   }
 
   /**
