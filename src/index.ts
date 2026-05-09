@@ -23,6 +23,18 @@ export {
   SessionStorageTokenStorage,
   createDefaultTokenStorage
 } from './auth/token-manager';
+export {
+  DurableObjectTokenVault,
+  TokenVaultClient,
+  type DurableObjectNamespaceLike,
+  type DurableObjectStateLike,
+  type FetcherLike,
+  type TokenVaultAccessTokenResponse,
+  type TokenVaultClientOptions,
+  type TokenVaultRefreshEnv,
+  type TokenVaultTokensResponse,
+  type TokenVaultWriteRequest
+} from './auth/durable-object-token-vault';
 
 // ============================================================================
 // Rate Limiting Exports

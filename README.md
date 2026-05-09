@@ -138,6 +138,72 @@ helpers, and types needed by Worker consumers. Node-only file storage/security
 helpers and browser-only storage adapters remain available from the default,
 `/node`, and `/browser` entrypoints instead.
 
+#### Durable Object token vault
+
+Worker deployments that need shared OAuth token storage can bind the provided
+Durable Object reference implementation and use `TokenVaultClient` as the
+`TokenProvider`:
+
+```typescript
+import {
+  DurableObjectTokenVault,
+  EtsyClient,
+  TokenVaultClient,
+} from '@profplum700/etsy-v3-api-client/worker';
+
+export { DurableObjectTokenVault };
+
+interface Env {
+  TOKEN_VAULT: DurableObjectNamespace;
+  ETSY_API_KEY: string;
+  ETSY_SHARED_SECRET: string;
+}
+
+export default {
+  async fetch(_request: Request, env: Env) {
+    const tokenVault = TokenVaultClient.fromNamespace(
+      env.TOKEN_VAULT,
+      'etsy-shop-token-vault'
+    );
+
+    // After your OAuth callback exchanges an authorization code, persist the
+    // resulting token bundle once. Later requests can reuse the same provider.
+    // await tokenVault.saveTokens(tokensFromOAuthCallback);
+
+    const client = new EtsyClient({
+      keystring: env.ETSY_API_KEY,
+      sharedSecret: env.ETSY_SHARED_SECRET,
+      tokenProvider: tokenVault,
+    });
+
+    return Response.json({ ready: client.constructor.name });
+  },
+};
+```
+
+Bind the class in your Worker configuration, for example:
+
+```toml
+[[durable_objects.bindings]]
+name = "TOKEN_VAULT"
+class_name = "DurableObjectTokenVault"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["DurableObjectTokenVault"]
+```
+
+`TokenVaultClient` implements `TokenProvider`. Its `getAccessToken()` call asks
+the Durable Object for the latest access token; the object refreshes expired or
+near-expired bundles with single-flight refresh protection, rejects stale writes
+with `TOKEN_VAULT_STALE_WRITE`, and returns stable `TOKEN_VAULT_*` diagnostics
+without copying OAuth token values into error messages. Keep the Durable Object
+behind a binding or service-internal route; do not expose its `/tokens` endpoints
+as unauthenticated public HTTP routes. For a generic Worker-hosted mcp-server,
+construct one `TokenVaultClient` from the server's Durable Object namespace per
+shop or tenant and pass it to `EtsyClient` as `tokenProvider`; keep OAuth
+callback handling responsible for the initial `saveTokens()` call.
+
 The package build includes a Worker bundle hygiene check and Miniflare smoke
 test so the Worker surface fails CI if it pulls in Node-only or browser-only
 runtime assumptions such as `fs`, `Buffer`, `process`, or `window`.

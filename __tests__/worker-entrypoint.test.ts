@@ -52,6 +52,8 @@ describe('Worker entrypoint', () => {
         client: 'EtsyClient',
         apiError: 'function',
         rateLimiter: 'function',
+        durableObjectTokenVault: 'function',
+        tokenVaultClient: 'function',
         process: 'undefined',
         buffer: 'undefined',
         window: 'undefined'

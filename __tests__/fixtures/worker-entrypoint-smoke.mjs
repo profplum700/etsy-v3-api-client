@@ -1,7 +1,9 @@
 import {
   EtsyClient,
   EtsyApiError,
-  EtsyRateLimiter
+  EtsyRateLimiter,
+  DurableObjectTokenVault,
+  TokenVaultClient
 } from '../../dist/worker.esm.js';
 
 export default {
@@ -21,6 +23,8 @@ export default {
       client: client.constructor.name,
       apiError: typeof EtsyApiError,
       rateLimiter: typeof EtsyRateLimiter,
+      durableObjectTokenVault: typeof DurableObjectTokenVault,
+      tokenVaultClient: typeof TokenVaultClient,
       process: typeof process,
       buffer: typeof Buffer,
       window: typeof window

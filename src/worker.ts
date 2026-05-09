@@ -60,6 +60,19 @@ export {
   EtsyRateLimitError
 } from './types';
 
+export {
+  DurableObjectTokenVault,
+  TokenVaultClient,
+  type DurableObjectNamespaceLike,
+  type DurableObjectStateLike,
+  type FetcherLike,
+  type TokenVaultAccessTokenResponse,
+  type TokenVaultClientOptions,
+  type TokenVaultRefreshEnv,
+  type TokenVaultTokensResponse,
+  type TokenVaultWriteRequest
+} from './auth/durable-object-token-vault';
+
 export type {
   EtsyClientConfig,
   TokenProvider,
