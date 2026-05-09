@@ -3,7 +3,7 @@
  */
 
 import { ListingParams } from '../src/types';
-import { setupClientMocks, MockClientContext, create204Response } from './helpers/client-test-setup';
+import { setupClientMocks, MockClientContext, create204Response, createErrorResponse } from './helpers/client-test-setup';
 
 describe('EtsyClient Listings', () => {
   let ctx: MockClientContext;
@@ -363,6 +363,12 @@ describe('EtsyClient Listings', () => {
           'https://api.etsy.com/v3/application/shops/123/listings/789/images',
           expect.objectContaining({ method: 'POST' })
         );
+        const requestBody = ctx.mockFetch.mock.calls[0]?.[1]?.body as FormData;
+        const imagePart = requestBody.get('image') as Blob & { name?: string };
+        expect(requestBody).toBeInstanceOf(FormData);
+        expect(imagePart).toBeInstanceOf(Blob);
+        expect(imagePart.name).toBe('image.jpg');
+        await expect(imagePart.text()).resolves.toBe('fake image data');
         expect(result).toEqual(mockImage);
       });
 
@@ -380,7 +386,66 @@ describe('EtsyClient Listings', () => {
           is_watermarked: false
         });
 
+        const requestBody = ctx.mockFetch.mock.calls[0]?.[1]?.body as FormData;
+        expect(requestBody.get('rank')).toBe('1');
+        expect(requestBody.get('alt_text')).toBe('Test alt text');
+        expect(requestBody.get('is_watermarked')).toBe('false');
         expect(result).toEqual(mockImage);
+      });
+
+      it('should preserve Uint8Array/Buffer-compatible image uploads as Blob form parts', async () => {
+        const mockImage = { listing_image_id: 999, url_fullxfull: 'https://example.com/image.jpg' };
+        ctx.mockFetch.mockResolvedValue({
+          ok: true,
+          json: vi.fn().mockResolvedValue(mockImage)
+        });
+
+        const bytes = new Uint8Array([119, 111, 114, 107, 101, 114]);
+        const result = await ctx.client.uploadListingImage('123', '789', bytes);
+
+        const requestBody = ctx.mockFetch.mock.calls[0]?.[1]?.body as FormData;
+        const imagePart = requestBody.get('image') as Blob & { name?: string };
+        expect(imagePart).toBeInstanceOf(Blob);
+        expect(imagePart.name).toBe('image.jpg');
+        await expect(imagePart.text()).resolves.toBe('worker');
+        expect(result).toEqual(mockImage);
+      });
+
+      it('should upload only the visible bytes from a Buffer subarray', async () => {
+        const mockImage = { listing_image_id: 999, url_fullxfull: 'https://example.com/image.jpg' };
+        ctx.mockFetch.mockResolvedValue({
+          ok: true,
+          json: vi.fn().mockResolvedValue(mockImage)
+        });
+
+        const backing = Buffer.from('xworkery');
+        const visibleBytes = backing.subarray(1, backing.length - 1);
+        await ctx.client.uploadListingImage('123', '789', visibleBytes);
+
+        const requestBody = ctx.mockFetch.mock.calls[0]?.[1]?.body as FormData;
+        const imagePart = requestBody.get('image') as Blob & { name?: string };
+        expect(imagePart.size).toBe(visibleBytes.byteLength);
+        await expect(imagePart.text()).resolves.toBe('worker');
+      });
+
+      it('should surface upload API errors without dropping the response body', async () => {
+        ctx.mockFetch.mockResolvedValue(createErrorResponse(413, 'Payload Too Large', 'image too large'));
+
+        const blob = new Blob(['too large'], { type: 'image/jpeg' });
+        await expect(ctx.client.uploadListingImage('123', '789', blob)).rejects.toMatchObject({
+          name: 'EtsyApiError',
+          message: 'Failed to upload image: 413 Payload Too Large',
+          _statusCode: 413,
+          _response: 'image too large'
+        });
+      });
+
+      it('should reject unsupported upload data before making an Etsy request', async () => {
+        await expect(
+          ctx.client.uploadListingImage('123', '789', undefined as unknown as Blob)
+        ).rejects.toThrow('expected a Blob, File, or Uint8Array');
+
+        expect(ctx.mockFetch).not.toHaveBeenCalled();
       });
     });
 

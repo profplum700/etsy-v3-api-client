@@ -425,6 +425,57 @@ export class EtsyClient {
     return body;
   }
 
+  private buildUploadFormData(
+    fieldName: 'image' | 'file' | 'video',
+    data: Blob | Uint8Array,
+    fallbackFileName: string,
+    params?: Record<string, string | number | boolean | undefined>
+  ): FormData {
+    const formData = new FormData();
+    const blob = this.toUploadBlob(data, fieldName);
+    formData.append(fieldName, blob, this.getUploadFileName(data, fallbackFileName));
+
+    for (const [key, value] of Object.entries(params ?? {})) {
+      if (value === undefined) continue;
+      formData.append(key, String(value));
+    }
+
+    return formData;
+  }
+
+  private toUploadBlob(data: Blob | Uint8Array, fieldName: string): Blob {
+    if (typeof Blob !== 'undefined' && data instanceof Blob) {
+      return data;
+    }
+
+    if (data instanceof Uint8Array) {
+      if (typeof Blob === 'undefined') {
+        throw new EtsyApiError(
+          `Cannot upload ${fieldName}: Blob support is not available in this runtime`,
+          0
+        );
+      }
+
+      // Copy the exact view into an ArrayBuffer-backed Blob. Buffer and typed-
+      // array subviews can share larger backing stores, so slice by byte range
+      // instead of exposing data.buffer directly.
+      const bytes = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
+      return new Blob([bytes as ArrayBuffer]);
+    }
+
+    throw new EtsyApiError(
+      `Cannot upload ${fieldName}: expected a Blob, File, or Uint8Array`,
+      0
+    );
+  }
+
+  private getUploadFileName(data: Blob | Uint8Array, fallbackFileName: string): string {
+    const maybeFile = data as { name?: unknown };
+    return typeof maybeFile.name === 'string' && maybeFile.name.length > 0
+      ? maybeFile.name
+      : fallbackFileName;
+  }
+
   /**
    * Get API key in the format required by Etsy v3.
    * Format: "keystring:sharedSecret"
@@ -942,15 +993,12 @@ export class EtsyClient {
     imageData: Blob | Uint8Array,
     params?: { rank?: number; overwrite?: boolean; is_watermarked?: boolean; alt_text?: string }
   ): Promise<EtsyListingImage> {
-    const formData = new FormData();
-    // TypeScript FormData types don't include Uint8Array, but Buffer remains
-    // assignable through Uint8Array for existing Node callers.
-    formData.append('image', imageData as Blob);
-
-    if (params?.rank !== undefined) formData.append('rank', params.rank.toString());
-    if (params?.overwrite !== undefined) formData.append('overwrite', params.overwrite.toString());
-    if (params?.is_watermarked !== undefined) formData.append('is_watermarked', params.is_watermarked.toString());
-    if (params?.alt_text) formData.append('alt_text', params.alt_text);
+    const formData = this.buildUploadFormData('image', imageData, 'image.jpg', {
+      rank: params?.rank,
+      overwrite: params?.overwrite,
+      is_watermarked: params?.is_watermarked,
+      alt_text: params?.alt_text || undefined
+    });
 
     const url = `${this.baseUrl}/shops/${shopId}/listings/${listingId}/images`;
     await this.rateLimiter.waitForRateLimit();
@@ -1879,11 +1927,16 @@ export class EtsyClient {
     fileData: Blob | Uint8Array,
     params?: { name?: string; rank?: number; listing_file_id?: number }
   ): Promise<EtsyListingFile> {
-    const formData = new FormData();
-    formData.append('file', fileData as Blob);
-    if (params?.name) formData.append('name', params.name);
-    if (params?.rank !== undefined) formData.append('rank', params.rank.toString());
-    if (params?.listing_file_id !== undefined) formData.append('listing_file_id', params.listing_file_id.toString());
+    const formData = this.buildUploadFormData(
+      'file',
+      fileData,
+      params?.name || 'upload.bin',
+      {
+        name: params?.name || undefined,
+        rank: params?.rank,
+        listing_file_id: params?.listing_file_id
+      }
+    );
 
     const url = `${this.baseUrl}/shops/${shopId}/listings/${listingId}/files`;
     await this.rateLimiter.waitForRateLimit();
@@ -1972,10 +2025,15 @@ export class EtsyClient {
     videoData: Blob | Uint8Array,
     params?: { name?: string; video_id?: number }
   ): Promise<EtsyListingVideo> {
-    const formData = new FormData();
-    formData.append('video', videoData as Blob);
-    if (params?.name) formData.append('name', params.name);
-    if (params?.video_id !== undefined) formData.append('video_id', params.video_id.toString());
+    const formData = this.buildUploadFormData(
+      'video',
+      videoData,
+      params?.name || 'video.mp4',
+      {
+        name: params?.name || undefined,
+        video_id: params?.video_id
+      }
+    );
 
     const url = `${this.baseUrl}/shops/${shopId}/listings/${listingId}/videos`;
     await this.rateLimiter.waitForRateLimit();

@@ -34,6 +34,12 @@ describe('EtsyClient Listing Videos', () => {
         'https://api.etsy.com/v3/application/shops/123/listings/789/videos',
         expect.objectContaining({ method: 'POST' })
       );
+      const requestBody = ctx.mockFetch.mock.calls[0]?.[1]?.body as FormData;
+      const videoPart = requestBody.get('video') as Blob & { name?: string };
+      expect(requestBody).toBeInstanceOf(FormData);
+      expect(videoPart).toBeInstanceOf(Blob);
+      expect(videoPart.name).toBe('video.mp4');
+      await expect(videoPart.text()).resolves.toBe('fake video data');
       expect(result).toEqual(mockVideo);
     });
 
@@ -61,6 +67,11 @@ describe('EtsyClient Listing Videos', () => {
         'https://api.etsy.com/v3/application/shops/123/listings/789/videos',
         expect.objectContaining({ method: 'POST' })
       );
+      const requestBody = ctx.mockFetch.mock.calls[0]?.[1]?.body as FormData;
+      const videoPart = requestBody.get('video') as Blob & { name?: string };
+      expect(videoPart.name).toBe('demo.mp4');
+      expect(requestBody.get('name')).toBe('demo.mp4');
+      expect(requestBody.get('video_id')).toBe('42');
       expect(result).toEqual(mockVideo);
     });
   });

@@ -37,6 +37,12 @@ describe('EtsyClient Listing Files', () => {
         'https://api.etsy.com/v3/application/shops/123/listings/789/files',
         expect.objectContaining({ method: 'POST' })
       );
+      const requestBody = ctx.mockFetch.mock.calls[0]?.[1]?.body as FormData;
+      const filePart = requestBody.get('file') as Blob & { name?: string };
+      expect(requestBody).toBeInstanceOf(FormData);
+      expect(filePart).toBeInstanceOf(Blob);
+      expect(filePart.name).toBe('upload.bin');
+      await expect(filePart.text()).resolves.toBe('fake file data');
       expect(result).toEqual(mockFile);
     });
 
@@ -67,6 +73,11 @@ describe('EtsyClient Listing Files', () => {
         'https://api.etsy.com/v3/application/shops/123/listings/789/files',
         expect.objectContaining({ method: 'POST' })
       );
+      const requestBody = ctx.mockFetch.mock.calls[0]?.[1]?.body as FormData;
+      const filePart = requestBody.get('file') as Blob & { name?: string };
+      expect(filePart.name).toBe('instructions.pdf');
+      expect(requestBody.get('name')).toBe('instructions.pdf');
+      expect(requestBody.get('rank')).toBe('2');
       expect(result).toEqual(mockFile);
     });
   });

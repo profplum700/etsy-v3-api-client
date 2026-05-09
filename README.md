@@ -208,6 +208,29 @@ The package build includes a Worker bundle hygiene check and Miniflare smoke
 test so the Worker surface fails CI if it pulls in Node-only or browser-only
 runtime assumptions such as `fs`, `Buffer`, `process`, or `window`.
 
+#### Worker-safe media uploads
+
+The listing media upload helpers are safe to call from the `/worker` entrypoint
+when the media body is a Web `Blob` or `File`:
+
+```typescript
+const image = await request.blob();
+
+await client.uploadListingImage(shopId, listingId, image, {
+  rank: 1,
+  alt_text: 'Front of listing item',
+});
+```
+
+Worker callers should pass bytes from Fetch APIs, R2, or other Web Platform
+sources as `Blob`/`File` values. The client builds native `FormData` with a real
+file part and a default filename (`image.jpg`, `video.mp4`, or `upload.bin`)
+when the input does not already provide one. Node callers may continue passing
+`Uint8Array`/`Buffer` values; the client copies exactly the visible bytes into a
+`Blob` before appending them. Do not pass Node-only `fs.ReadStream`, `form-data`
+package instances, or code that relies on Node multipart behavior when using
+the Worker entrypoint.
+
 ## 🔐 Authentication
 
 ### OAuth 2.0 Flow
