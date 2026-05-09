@@ -1663,7 +1663,7 @@ export interface EtsyShopProductionPartner {
 // ============================================================================
 
 export interface UploadListingImageParams {
-  image: File | Blob | Buffer;
+  image: File | Blob | Uint8Array;
   listing_id: number;
   rank?: number;
   overwrite?: boolean;
@@ -1672,7 +1672,7 @@ export interface UploadListingImageParams {
 }
 
 export interface UploadListingFileParams {
-  file: File | Blob | Buffer;
+  file: File | Blob | Uint8Array;
   listing_id: number;
   name?: string;
   rank?: number;

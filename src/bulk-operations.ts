@@ -58,7 +58,7 @@ export interface BulkUpdateListingOperation {
 }
 
 export interface BulkImageUploadOperation {
-  file: Blob | Buffer | string;
+  file: Blob | Uint8Array | string;
   rank: number;
   altText?: string;
 }

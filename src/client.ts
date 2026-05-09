@@ -120,14 +120,16 @@ import {
  */
 class DefaultLogger implements LoggerInterface {
   debug(message: string, ...args: unknown[]): void {
-    // Only log debug in development (check both browser and Node.js)
-    let isDevelopment: boolean;
-    if (isNode) {
-      isDevelopment = process.env.NODE_ENV === 'development';
-    } else {
-      const host = window.location?.hostname;
-      isDevelopment = host === 'localhost' || host === '127.0.0.1';
-    }
+    // Only log debug in development. Use globalThis so importing the client in
+    // Worker runtimes never dereferences Node's process or browser's window.
+    const maybeGlobal = globalThis as typeof globalThis & {
+      process?: { env?: { NODE_ENV?: string } };
+      location?: { hostname?: string };
+    };
+    const host = maybeGlobal.location?.hostname;
+    const isDevelopment = isNode
+      ? maybeGlobal.process?.env?.NODE_ENV === 'development'
+      : host === 'localhost' || host === '127.0.0.1';
     
     if (isDevelopment) {
       console.log(`[DEBUG] ${message}`, ...args);
@@ -897,11 +899,12 @@ export class EtsyClient {
   public async uploadListingImage(
     shopId: string,
     listingId: string,
-    imageData: Blob | Buffer,
+    imageData: Blob | Uint8Array,
     params?: { rank?: number; overwrite?: boolean; is_watermarked?: boolean; alt_text?: string }
   ): Promise<EtsyListingImage> {
     const formData = new FormData();
-    // TypeScript FormData types don't include Buffer, but it works at runtime
+    // TypeScript FormData types don't include Uint8Array, but Buffer remains
+    // assignable through Uint8Array for existing Node callers.
     formData.append('image', imageData as Blob);
 
     if (params?.rank !== undefined) formData.append('rank', params.rank.toString());
@@ -1044,7 +1047,7 @@ export class EtsyClient {
         return this.uploadListingImage(
           shopId,
           listingId,
-          image.file as Blob | Buffer,
+          image.file as Blob | Uint8Array,
           {
             rank: image.rank,
             alt_text: image.altText
@@ -1833,7 +1836,7 @@ export class EtsyClient {
   public async uploadListingFile(
     shopId: string,
     listingId: string,
-    fileData: Blob | Buffer,
+    fileData: Blob | Uint8Array,
     params?: { name?: string; rank?: number; listing_file_id?: number }
   ): Promise<EtsyListingFile> {
     const formData = new FormData();
@@ -1926,7 +1929,7 @@ export class EtsyClient {
   public async uploadListingVideo(
     shopId: string,
     listingId: string,
-    videoData: Blob | Buffer,
+    videoData: Blob | Uint8Array,
     params?: { name?: string; video_id?: number }
   ): Promise<EtsyListingVideo> {
     const formData = new FormData();

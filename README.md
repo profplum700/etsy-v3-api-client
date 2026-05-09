@@ -100,6 +100,33 @@ const { EtsyClient, AuthHelper } = require('@profplum700/etsy-v3-api-client');
 import { EtsyClient, AuthHelper } from '@profplum700/etsy-v3-api-client';
 ```
 
+### Cloudflare Worker Usage
+
+Cloudflare Workers and other Worker-runtime deployments should import the
+explicit Worker-safe entrypoint:
+
+```typescript
+import { EtsyClient } from '@profplum700/etsy-v3-api-client/worker';
+
+const client = new EtsyClient({
+  keystring: env.ETSY_API_KEY,
+  sharedSecret: env.ETSY_SHARED_SECRET,
+  accessToken: tokenBundle.accessToken,
+  refreshToken: tokenBundle.refreshToken,
+  expiresAt: tokenBundle.expiresAt,
+});
+```
+
+The Worker entrypoint publishes `dist/worker.esm.js` and is ESM-only. It exports
+the request client, core error classes, validation helpers, pagination/retry
+helpers, and types needed by Worker consumers. Node-only file storage/security
+helpers and browser-only storage adapters remain available from the default,
+`/node`, and `/browser` entrypoints instead.
+
+The package build includes a Worker bundle hygiene check and Miniflare smoke
+test so the Worker surface fails CI if it pulls in Node-only or browser-only
+runtime assumptions such as `fs`, `Buffer`, `process`, or `window`.
+
 ## 🔐 Authentication
 
 ### OAuth 2.0 Flow

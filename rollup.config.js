@@ -19,6 +19,16 @@ const nodeExternal = [
 // No externals for browser builds - we bundle everything except Node.js built-ins
 const browserExternal = [];
 
+const workerForbiddenReplacements = {
+  'typeof process !== \'undefined\' && process.versions?.node': 'false',
+  'typeof process !== \'undefined\' && !!process.versions?.node': 'false',
+  'typeof window !== \'undefined\' && typeof window.document !== \'undefined\'': 'false',
+  'typeof window !== \'undefined\'': 'false',
+  'process.version': 'undefined',
+  'process.versions?.node': 'undefined',
+  'maybeGlobal.process?.env?.NODE_ENV': 'undefined'
+};
+
 // Node.js build plugins
 const nodePlugins = [
   resolve({
@@ -80,6 +90,32 @@ const browserPlugins = [
       target: 'ES2020',
       useDefineForClassFields: false,
       lib: ['ES2022', 'DOM']
+    }
+  })
+];
+
+const workerPlugins = [
+  replace({
+    preventAssignment: true,
+    values: workerForbiddenReplacements,
+    delimiters: ['', '']
+  }),
+  resolve({
+    preferBuiltins: false,
+    browser: true,
+    skip: ['fs', 'crypto', 'buffer', 'util']
+  }),
+  commonjs(),
+  typescript({
+    tsconfig: './tsconfig.json',
+    declaration: false,
+    declarationMap: false,
+    outputToFilesystem: true,
+    compilerOptions: {
+      skipLibCheck: true,
+      target: 'ES2022',
+      useDefineForClassFields: false,
+      lib: ['ES2022', 'DOM', 'WebWorker', 'DOM.Iterable']
     }
   })
 ];
@@ -161,6 +197,20 @@ export default [
     plugins: [...browserPlugins, terser()],
     onwarn
   },
+
+  // Cloudflare Worker-safe ESM build
+  {
+    input: 'src/worker.ts',
+    output: {
+      file: 'dist/worker.esm.js',
+      format: 'esm',
+      sourcemap: true,
+      inlineDynamicImports: true
+    },
+    external: browserExternal,
+    plugins: workerPlugins,
+    onwarn
+  },
   
   // Default ESM build (Node.js compatible)
   {
@@ -196,6 +246,18 @@ export default [
     input: 'src/index.ts',
     output: {
       file: pkg.types,
+      format: 'esm'
+    },
+    external: nodeExternal,
+    plugins: [dts()],
+    onwarn
+  },
+
+  // Worker type declarations
+  {
+    input: 'src/worker.ts',
+    output: {
+      file: 'dist/worker.d.ts',
       format: 'esm'
     },
     external: nodeExternal,
