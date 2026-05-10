@@ -18,6 +18,7 @@
     "build:legacy": "pnpm run build:core && pnpm --filter './packages/*' --workspace-concurrency=1 run build",
     "build:watch": "rollup -c --watch",
     "test": "vitest run",
+    "test:spec-contracts": "vitest run --project root __tests__/openapi-spec-contracts.test.ts",
     "test:worker": "pnpm run build:core && vitest run --project root __tests__/worker-entrypoint.test.ts __tests__/worker-upload.test.ts",
     "test:core": "vitest run --project root",
     "test:packages": "vitest run --project etsy-react --project etsy-admin-ui --project etsy-nextjs --project etsy-cli",
