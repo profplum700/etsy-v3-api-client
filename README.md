@@ -928,6 +928,7 @@ Comprehensive documentation and examples are available in the `docs/` directory:
 - [Order Fulfillment](docs/guides/order-fulfillment.md) - Processing orders and shipments
 - [Shipping Profiles](docs/guides/shipping-profiles.md) - Managing shipping profiles
 - [Webhooks](docs/guides/webhooks.md) - Real-time event notifications
+- [ETM V1 Endpoint Coverage](docs/etsy-trading-manager-v1-endpoint-coverage.md) - Pinned-spec coverage matrix for MCP/snapshot integrations
 
 ### Troubleshooting
 
