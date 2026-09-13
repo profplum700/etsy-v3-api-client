@@ -64,7 +64,7 @@
     "@rollup/plugin-typescript": "^12.1.4",
     "@types/inquirer": "^9.0.7",
     "@types/node": "^24.1.0",
-    "rollup": "^4.45.1",
+    "rollup": "^4.59.0",
     "rollup-plugin-dts": "^6.1.1",
     "rollup-plugin-preserve-shebang": "^1.0.1",
     "typescript": "^5.5.3"

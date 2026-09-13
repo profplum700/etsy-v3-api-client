@@ -78,7 +78,7 @@
     "@types/react": "^19.0.0",
     "next": "^16.0.0",
     "react": "^19.0.0",
-    "rollup": "^4.45.1",
+    "rollup": "^4.59.0",
     "rollup-plugin-dts": "^6.1.1",
     "typescript": "^5.5.3"
   },
