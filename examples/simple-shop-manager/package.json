@@ -9,7 +9,7 @@
     "dev": "ts-node-dev index.ts"
   },
   "dependencies": {
-    "@profplum700/etsy-v3-api-client": "^2.5.0",
+    "@profplum700/etsy-v3-api-client": "^3.0.0",
     "dotenv": "^17.4.2"
   },
   "devDependencies": {
