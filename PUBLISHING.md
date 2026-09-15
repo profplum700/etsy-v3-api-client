@@ -24,8 +24,11 @@ and pushes. CI publishes to npm on the tag.
 
 ## Notes
 
-- If you want to prepare a tag without pushing, run:
+- To prepare a tag without pushing, run:
   `node scripts/release.mjs <patch|minor|major>`
-- CI uses `pnpm install --frozen-lockfile` and publishes with
-  `pnpm publish -r --filter . --filter './packages/*' --access public --provenance`.
+- CI uses `pnpm install --frozen-lockfile`, build and type checks, then runs
+  `npm publish --access public` separately for the root package and each
+  integration package listed in `.github/workflows/publish.yml`. That workflow
+  uses Trusted Publisher OIDC with `id-token: write`; it is not a recursive
+  pnpm publication command.
 - For emergency rollback, deprecate the version on npm rather than unpublishing.
