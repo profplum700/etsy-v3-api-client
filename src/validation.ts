@@ -309,6 +309,7 @@ export const CreateListingSchema = new Validator<CreateDraftListingParams>()
   .rule(field('price').required())
   .rule(field('price').number({ positive: true, message: 'price must be a finite positive number' }))
   .rule(field('who_made').enum(['i_did', 'someone_else', 'collective'], 'who_made must be one of: i_did, someone_else, collective'))
+  .rule(field('when_made').required())
   .rule(field('when_made').enum(['made_to_order', ...ETSY_WHEN_MADE_VALUES]))
   .rule(field('taxonomy_id').required())
   .rule(field('taxonomy_id').number({ integer: true, positive: true, message: 'taxonomy_id must be a positive integer' }));

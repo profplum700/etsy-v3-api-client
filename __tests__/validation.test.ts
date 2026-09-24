@@ -160,6 +160,20 @@ describe('Data Validation', () => {
         expect(result.valid).toBe(true);
       });
 
+      it('should require when_made at runtime', () => {
+        const result = CreateListingSchema.validate({
+          quantity: 5,
+          title: 'Test Product',
+          description: 'A great product',
+          price: 29.99,
+          who_made: 'i_did',
+          taxonomy_id: 123,
+        } as unknown as CreateDraftListingParams);
+
+        expect(result.valid).toBe(false);
+        expect(result.errors.some((error) => error.field === 'when_made')).toBe(true);
+      });
+
       it.each(['2020_2024', '2005_2009', '2000_2004', '2020_2025', '2006_2009', '2000_2005'])(
         'should reject retired or non-Etsy when_made value %s',
         (when_made) => {
@@ -220,6 +234,22 @@ describe('Data Validation', () => {
           expect(result.errors.some(e => e.field === 'price')).toBe(true);
         },
       );
+
+      it('should reject a non-number listing price at runtime', () => {
+        const params = {
+          quantity: 5,
+          title: 'Test Product',
+          description: 'A product',
+          price: '29.99',
+          who_made: 'i_did' as const,
+          when_made: 'made_to_order' as const,
+          taxonomy_id: 123
+        } as unknown as CreateDraftListingParams;
+
+        const result = CreateListingSchema.validate(params);
+        expect(result.valid).toBe(false);
+        expect(result.errors.some(e => e.field === 'price')).toBe(true);
+      });
 
       it('should reject listing with too long title', () => {
         const params = {
