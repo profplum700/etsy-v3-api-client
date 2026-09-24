@@ -149,7 +149,7 @@ When creating a listing, you must provide:
   - `collective`: Made by a collective
 - `when_made`: When it was made
   - `made_to_order`: Made to order
-  - `2020_2024`: Recent years
+  - `2020_2026`: Recent years
   - `2010_2019`: 2010-2019
   - Earlier periods
 - `taxonomy_id`: Category from Etsy taxonomy
