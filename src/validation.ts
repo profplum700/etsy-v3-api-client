@@ -166,10 +166,10 @@ export class FieldValidator {
       const value = (data as Record<string, unknown>)[this.field];
       if (value === undefined || value === null) return null;
 
-      if (typeof value !== 'number' || Number.isNaN(value)) {
+      if (typeof value !== 'number' || !Number.isFinite(value)) {
         return {
           field: this.field,
-          message: options.message || `${this.field} must be a number`,
+          message: options.message || `${this.field} must be a finite number`,
           value
         };
       }
@@ -307,7 +307,7 @@ export const CreateListingSchema = new Validator<CreateDraftListingParams>()
   .rule(field('title').string({ min: 1, max: 140, message: 'title must be 1-140 characters' }))
   .rule(field('description').string({ max: 65535, message: 'description must be less than 65535 characters' }))
   .rule(field('price').required())
-  .rule(field('price').number({ min: 0.2, max: 50000, message: 'price must be between 0.20 and 50000.00' }))
+  .rule(field('price').number({ positive: true, message: 'price must be a finite positive number' }))
   .rule(field('who_made').enum(['i_did', 'someone_else', 'collective'], 'who_made must be one of: i_did, someone_else, collective'))
   .rule(field('when_made').enum(['made_to_order', ...ETSY_WHEN_MADE_VALUES]))
   .rule(field('taxonomy_id').required())

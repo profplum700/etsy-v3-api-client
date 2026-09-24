@@ -188,21 +188,38 @@ describe('Data Validation', () => {
         expect(result.errors.length).toBeGreaterThan(0);
       });
 
-      it('should reject listing with invalid price', () => {
-        const params = {
+      it.each([0.01, 50001])('should accept finite positive listing price %s', (price) => {
+        const result = CreateListingSchema.validate({
           quantity: 5,
           title: 'Test Product',
           description: 'A product',
-          price: 0.10, // Too low
+          price,
           who_made: 'i_did' as const,
           when_made: 'made_to_order' as const,
           taxonomy_id: 123
-        };
+        });
 
-        const result = CreateListingSchema.validate(params);
-        expect(result.valid).toBe(false);
-        expect(result.errors.some(e => e.field === 'price')).toBe(true);
+        expect(result.valid).toBe(true);
       });
+
+      it.each([0, -0.01, Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY])(
+        'should reject nonpositive or nonfinite listing price %s',
+        (price) => {
+          const params = {
+            quantity: 5,
+            title: 'Test Product',
+            description: 'A product',
+            price,
+            who_made: 'i_did' as const,
+            when_made: 'made_to_order' as const,
+            taxonomy_id: 123
+          };
+
+          const result = CreateListingSchema.validate(params);
+          expect(result.valid).toBe(false);
+          expect(result.errors.some(e => e.field === 'price')).toBe(true);
+        },
+      );
 
       it('should reject listing with too long title', () => {
         const params = {

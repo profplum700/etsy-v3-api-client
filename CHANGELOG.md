@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Updated `when_made` validation to match Etsy's current Create Draft Listing enum, including `2020_2026`, `2007_2009`, and `before_2007`.
+- Removed undocumented `price` minimum and maximum checks; prices must be finite and greater than zero, matching the published API contract.
 
 ## [2.5.4] - 2026-03-31
 
