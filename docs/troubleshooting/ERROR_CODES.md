@@ -56,7 +56,7 @@ Comprehensive reference for all error codes you might encounter when using the E
    // ❌ Invalid 'when_made' value
    await client.createDraftListing({
      title: 'Product',
-     when_made: 'yesterday', // Must be: '2020_2024', 'made_to_order', etc.
+     when_made: 'yesterday', // Must be: '2020_2026', 'made_to_order', etc.
      // ...
    });
    ```

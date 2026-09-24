@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Server imports from both `@profplum700/etsy-nextjs` and `@profplum700/etsy-nextjs/server` work identically
   - See MIGRATION.md for upgrade instructions
 
+## [3.0.1] - 2026-09-24
+
+### Fixed
+- Updated `when_made` validation to match Etsy's current Create Draft Listing enum, including `2020_2026`, `2007_2009`, and `before_2007`.
+- Removed undocumented `price` minimum and maximum checks; prices must be finite and greater than zero, matching the published API contract.
+
 ## [2.5.4] - 2026-03-31
 
 ### Fixed

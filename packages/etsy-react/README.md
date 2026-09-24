@@ -159,7 +159,7 @@ mutate({
     description: 'Product description',
     price: 19.99,
     who_made: 'i_did',
-    when_made: '2020_2024',
+    when_made: '2020_2026',
     taxonomy_id: 123,
   },
 });

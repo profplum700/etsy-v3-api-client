@@ -39,18 +39,24 @@ jobs:
       - name: Publish core package
         run: npm publish --access public
 
+      # v3.0.1 changes only the core client. The workspace packages remain at
+      # their already-published 2.5.4 versions and must not be republished.
       - name: Publish etsy-cli
+        if: github.ref != 'refs/tags/v3.0.1'
         run: npm publish --access public
         working-directory: packages/etsy-cli
 
       - name: Publish etsy-react
+        if: github.ref != 'refs/tags/v3.0.1'
         run: npm publish --access public
         working-directory: packages/etsy-react
 
       - name: Publish etsy-nextjs
+        if: github.ref != 'refs/tags/v3.0.1'
         run: npm publish --access public
         working-directory: packages/etsy-nextjs
 
       - name: Publish etsy-admin-ui
+        if: github.ref != 'refs/tags/v3.0.1'
         run: npm publish --access public
         working-directory: packages/etsy-admin-ui

@@ -5,7 +5,8 @@
  * Optional: Users can integrate with Zod or other validation libraries
  */
 
-import { CreateDraftListingParams, UpdateListingParams } from './types';
+import { ETSY_WHEN_MADE_VALUES } from './types';
+import type { CreateDraftListingParams, UpdateListingParams } from './types';
 
 // ============================================================================
 // Types
@@ -165,10 +166,10 @@ export class FieldValidator {
       const value = (data as Record<string, unknown>)[this.field];
       if (value === undefined || value === null) return null;
 
-      if (typeof value !== 'number' || Number.isNaN(value)) {
+      if (typeof value !== 'number' || !Number.isFinite(value)) {
         return {
           field: this.field,
-          message: options.message || `${this.field} must be a number`,
+          message: options.message || `${this.field} must be a finite number`,
           value
         };
       }
@@ -306,28 +307,10 @@ export const CreateListingSchema = new Validator<CreateDraftListingParams>()
   .rule(field('title').string({ min: 1, max: 140, message: 'title must be 1-140 characters' }))
   .rule(field('description').string({ max: 65535, message: 'description must be less than 65535 characters' }))
   .rule(field('price').required())
-  .rule(field('price').number({ min: 0.2, max: 50000, message: 'price must be between 0.20 and 50000.00' }))
+  .rule(field('price').number({ positive: true, message: 'price must be a finite positive number' }))
   .rule(field('who_made').enum(['i_did', 'someone_else', 'collective'], 'who_made must be one of: i_did, someone_else, collective'))
-  .rule(field('when_made').enum([
-    'made_to_order',
-    '2020_2024',
-    '2010_2019',
-    '2005_2009',
-    '2000_2004',
-    '1990s',
-    '1980s',
-    '1970s',
-    '1960s',
-    '1950s',
-    '1940s',
-    '1930s',
-    '1920s',
-    '1910s',
-    '1900s',
-    '1800s',
-    '1700s',
-    'before_1700'
-  ]))
+  .rule(field('when_made').required())
+  .rule(field('when_made').enum(['made_to_order', ...ETSY_WHEN_MADE_VALUES]))
   .rule(field('taxonomy_id').required())
   .rule(field('taxonomy_id').number({ integer: true, positive: true, message: 'taxonomy_id must be a positive integer' }));
 
