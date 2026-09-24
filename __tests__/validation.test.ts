@@ -15,6 +15,8 @@ import {
   combineValidators
 } from '../src/validation';
 import type { UpdateListingParams } from '../src/types';
+import type { CreateDraftListingParams } from '../src/types';
+import { ETSY_WHEN_MADE_VALUES } from '../src/types';
 
 describe('Data Validation', () => {
   describe('FieldValidator', () => {
@@ -143,6 +145,38 @@ describe('Data Validation', () => {
         const result = CreateListingSchema.validate(params);
         expect(result.valid).toBe(true);
       });
+
+      it.each(['made_to_order', ...ETSY_WHEN_MADE_VALUES])('should accept current Etsy when_made value %s', (when_made) => {
+        const result = CreateListingSchema.validate({
+          quantity: 5,
+          title: 'Test Product',
+          description: 'A great product',
+          price: 29.99,
+          who_made: 'i_did',
+          when_made: when_made as CreateDraftListingParams['when_made'],
+          taxonomy_id: 123,
+        });
+
+        expect(result.valid).toBe(true);
+      });
+
+      it.each(['2020_2024', '2005_2009', '2000_2004', '2020_2025', '2006_2009', '2000_2005'])(
+        'should reject retired or non-Etsy when_made value %s',
+        (when_made) => {
+          const result = CreateListingSchema.validate({
+            quantity: 5,
+            title: 'Test Product',
+            description: 'A great product',
+            price: 29.99,
+            who_made: 'i_did',
+            when_made: when_made as CreateDraftListingParams['when_made'],
+            taxonomy_id: 123,
+          });
+
+          expect(result.valid).toBe(false);
+          expect(result.errors.some((error) => error.field === 'when_made')).toBe(true);
+        },
+      );
 
       it('should reject listing with missing required fields', () => {
         const params = {
