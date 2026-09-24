@@ -447,7 +447,7 @@ export default EtsyClient;
 // Library Information
 // ============================================================================
 
-export const VERSION = '2.2.0';
+export const VERSION = '3.0.1';
 export const LIBRARY_NAME = 'etsy-v3-api-client';
 
 /**

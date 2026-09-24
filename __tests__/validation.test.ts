@@ -15,6 +15,8 @@ import {
   combineValidators
 } from '../src/validation';
 import type { UpdateListingParams } from '../src/types';
+import type { CreateDraftListingParams } from '../src/types';
+import { ETSY_WHEN_MADE_VALUES } from '../src/types';
 
 describe('Data Validation', () => {
   describe('FieldValidator', () => {
@@ -144,6 +146,52 @@ describe('Data Validation', () => {
         expect(result.valid).toBe(true);
       });
 
+      it.each(['made_to_order', ...ETSY_WHEN_MADE_VALUES])('should accept current Etsy when_made value %s', (when_made) => {
+        const result = CreateListingSchema.validate({
+          quantity: 5,
+          title: 'Test Product',
+          description: 'A great product',
+          price: 29.99,
+          who_made: 'i_did',
+          when_made: when_made as CreateDraftListingParams['when_made'],
+          taxonomy_id: 123,
+        });
+
+        expect(result.valid).toBe(true);
+      });
+
+      it('should require when_made at runtime', () => {
+        const result = CreateListingSchema.validate({
+          quantity: 5,
+          title: 'Test Product',
+          description: 'A great product',
+          price: 29.99,
+          who_made: 'i_did',
+          taxonomy_id: 123,
+        } as unknown as CreateDraftListingParams);
+
+        expect(result.valid).toBe(false);
+        expect(result.errors.some((error) => error.field === 'when_made')).toBe(true);
+      });
+
+      it.each(['2020_2024', '2005_2009', '2000_2004', '2020_2025', '2006_2009', '2000_2005'])(
+        'should reject retired or non-Etsy when_made value %s',
+        (when_made) => {
+          const result = CreateListingSchema.validate({
+            quantity: 5,
+            title: 'Test Product',
+            description: 'A great product',
+            price: 29.99,
+            who_made: 'i_did',
+            when_made: when_made as CreateDraftListingParams['when_made'],
+            taxonomy_id: 123,
+          });
+
+          expect(result.valid).toBe(false);
+          expect(result.errors.some((error) => error.field === 'when_made')).toBe(true);
+        },
+      );
+
       it('should reject listing with missing required fields', () => {
         const params = {
           title: 'Test Product'
@@ -154,16 +202,49 @@ describe('Data Validation', () => {
         expect(result.errors.length).toBeGreaterThan(0);
       });
 
-      it('should reject listing with invalid price', () => {
+      it.each([0.01, 50001])('should accept finite positive listing price %s', (price) => {
+        const result = CreateListingSchema.validate({
+          quantity: 5,
+          title: 'Test Product',
+          description: 'A product',
+          price,
+          who_made: 'i_did' as const,
+          when_made: 'made_to_order' as const,
+          taxonomy_id: 123
+        });
+
+        expect(result.valid).toBe(true);
+      });
+
+      it.each([0, -0.01, Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY])(
+        'should reject nonpositive or nonfinite listing price %s',
+        (price) => {
+          const params = {
+            quantity: 5,
+            title: 'Test Product',
+            description: 'A product',
+            price,
+            who_made: 'i_did' as const,
+            when_made: 'made_to_order' as const,
+            taxonomy_id: 123
+          };
+
+          const result = CreateListingSchema.validate(params);
+          expect(result.valid).toBe(false);
+          expect(result.errors.some(e => e.field === 'price')).toBe(true);
+        },
+      );
+
+      it('should reject a non-number listing price at runtime', () => {
         const params = {
           quantity: 5,
           title: 'Test Product',
           description: 'A product',
-          price: 0.10, // Too low
+          price: '29.99',
           who_made: 'i_did' as const,
           when_made: 'made_to_order' as const,
           taxonomy_id: 123
-        };
+        } as unknown as CreateDraftListingParams;
 
         const result = CreateListingSchema.validate(params);
         expect(result.valid).toBe(false);

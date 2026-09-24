@@ -1005,6 +1005,11 @@ export interface LoggerInterface {
  * Valid values for the when_made field in Etsy listings
  */
 export const ETSY_WHEN_MADE_VALUES = [
+  '2020_2026',
+  '2010_2019',
+  '2007_2009',
+  'before_2007',
+  '2000_2006',
   '1990s',
   '1980s',
   '1970s',

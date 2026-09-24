@@ -8,6 +8,7 @@ import {
   EtsyRateLimitError,
   ETSY_WHEN_MADE_VALUES
 } from '../src/types';
+import type { CreateDraftListingParams } from '../src/types';
 
 import {
   VERSION,
@@ -120,6 +121,11 @@ describe('Constants', () => {
   describe('ETSY_WHEN_MADE_VALUES', () => {
     it('should contain all expected when_made values', () => {
       const expectedValues = [
+        '2020_2026',
+        '2010_2019',
+        '2007_2009',
+        'before_2007',
+        '2000_2006',
         '1990s',
         '1980s',
         '1970s',
@@ -140,7 +146,7 @@ describe('Constants', () => {
 
     it('should be a readonly array', () => {
       expect(Array.isArray(ETSY_WHEN_MADE_VALUES)).toBe(true);
-      expect(ETSY_WHEN_MADE_VALUES.length).toBe(13);
+      expect(ETSY_WHEN_MADE_VALUES.length).toBe(18);
     });
 
     it('should be sorted from most recent to oldest', () => {
@@ -156,7 +162,7 @@ describe('Constants', () => {
 
   describe('VERSION and LIBRARY_NAME', () => {
     it('should have correct version', () => {
-      expect(VERSION).toBe('2.2.0');
+      expect(VERSION).toBe('3.0.1');
       expect(typeof VERSION).toBe('string');
     });
 
@@ -174,7 +180,7 @@ describe('Utility Functions', () => {
       
       expect(info).toEqual({
         name: 'etsy-v3-api-client',
-        version: '2.2.0',
+        version: '3.0.1',
         description: 'JavaScript/TypeScript client for the Etsy Open API v3 with OAuth 2.0 authentication',
         author: 'profplum700',
         license: 'MIT',
@@ -342,6 +348,18 @@ describe('Type Definitions', () => {
       
       const invalidValue = '2000s';
       expect(ETSY_WHEN_MADE_VALUES.includes(invalidValue as typeof ETSY_WHEN_MADE_VALUES[number])).toBe(false);
+    });
+
+    it('should type the current Etsy when_made values and exclude retired values', () => {
+      const currentValues: CreateDraftListingParams['when_made'][] = [
+        'made_to_order',
+        ...ETSY_WHEN_MADE_VALUES,
+      ];
+      expect(currentValues).toHaveLength(19);
+
+      // @ts-expect-error Etsy retired this value from the create listing enum.
+      const retiredValue: CreateDraftListingParams['when_made'] = '2020_2024';
+      expect(retiredValue).toBe('2020_2024');
     });
 
     it('should validate error instances', () => {
