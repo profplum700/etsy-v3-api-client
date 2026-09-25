@@ -43,3 +43,48 @@ jobs:
           flags: unittests
           name: codecov-umbrella
           fail_ci_if_error: false
+
+  credential-store-integration:
+    name: credential-store-integration (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Linux Secret Service
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install --yes gnome-keyring dbus-x11
+
+      - name: Run native keyring and lock integration tests on Linux
+        if: runner.os == 'Linux'
+        env:
+          ETSY_MCP_KEYRING_INTEGRATION: '1'
+          KEYRING_TEST_PASSWORD: synthetic-ci-only-keyring-password
+        run: |
+          dbus-run-session -- bash -euc '
+            eval "$(printf "%s" "$KEYRING_TEST_PASSWORD" | gnome-keyring-daemon --unlock --components=secrets)"
+            pnpm exec vitest run --project etsy-mcp-server test/credentials.native.integration.test.ts test/credentials.cross-process.test.ts
+          '
+
+      - name: Run native keyring and lock integration tests on Windows and macOS
+        if: runner.os != 'Linux'
+        run: pnpm exec vitest run --project etsy-mcp-server test/credentials.native.integration.test.ts test/credentials.cross-process.test.ts
+        env:
+          ETSY_MCP_KEYRING_INTEGRATION: '1'

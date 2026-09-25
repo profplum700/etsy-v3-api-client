@@ -62,6 +62,16 @@ const store = new CredentialStore(entryFactory, join(root, "credential-store.loc
 try {
   if (action === "init") {
     await store.save(baseCredentials);
+  } else if (action === "lock-churn") {
+    const lockPath = join(root, "credential-store.lock");
+    for (let iteration = 0; iteration < 30; iteration += 1) {
+      const release = await acquireCredentialLock(lockPath);
+      const countPath = join(root, "lock-churn-complete");
+      const count = existsSync(countPath) ? Number(readFileSync(countPath, "utf8")) : 0;
+      writeFileSync(countPath, String(count + 1));
+      await new Promise((resolve) => setTimeout(resolve, 1));
+      await release();
+    }
   } else if (action === "hold-lock") {
     const lockPath = join(root, "credential-store.lock");
     const release = await acquireCredentialLock(lockPath);

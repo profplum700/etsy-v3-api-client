@@ -48,6 +48,26 @@ async function newStoreDirectory(): Promise<string> {
 }
 
 describe("cross-process credential transactions", () => {
+  it("keeps release and reacquisition reliable under repeated cross-process churn", async () => {
+    const root = await newStoreDirectory();
+    try {
+      const contenders = await Promise.all([
+        runWorker(root, "lock-churn"),
+        runWorker(root, "lock-churn"),
+        runWorker(root, "lock-churn"),
+      ]);
+
+      expect(contenders).toEqual([
+        { code: 0, stdout: "ok\n", stderr: "" },
+        { code: 0, stdout: "ok\n", stderr: "" },
+        { code: 0, stdout: "ok\n", stderr: "" },
+      ]);
+      expect(await readFile(join(root, "lock-churn-complete"), "utf8")).toBe("90");
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  }, 30_000);
+
   it("does not let an in-flight refresh recreate a profile cleared by another process", async () => {
     const root = await newStoreDirectory();
     try {
