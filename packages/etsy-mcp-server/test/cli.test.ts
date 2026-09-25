@@ -45,7 +45,7 @@ describe("hidden terminal credential prompt", () => {
   it("pins Codex registration to the package version without putting credentials in arguments", () => {
     const run = vi.fn();
 
-    registerWithCodex(run);
+    registerWithCodex(run, "1.2.3");
 
     expect(run).toHaveBeenCalledExactlyOnceWith([
       "mcp",
@@ -54,7 +54,7 @@ describe("hidden terminal credential prompt", () => {
       "--",
       "npx",
       "--yes",
-      "@profplum700/etsy-mcp-server@0.0.0",
+      "@profplum700/etsy-mcp-server@1.2.3",
       "serve",
     ]);
     expect(JSON.stringify(run.mock.calls)).not.toContain("app-shared-secret");

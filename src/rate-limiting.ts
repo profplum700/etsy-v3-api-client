@@ -56,6 +56,7 @@ interface RequiredRateLimitConfig {
 export class EtsyRateLimiter {
   // Local rolling-window fallback; the server's headers are authoritative.
   private requestTimestamps: number[] = [];
+  private uncertainRequestTimestamps: number[] = [];
   private lastRequestTime = 0;
   private readonly config: RequiredRateLimitConfig;
 
@@ -70,7 +71,7 @@ export class EtsyRateLimiter {
   private quotaProbeBackoffMs = 60_000;
   private nextReservationId = 0;
   private latestHeaderReservationId = 0;
-  private inFlightReservations = new Map<number, boolean>();
+  private inFlightReservations = new Map<number, { isQuotaProbe: boolean; startedAt: number }>();
   private quotaProbeInFlight = false;
   private readonly stateWaiters = new Set<() => void>();
 
@@ -106,6 +107,9 @@ export class EtsyRateLimiter {
     while (this.requestTimestamps[0] !== undefined && this.requestTimestamps[0] <= oldestAllowed) {
       this.requestTimestamps.shift();
     }
+    while (this.uncertainRequestTimestamps[0] !== undefined && this.uncertainRequestTimestamps[0] <= oldestAllowed) {
+      this.uncertainRequestTimestamps.shift();
+    }
   }
 
   private getLocalResetTime(now: number): Date {
@@ -121,10 +125,22 @@ export class EtsyRateLimiter {
   }
 
   private getEffectiveRemainingRequests(now: number): number {
+    this.pruneRequestTimestamps(now);
     if (this.headerRemainingToday !== undefined) {
-      return Math.max(0, this.headerRemainingToday - this.inFlightReservations.size);
+      return Math.max(0, this.headerRemainingToday - this.inFlightReservations.size - this.uncertainRequestTimestamps.length);
     }
     return this.getLocalRemainingRequests(now);
+  }
+
+  private isQuotaProbeReady(now: number): boolean {
+    const exhausted = this.headerRemainingToday === 0;
+    const uncertainBudgetExhausted = this.inFlightReservations.size === 0 &&
+      this.uncertainRequestTimestamps.length > 0 &&
+      this.getEffectiveRemainingRequests(now) === 0;
+    return (exhausted || uncertainBudgetExhausted) &&
+      !this.quotaProbeInFlight &&
+      this.inFlightReservations.size === 0 &&
+      this.headerQuotaAvailableAt <= now;
   }
 
   private refreshExpiredHeaderQuota(now: number): void {
@@ -154,7 +170,7 @@ export class EtsyRateLimiter {
     const wasQuotaProbe = this.inFlightReservations.get(reservationId);
     if (wasQuotaProbe === undefined) return;
     this.inFlightReservations.delete(reservationId);
-    if (wasQuotaProbe) {
+    if (wasQuotaProbe.isQuotaProbe) {
       this.quotaProbeInFlight = false;
       if (this.headerRemainingToday === 0 && !receivedQuotaHeader) {
         this.scheduleQuotaProbe();
@@ -179,8 +195,8 @@ export class EtsyRateLimiter {
         this.refreshExpiredHeaderQuota(now);
 
         let isQuotaProbe = false;
-        if (this.headerRemainingToday === 0) {
-          if (this.quotaProbeInFlight) {
+        if (this.headerRemainingToday === 0 || this.isQuotaProbeReady(now)) {
+          if (this.quotaProbeInFlight || this.inFlightReservations.size > 0) {
             await this.waitForStateChange();
             continue;
           }
@@ -226,7 +242,7 @@ export class EtsyRateLimiter {
         const reservationId = ++this.nextReservationId;
         this.requestTimestamps.push(requestStartedAt);
         this.lastRequestTime = requestStartedAt;
-        this.inFlightReservations.set(reservationId, isQuotaProbe);
+        this.inFlightReservations.set(reservationId, { isQuotaProbe, startedAt: requestStartedAt });
         if (isQuotaProbe) this.quotaProbeInFlight = true;
         return reservationId;
       }
@@ -237,6 +253,11 @@ export class EtsyRateLimiter {
 
   /** Release a reservation when transport fails before a response is received. */
   public releaseRequestSlot(reservationId: number): void {
+    const reservation = this.inFlightReservations.get(reservationId);
+    if (!reservation) return;
+    // A lost response does not prove Etsy never received or charged the request.
+    // Keep the charge until its rolling-window expiry or a guarded quota probe.
+    this.uncertainRequestTimestamps.push(reservation.startedAt);
     this.finishReservation(reservationId, false);
   }
 
@@ -252,7 +273,7 @@ export class EtsyRateLimiter {
   ): void {
     const matchedReservationId = reservationId;
     const isQuotaProbe = matchedReservationId !== undefined &&
-      this.inFlightReservations.get(matchedReservationId) === true;
+      this.inFlightReservations.get(matchedReservationId)?.isQuotaProbe === true;
     if (!headers) {
       if (matchedReservationId !== undefined) this.finishReservation(matchedReservationId, false);
       return; // No headers to parse
@@ -278,6 +299,9 @@ export class EtsyRateLimiter {
 
     if (parsed.remainingToday !== undefined) {
       const observationId = matchedReservationId ?? this.nextReservationId;
+      if (isQuotaProbe && parsed.remainingToday > 0) {
+        this.uncertainRequestTimestamps = [];
+      }
       const exhaustedByEarlierObservation = this.headerRemainingToday === 0 &&
         parsed.remainingToday > 0 && matchedReservationId !== undefined && !isQuotaProbe;
       if (exhaustedByEarlierObservation) {
@@ -285,13 +309,14 @@ export class EtsyRateLimiter {
         // order. Once any response reports exhaustion, only the guarded probe
         // may reopen quota; a delayed response from an earlier-dispatched
         // request can still carry a stale positive snapshot.
-      } else if (observationId >= this.latestHeaderReservationId) {
+      } else if (isQuotaProbe || this.headerRemainingToday === undefined) {
         this.headerRemainingToday = parsed.remainingToday;
-        this.latestHeaderReservationId = observationId;
-      } else if (this.headerRemainingToday === undefined || parsed.remainingToday < this.headerRemainingToday) {
-        // A late response may safely tighten the estimate, but must never
-        // replace a newer observation with a larger stale remaining count.
+        this.latestHeaderReservationId = Math.max(this.latestHeaderReservationId, observationId);
+      } else if (parsed.remainingToday < this.headerRemainingToday) {
+        // Client reservation order cannot prove Etsy's server processing order.
+        // Keep the most restrictive observation unless a guarded probe succeeds.
         this.headerRemainingToday = parsed.remainingToday;
+        this.latestHeaderReservationId = Math.max(this.latestHeaderReservationId, observationId);
       }
 
       if (this.headerRemainingToday !== undefined && this.headerRemainingToday > 0) {
@@ -378,7 +403,8 @@ export class EtsyRateLimiter {
    */
   public async handleRateLimitResponse(
     headers: Headers | Record<string, string> | undefined | null,
-    reservationId?: number
+    reservationId?: number,
+    retryAttempt?: number
   ): Promise<{ shouldRetry: boolean; delayMs: number }> {
     const parsed: EtsyRateLimitHeaders = headers ? this.parseRateLimitHeaders(headers) : {};
 
@@ -401,16 +427,17 @@ export class EtsyRateLimiter {
       );
     }
 
-    this.currentRetryCount++;
+    const attempt = retryAttempt ?? this.currentRetryCount + 1;
+    if (retryAttempt === undefined) this.currentRetryCount = attempt;
     const delayMs = this.calculateBackoffDelay(
-      this.currentRetryCount,
+      attempt,
       parsed.retryAfter
     );
     this.retryNotBefore = Math.max(this.retryNotBefore, Date.now() + delayMs);
 
     // Check if we've exceeded max retries after recording the shared cooldown.
-    if (this.currentRetryCount > this.config.maxRetries) {
-      this.currentRetryCount = 0; // Reset for next request
+    if (attempt > this.config.maxRetries) {
+      if (retryAttempt === undefined) this.currentRetryCount = 0; // Reset for next request
       throw new EtsyRateLimitError(
         `Max retries (${this.config.maxRetries}) exceeded for rate limit`,
         parsed.retryAfter,
@@ -505,9 +532,7 @@ export class EtsyRateLimiter {
     this.refreshExpiredHeaderQuota(now);
 
     const effectiveRemaining = this.getEffectiveRemainingRequests(now);
-    const qpdProbeReady = this.headerRemainingToday === 0 &&
-      !this.quotaProbeInFlight &&
-      this.headerQuotaAvailableAt <= now;
+    const qpdProbeReady = this.isQuotaProbeReady(now);
 
     return {
       remainingRequests: effectiveRemaining,
@@ -553,6 +578,7 @@ export class EtsyRateLimiter {
     this.nextReservationId = 0;
     this.latestHeaderReservationId = 0;
     this.inFlightReservations.clear();
+    this.uncertainRequestTimestamps = [];
     this.quotaProbeInFlight = false;
     this.notifyStateWaiters();
   }
@@ -567,9 +593,7 @@ export class EtsyRateLimiter {
 
     // Check if daily limit is exceeded (prefer headers)
     const effectiveRemaining = this.getEffectiveRemainingRequests(now);
-    const qpdProbeReady = this.headerRemainingToday === 0 &&
-      !this.quotaProbeInFlight &&
-      this.headerQuotaAvailableAt <= now;
+    const qpdProbeReady = this.isQuotaProbeReady(now);
     if (effectiveRemaining <= 0 && !qpdProbeReady) {
       return false;
     }

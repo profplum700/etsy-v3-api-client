@@ -618,14 +618,12 @@ describe('EtsyRateLimiter', () => {
         'x-remaining-today': '0',
       })).rejects.toMatchObject({ errorType: 'qpd_exhausted', _retryAfter: 1 });
 
-      const nextRequest = rateLimiter.waitForRateLimit();
       await vi.advanceTimersByTimeAsync(999);
       expect(rateLimiter.getRemainingRequests()).toBe(0);
       await vi.advanceTimersByTimeAsync(1);
-      await nextRequest;
-
+      const probeId = await rateLimiter.acquireRequestSlot();
       expect(rateLimiter.getRemainingRequests()).toBe(0);
-      rateLimiter.updateFromHeaders({ 'x-remaining-today': '4999' });
+      rateLimiter.updateFromHeaders({ 'x-remaining-today': '4999' }, probeId);
       expect(rateLimiter.getRemainingRequests()).toBe(4999);
     });
 
@@ -636,27 +634,28 @@ describe('EtsyRateLimiter', () => {
       });
       const firstRequestAt = Date.now();
 
-      await rateLimiter.waitForRateLimit();
+      const firstReservation = await rateLimiter.acquireRequestSlot();
       rateLimiter.updateFromHeaders({
         'x-limit-per-day': '1',
         'x-remaining-today': '0',
-      });
+      }, firstReservation);
 
       expect(rateLimiter.getRateLimitStatus().resetTime.getTime())
         .toBe(firstRequestAt + 60_000);
 
       let nextRequestStarted = false;
-      const nextRequest = rateLimiter.waitForRateLimit().then(() => {
+      const nextRequest = rateLimiter.acquireRequestSlot().then((reservationId) => {
         nextRequestStarted = true;
+        return reservationId;
       });
       await vi.advanceTimersByTimeAsync(60_000 - 1);
       expect(nextRequestStarted).toBe(false);
 
       await vi.advanceTimersByTimeAsync(1);
-      await nextRequest;
+      const probeId = await nextRequest;
       expect(nextRequestStarted).toBe(true);
       expect(rateLimiter.getRemainingRequests()).toBe(0);
-      rateLimiter.updateFromHeaders({ 'x-remaining-today': '1' });
+      rateLimiter.updateFromHeaders({ 'x-remaining-today': '1' }, probeId);
       expect(rateLimiter.getRemainingRequests()).toBe(1);
     });
 
@@ -690,6 +689,19 @@ describe('EtsyRateLimiter', () => {
       rateLimiter.updateFromHeaders({ 'x-remaining-today': '5' }, olderRequestId);
 
       expect(rateLimiter.getRemainingRequests()).toBe(4);
+    });
+
+    it('should not reopen positive quota from a delayed response with a higher reservation ID', async () => {
+      const rateLimiter = new EtsyRateLimiter({ minRequestInterval: 0 });
+      const earlierRequestId = await rateLimiter.acquireRequestSlot();
+      const laterRequestId = await rateLimiter.acquireRequestSlot();
+
+      // Etsy may process the higher-ID request first (remaining 2), then the
+      // earlier request (remaining 1), even if the response order is reversed.
+      rateLimiter.updateFromHeaders({ 'x-remaining-today': '1' }, earlierRequestId);
+      rateLimiter.updateFromHeaders({ 'x-remaining-today': '2' }, laterRequestId);
+
+      expect(rateLimiter.getRemainingRequests()).toBe(1);
     });
 
     it('should not reopen exhausted QPD from a later-arriving response with a higher reservation ID', async () => {
@@ -726,7 +738,18 @@ describe('EtsyRateLimiter', () => {
       expect(rateLimiter.getRemainingRequests()).toBe(0);
 
       rateLimiter.releaseRequestSlot(secondReservation);
-      expect(rateLimiter.getRemainingRequests()).toBe(1);
+      expect(rateLimiter.getRemainingRequests()).toBe(0);
+      expect(rateLimiter.canMakeRequest()).toBe(true); // A single probe checks whether the lost response was charged.
+    });
+
+    it('should isolate retry counts for concurrent logical requests', async () => {
+      const rateLimiter = new EtsyRateLimiter({ maxRetries: 1, minRequestInterval: 0, jitter: 0 });
+
+      await expect(rateLimiter.handleRateLimitResponse({}, undefined, 1))
+        .resolves.toMatchObject({ shouldRetry: true });
+      rateLimiter.resetRetryCount(); // An unrelated successful request must not reset the first request's budget.
+      await expect(rateLimiter.handleRateLimitResponse({}, undefined, 2))
+        .rejects.toMatchObject({ errorType: 'qps_exhausted' });
     });
 
     it('should charge a request locally when its response omits QPD headers', async () => {

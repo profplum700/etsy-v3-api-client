@@ -325,6 +325,7 @@ export class EtsyClient {
     cacheKey: string,
     useCache: boolean
   ): Promise<T> {
+    let retryAttempt = 0;
     while (true) {
       try {
         const reservationId = await this.acquireRateLimitSlot();
@@ -340,7 +341,8 @@ export class EtsyClient {
         if (response.status === 429) {
           const { shouldRetry, delayMs } = await this.rateLimiter.handleRateLimitResponse(
             response.headers,
-            reservationId
+            reservationId,
+            ++retryAttempt
           );
 
           if (shouldRetry) {

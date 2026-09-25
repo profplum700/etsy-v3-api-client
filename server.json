@@ -18,7 +18,6 @@
         { "type": "positional", "value": "--yes" }
       ],
       "packageArguments": [
-        { "type": "positional", "value": "@profplum700/etsy-mcp-server" },
         { "type": "positional", "value": "serve" }
       ],
       "transport": {
