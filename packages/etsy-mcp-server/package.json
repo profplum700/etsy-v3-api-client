@@ -1,8 +1,7 @@
 {
   "name": "@profplum700/etsy-mcp-server",
   "mcpName": "io.github.profplum700/etsy-mcp-server",
-  "version": "0.0.0",
-  "private": true,
+  "version": "1.0.0",
   "description": "Local read-only Etsy MCP server for AI agents",
   "type": "module",
   "bin": {
@@ -47,7 +46,7 @@
   "dependencies": {
     "@modelcontextprotocol/server": "^2.1.0",
     "@napi-rs/keyring": "^2.1.0",
-    "@profplum700/etsy-v3-api-client": "workspace:^3.0.1",
+    "@profplum700/etsy-v3-api-client": "workspace:^4.0.0",
     "open": "^10.2.0",
     "zod": "^4.6.5"
   },
