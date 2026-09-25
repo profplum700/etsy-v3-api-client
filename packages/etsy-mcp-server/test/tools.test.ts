@@ -249,6 +249,132 @@ describe("read-only Etsy MCP tools", () => {
     expect(getListingInventory).not.toHaveBeenCalled();
   });
 
+  it("accepts a numeric listing ID directly from the active-listings result", async () => {
+    const getListingsByShop = vi.fn(async () => [{
+      listing_id: 99,
+      title: "A print",
+      price: { amount: 4200, divisor: 100, currency_code: "GBP" },
+      url: "https://etsy.test/listing/99",
+      state: "active",
+    }]);
+    const getListing = vi.fn(async () => ({ shop_id: 12345, title: "A print" }));
+    const getListingInventory = vi.fn(async () => ({ products: [] }));
+    const connected = await connectServer({
+      store: credentialStore(validCredentials),
+      createClient: clientFactory({
+        getUser: async () => ({ shop_id: 12345 }),
+        getListingsByShop,
+        getListing,
+        getListingInventory,
+      }),
+    });
+    activeClients.push(connected);
+
+    const listings = await connected.client.callTool({
+      name: "etsy_list_active_listings",
+      arguments: { limit: 1, offset: 0 },
+    });
+    const listingId = JSON.parse(resultText(listings)).listings[0].listing_id;
+    const inventory = await connected.client.callTool({
+      name: "etsy_get_listing_inventory",
+      arguments: { listing_id: listingId },
+    });
+
+    expect(inventory.isError).not.toBe(true);
+    expect(getListing).toHaveBeenCalledWith("99");
+    expect(getListingInventory).toHaveBeenCalledWith("99", { show_deleted: false });
+  });
+
+  it.each([99.5, Number.MAX_SAFE_INTEGER + 1])("rejects unsafe numeric listing IDs before Etsy access: %s", async (listingId) => {
+    const getListing = vi.fn();
+    const connected = await connectServer({
+      store: credentialStore(validCredentials),
+      createClient: clientFactory({ getUser: async () => ({ shop_id: 12345 }), getListing }),
+    });
+    activeClients.push(connected);
+
+    const result = await connected.client.callTool({
+      name: "etsy_get_listing_inventory",
+      arguments: { listing_id: listingId },
+    });
+
+    expect(result.isError).toBe(true);
+    expect(getListing).not.toHaveBeenCalled();
+  });
+
+  it("retrieves oversized variation inventory in complete, bounded pages", async () => {
+    const productCount = 120;
+    const products = Array.from({ length: productCount }, (_, index) => ({
+      product_id: 10_000 + index,
+      sku: `sku-${index}-` + "x".repeat(180),
+      property_values: [{ property_name: "Finish", values: [`Finish ${index}`] }],
+      offerings: index === 0 ? [] : [0, 1].map((variation) => ({
+        offering_id: 20_000 + index * 2 + variation,
+        price: { amount: 4200 + index + variation, divisor: 100, currency_code: "GBP" },
+        quantity: index + variation,
+        is_enabled: true,
+      })),
+    }));
+    const expectedOfferingIds = products.flatMap((product) => product.offerings.map((offering) => offering.offering_id));
+    const expectedEntries = expectedOfferingIds.length + 1;
+    const connected = await connectServer({
+      store: credentialStore(validCredentials),
+      createClient: clientFactory({
+        getUser: async () => ({ shop_id: 12345 }),
+        getListing: async () => ({ shop_id: 12345, title: "A variation-rich print" }),
+        getListingInventory: async () => ({ products }),
+      }),
+    });
+    activeClients.push(connected);
+
+    const retrieved: Array<{ product_id: number; offerings: Array<{ offering_id: number }> }> = [];
+    let offset = 0;
+    let expectedTotal: number | undefined;
+    do {
+      const result = await connected.client.callTool({
+        name: "etsy_get_listing_inventory",
+        arguments: { listing_id: 99, limit: 50, offset },
+      });
+      expect(result.isError).not.toBe(true);
+      expect(resultText(result).length).toBeLessThanOrEqual(25_000);
+      const page = JSON.parse(resultText(result)) as {
+        count: number;
+        total_count: number;
+        next_offset: number | null;
+        products: Array<{ product_id: number; offerings: Array<{ offering_id: number }> }>;
+      };
+      expectedTotal ??= page.total_count;
+      expect(page.total_count).toBe(expectedEntries);
+      expect(page.count).toBe(page.products.length);
+      retrieved.push(...page.products);
+      offset = page.next_offset ?? -1;
+    } while (offset >= 0);
+
+    expect(expectedTotal).toBe(expectedEntries);
+    expect(retrieved).toHaveLength(expectedEntries);
+    expect(retrieved.flatMap((entry) => entry.offerings.map((offering) => offering.offering_id))).toEqual(expectedOfferingIds);
+    expect(retrieved.filter((entry) => entry.offerings.length === 0)).toHaveLength(1);
+    expect(retrieved.map((entry) => entry.product_id)).toEqual(products.flatMap((product) =>
+      product.offerings.length === 0 ? [product.product_id] : product.offerings.map(() => product.product_id)));
+  });
+
+  it.each([
+    { listing_id: 99, limit: 51, offset: 0 },
+    { listing_id: 99, limit: 1, offset: -1 },
+  ])("rejects inventory pagination arguments outside safe bounds: %j", async (arguments_) => {
+    const getListing = vi.fn();
+    const connected = await connectServer({
+      store: credentialStore(validCredentials),
+      createClient: clientFactory({ getUser: async () => ({ shop_id: 12345 }), getListing }),
+    });
+    activeClients.push(connected);
+
+    const result = await connected.client.callTool({ name: "etsy_get_listing_inventory", arguments: arguments_ });
+
+    expect(result.isError).toBe(true);
+    expect(getListing).not.toHaveBeenCalled();
+  });
+
   it("rejects a mismatched Etsy account before listing or shop data is returned", async () => {
     const getUser = vi.fn(async () => ({ shop_id: 99999 }));
     const getShop = vi.fn();

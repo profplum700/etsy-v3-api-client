@@ -7,6 +7,8 @@ This package connects an agent to Etsy shops through a local stdio MCP server. I
 - Node.js 24 or later.
 - Your own approved Etsy developer app keystring and shared secret.
 - A local Etsy callback registered as `http://localhost:3030/oauth/redirect` in the app if Etsy requires it. Etsy's [Quick Start tutorial](https://developers.etsy.com/documentation/tutorials/quickstart/) demonstrates localhost callbacks. Etsy's general [authentication guide](https://developers.etsy.com/documentation/essentials/authentication/) also describes HTTPS callbacks; if Etsy rejects the localhost callback for your app, setup stops without saving credentials.
+
+Any custom callback passed to the local OAuth API or repository scripts must use loopback HTTP (`localhost`, `127.0.0.1`, or `[::1]`) with an explicit port from 1 to 65535 so it matches the local listener. Unsupported callback URIs are rejected before a browser is opened.
 - On Linux, an unlocked Secret Service keyring such as GNOME Keyring or KeePassXC. This server pins the credential store to Secret Service and will not fall back to a plaintext file or the Linux kernel keyring.
 
 ## Connect
@@ -69,7 +71,7 @@ The MCP server communicates over stdin/stdout. Diagnostics go to stderr. Each se
 
 - `etsy_get_my_shop` — read the connected shop's name, ID, currency, active listing count, and URL.
 - `etsy_list_active_listings` — page through active listings with each listing's title, base price, currency, URL, and state. Each page accepts 1–50 results and an offset up to 10,000.
-- `etsy_get_listing_inventory` — read variation options, offering prices, and quantities for a listing in the connected shop.
+- `etsy_get_listing_inventory` — read variation options, offering prices, and quantities for a listing in the connected shop. Pass the returned `next_offset` until it is `null`; each bounded page contains one entry per offering, so products with multiple offerings can appear more than once. Every offering is included once, and products without offerings have one empty-offerings entry.
 
 To find listings in a price range, page through active listings and filter the returned prices. The tools do not evaluate shipping destinations or free-postage eligibility. Listing variation prices may differ from a listing's base price.
 

@@ -29,6 +29,27 @@ function fakeTokens(scope: string): EtsyTokens {
 }
 
 describe("Etsy OAuth setup", () => {
+  it.each([
+    "https://localhost:3030/oauth/redirect",
+    "http://localhost/oauth/redirect",
+    "http://etsy.example:3030/oauth/redirect",
+    "http://localhost:65536/oauth/redirect",
+  ])("rejects callback URIs the loopback HTTP listener cannot serve: %s", async (redirectUri) => {
+    const { store } = createMemoryStore();
+    const createAuthHelper = vi.fn();
+    const openBrowser = vi.fn();
+
+    await expect(connectShop("app-keystring", "app-shared-secret", store, {
+      redirectUri,
+      createAuthHelper,
+      openBrowser,
+    })).rejects.toThrow("callback must use loopback HTTP with an explicit port");
+
+    expect(createAuthHelper).not.toHaveBeenCalled();
+    expect(openBrowser).not.toHaveBeenCalled();
+    expect(await store.read()).toBeNull();
+  });
+
   it("uses PKCE S256, a state value, and only the two required read scopes", async () => {
     const auth = new AuthHelper({
       keystring: "test-keystring",

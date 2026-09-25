@@ -5,6 +5,43 @@ import { CredentialStore, type EtsyCredentials } from "./credentials.js";
 import { OAUTH_REDIRECT_URI, REQUIRED_SCOPES } from "./constants.js";
 
 const CALLBACK_TIMEOUT_MS = 5 * 60 * 1000;
+const CALLBACK_URI_ERROR = "The Etsy OAuth callback must use loopback HTTP with an explicit port from 1 to 65535.";
+
+interface LocalCallbackAddress {
+  host: string;
+  bindHost: string;
+  port: number;
+  pathname: string;
+}
+
+function parseLocalCallbackAddress(redirectUri: string): LocalCallbackAddress {
+  let callbackUrl: URL;
+  try {
+    callbackUrl = new URL(redirectUri);
+  } catch {
+    throw new SetupError(CALLBACK_URI_ERROR);
+  }
+  const hostname = callbackUrl.hostname.toLowerCase();
+  const loopbackHosts = new Set(["localhost", "127.0.0.1", "[::1]"]);
+  const port = Number(callbackUrl.port);
+  if (callbackUrl.protocol !== "http:"
+    || !loopbackHosts.has(hostname)
+    || callbackUrl.port.length === 0
+    || !Number.isInteger(port)
+    || port < 1
+    || port > 65535
+    || callbackUrl.username.length > 0
+    || callbackUrl.password.length > 0
+    || callbackUrl.hash.length > 0) {
+    throw new SetupError(CALLBACK_URI_ERROR);
+  }
+  return {
+    host: callbackUrl.hostname,
+    bindHost: hostname === "[::1]" ? "::1" : hostname,
+    port,
+    pathname: callbackUrl.pathname,
+  };
+}
 
 export class SetupError extends Error {
   constructor(message: string) {
@@ -48,10 +85,8 @@ export async function getAuthorizationCode(
   browserOpener: (url: string) => Promise<unknown>,
   redirectUri: string,
 ): Promise<{ code: string; state: string }> {
-  const callbackUrl = new URL(redirectUri);
-  const expectedPath = callbackUrl.pathname;
-  const expectedHost = callbackUrl.hostname;
-  const port = Number(callbackUrl.port);
+  const callbackAddress = parseLocalCallbackAddress(redirectUri);
+  const expectedPath = callbackAddress.pathname;
   let resolveCode: (value: { code: string; state: string }) => void = () => undefined;
   let rejectCode: (reason: Error) => void = () => undefined;
   let callbackHandled = false;
@@ -101,12 +136,12 @@ export async function getAuthorizationCode(
     await new Promise<void>((resolve, reject) => {
       server.once("error", (error: Error & { code?: string }) => {
         if (error.code === "EADDRINUSE") {
-          reject(new SetupError("Local callback port 3030 is already in use. Close the process using it and run setup again."));
+          reject(new SetupError("Local callback port " + callbackAddress.port + " is already in use. Close the process using it and run setup again."));
         } else {
           reject(new SetupError("The local Etsy OAuth callback could not start. No credentials were saved."));
         }
       });
-      server.listen(port, expectedHost, () => resolve());
+      server.listen(callbackAddress.port, callbackAddress.bindHost, () => resolve());
     });
 
     const timeout = setTimeout(() => {
@@ -149,6 +184,7 @@ export async function connectShop(
   dependencies: OAuthSetupDependencies = {},
 ): Promise<{ shopName: string; shopId: string }> {
   const redirectUri = dependencies.redirectUri ?? OAUTH_REDIRECT_URI;
+  parseLocalCallbackAddress(redirectUri);
   const authOptions = { keystring, redirectUri, scopes: [...REQUIRED_SCOPES] };
   const auth = dependencies.createAuthHelper?.(authOptions) ?? new AuthHelper(authOptions);
   const expectedState = await auth.getState();

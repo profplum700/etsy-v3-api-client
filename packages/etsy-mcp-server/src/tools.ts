@@ -7,6 +7,8 @@ import { CredentialStore, CredentialStoreError, type EtsyCredentials } from "./c
 import {
   MAX_LISTING_OFFSET,
   MAX_LISTING_PAGE_SIZE,
+  MAX_INVENTORY_OFFSET,
+  MAX_INVENTORY_PAGE_SIZE,
   MAX_TOOL_RESPONSE_CHARACTERS,
   REQUIRED_SCOPES,
   SERVER_NAME,
@@ -37,7 +39,14 @@ const listingPageInput = z.object({
     .describe("Number of active listings to skip (0-10000; default 0)."),
 }).strict();
 const listingInventoryInput = z.object({
-  listing_id: z.string().regex(/^\d+$/).describe("Numeric Etsy listing ID from the connected shop."),
+  listing_id: z.union([
+    z.string().regex(/^\d+$/),
+    z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
+  ]).transform(String).describe("Numeric Etsy listing ID from the connected shop; accepts the number returned by etsy_list_active_listings or a digit string."),
+  limit: z.number().int().min(1).max(MAX_INVENTORY_PAGE_SIZE).default(25)
+    .describe("Maximum inventory entries to return (1-50; default 25). One entry represents one offering; use next_offset for additional pages."),
+  offset: z.number().int().min(0).max(MAX_INVENTORY_OFFSET).default(0)
+    .describe("Number of inventory entries to skip (default 0). Pass the previous response's next_offset to continue."),
 }).strict();
 
 const packageManifest = JSON.parse(readFileSync(fileURLToPath(new URL("../package.json", import.meta.url)), "utf8")) as { version: string };
@@ -46,6 +55,7 @@ function safeError(error: unknown): string {
   if (error instanceof CredentialStoreError) return error.message;
   if (error instanceof Error && error.message.startsWith("The authorized Etsy account")) return error.message;
   if (error instanceof Error && error.message.startsWith("That listing")) return error.message;
+  if (error instanceof Error && error.message.startsWith("A single Etsy inventory entry")) return error.message;
   if (typeof error === "object" && error !== null && "status" in error) {
     const status = Number((error as { status?: unknown }).status);
     if (Number.isInteger(status) && status > 0) {
@@ -59,7 +69,7 @@ function jsonResult(value: unknown): TextToolResult {
   const text = JSON.stringify(value, null, 2) ?? "null";
   if (text.length > MAX_TOOL_RESPONSE_CHARACTERS) {
     return {
-      content: [{ type: "text", text: "This Etsy result exceeds the 25,000 character response limit. Request a smaller listing page or inspect one listing at a time." }],
+      content: [{ type: "text", text: "This Etsy result exceeds the 25,000 character response limit. Use a smaller page; listing inventory supports limit/offset pagination." }],
       isError: true,
     };
   }
@@ -213,6 +223,8 @@ async function getListingInventory(
   client: EtsyReadClient,
   credentials: EtsyCredentials,
   listingId: string,
+  limit: number,
+  offset: number,
 ): Promise<Record<string, unknown>> {
   const listing = await client.getListing(listingId);
   if (String(listing.shop_id) !== credentials.shopId) {
@@ -220,25 +232,49 @@ async function getListingInventory(
   }
 
   const inventory: EtsyListingInventory = await client.getListingInventory(listingId, { show_deleted: false });
-  return {
-    shop_id: credentials.shopId,
-    listing_id: listingId,
-    title: listing.title,
-    products: inventory.products.map((product) => ({
+  const entries = inventory.products.flatMap((product) => {
+    const base = {
       product_id: product.product_id,
       sku: product.sku,
       options: (product.property_values ?? []).map((property) => ({
         name: property.property_name,
         values: property.values,
       })),
-      offerings: product.offerings.map((offering) => ({
+    };
+    if (product.offerings.length === 0) return [{ ...base, offerings: [] }];
+    return product.offerings.map((offering) => ({
+      ...base,
+      offerings: [{
         offering_id: offering.offering_id,
         price: priceInMajorUnits(offering.price),
         quantity: offering.quantity,
         is_enabled: offering.is_enabled,
-      })),
-    })),
-  };
+      }],
+    }));
+  });
+
+  let pageSize = Math.min(limit, Math.max(0, entries.length - offset));
+  while (true) {
+    const pageEntries = entries.slice(offset, offset + pageSize);
+    const nextOffset = offset + pageEntries.length;
+    const result = {
+      shop_id: credentials.shopId,
+      listing_id: listingId,
+      title: listing.title,
+      offset,
+      limit,
+      count: pageEntries.length,
+      total_count: entries.length,
+      has_more: nextOffset < entries.length,
+      next_offset: nextOffset < entries.length ? nextOffset : null,
+      products: pageEntries,
+    };
+    if (JSON.stringify(result, null, 2).length <= MAX_TOOL_RESPONSE_CHARACTERS) return result;
+    if (pageSize <= 1) {
+      throw new Error("A single Etsy inventory entry exceeds the response character limit and cannot be returned intact.");
+    }
+    pageSize = Math.max(1, Math.floor(pageSize / 2));
+  }
 }
 
 export async function createEtsyMcpServer(dependencies: ToolDependencies = {}): Promise<McpServer> {
@@ -287,13 +323,13 @@ export async function createEtsyMcpServer(dependencies: ToolDependencies = {}): 
 
   server.registerTool("etsy_get_listing_inventory", {
     title: "Get Etsy listing variation inventory",
-    description: "Input: listing_id, a numeric Etsy listing ID. Read variation products, option names and values, offering prices, and quantities. Returns JSON with listing_id, title, and products; each product includes product_id, sku, options, and offerings. Price amounts use major currency units. The listing must belong to the Etsy shop connected on this machine.",
+    description: "Inputs: listing_id (the numeric ID returned by etsy_list_active_listings), limit (1-50, default 25), and offset (default 0). Read variation inventory in bounded pages. Each products entry contains product_id, sku, options, and one offering; a product can appear in multiple entries when it has multiple offerings. Products with no offerings have one entry with an empty offerings array. Returns count, total_count, has_more, and next_offset; continue until next_offset is null. Price amounts use major currency units. The listing must belong to the Etsy shop connected on this machine.",
     inputSchema: listingInventoryInput,
     annotations,
-  }, async ({ listing_id }) => {
+  }, async ({ listing_id, limit, offset }) => {
     try {
       const result = await withClient(store, createClient, selectedShopId, (client, credentials) =>
-        getListingInventory(client, credentials, listing_id));
+        getListingInventory(client, credentials, listing_id, limit, offset));
       return jsonResult(result);
     } catch (error) {
       return errorResult(error);

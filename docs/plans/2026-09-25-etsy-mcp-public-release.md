@@ -133,3 +133,27 @@ For each item, record the final commit or working-tree identity, commands and ou
 **Plan:** add a regression with one already-at-target approved row and a second `READY` row whose write changes the first row before final verification. Confirm the current script incorrectly succeeds or fails to flag drift. Then include all approved rows in final target-price verification while keeping writes limited to `READY` rows. Preserve per-listing baseline masking and unrelated-inventory drift checks.
 
 **Acceptance:** the regression fails before the fix and passes after; final readback verifies every approved row's target, but only preflight `READY` rows are written. Focused and full coverage tests pass, and the response to review thread `PRRT_kwDOPMgnhs6mJexU` includes exact evidence before resolution.
+
+### 19. Accept listing IDs returned by the listings tool
+
+**Finding:** PR review `4108495159` reports that `etsy_list_active_listings` returns numeric `listing_id` values while `etsy_get_listing_inventory` accepts only digit strings, so directly chaining tool output fails schema validation.
+
+**Plan:** inspect both public MCP tool schemas and response serialization. Normalize the inventory tool's input to accept either a positive safe integer or digit string, converting to the SDK's string ID at the boundary. Test direct use of a returned numeric ID, equivalent string input, and invalid/non-integral/out-of-range values.
+
+**Acceptance:** numeric IDs emitted by the listing tool can be passed unchanged to inventory; strings retain compatibility; invalid IDs are rejected before Etsy access. Focused MCP tests pass and thread `PRRT_kwDOPMgnhs6mJpno` is replied to and resolved with evidence.
+
+### 20. Give oversized listing inventory a usable retrieval path
+
+**Finding:** PR review `4108495170` reports that a variation-rich inventory result can exceed the shared 25,000-character MCP response limit, with no inventory-specific page argument or alternate retrieval mechanism.
+
+**Plan:** inspect MCP output-size policy, Etsy inventory response shapes, and tool schema. Add deterministic inventory pagination/chunking with an input cursor/offset and bounded response, or another explicit complete retrieval contract. Preserve product/offering identity and do not silently drop rows. Test a synthetic inventory exceeding the response cap across the full retrieval sequence, exact reconstruction, repeated/invalid cursors, and ordinary small inventories.
+
+**Acceptance:** every inventory product/offering can be retrieved exactly once across bounded calls; each tool response remains within the shared output cap; input bounds are enforced; tests cover a large variation-rich listing and normal behavior. Reply to and resolve thread `PRRT_kwDOPMgnhs6mJpnt` only with this evidence.
+
+### 21. Validate custom OAuth callback URIs against the local listener
+
+**Finding:** PR review `4108495175` reports that custom `--redirect-uri` values using HTTPS or omitting an explicit port do not match the local plaintext HTTP listener, which may bind an unintended port and leave OAuth waiting until timeout.
+
+**Plan:** inspect redirect URI parsing, callback listener host/port binding, OAuth URL generation, and CLI option validation. Define the supported contract as loopback HTTP with an explicit valid port (unless inspection proves the listener correctly supports more). Reject unsupported scheme, non-loopback hosts, absent/invalid ports, and mismatched paths before opening a browser; test valid supported forms and each invalid class without network or browser side effects.
+
+**Acceptance:** every accepted redirect URI exactly matches the listener's bound scheme/host/port/path; unsupported forms fail quickly with actionable errors and no listener/browser wait. Focused OAuth/CLI tests pass and thread `PRRT_kwDOPMgnhs6mJpnv` is replied to and resolved with evidence.
