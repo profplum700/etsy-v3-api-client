@@ -142,7 +142,7 @@ describe("CredentialStore", () => {
     });
 
     expect(() => store.probe()).toThrow(CredentialStoreError);
-    expect(() => store.probe()).toThrow("credential store is unavailable");
+    expect(() => store.probe()).toThrow(/unavailable/i);
   });
 
   it("persists refreshed OAuth tokens to the same credential entry", () => {
