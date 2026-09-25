@@ -17,7 +17,10 @@ export interface EtsyClientConfig {
   refreshToken: string;
   expiresAt: Date;
    
-  refreshSave?: (_accessToken: string, _refreshToken: string, _expiresAt: Date) => void;
+  /** Synchronous token persistence callback retained for existing integrations. */
+  refreshSave?: TokenRefreshCallback;
+  /** Async token persistence callback; the client waits before exposing rotated tokens. */
+  refreshSaveAsync?: TokenRefreshCallbackAsync;
   
   // Optional configuration
   baseUrl?: string;
@@ -82,6 +85,7 @@ export interface EtsyTokenResponse {
 // Token Management Types
 
 export type TokenRefreshCallback = (_accessToken: string, _refreshToken: string, _expiresAt: Date) => void;
+export type TokenRefreshCallbackAsync = (_accessToken: string, _refreshToken: string, _expiresAt: Date) => void | Promise<void>;
 
 export type TokenRotationCallback = (oldTokens: EtsyTokens, newTokens: EtsyTokens) => void | Promise<void>;
 

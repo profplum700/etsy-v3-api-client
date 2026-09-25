@@ -295,6 +295,43 @@ describe('TokenManager', () => {
       expect(tokenManager.getCurrentTokens()?.access_token).toBe(mockConfig.accessToken);
     });
 
+    it('waits for asynchronous refresh persistence before exposing rotated tokens', async () => {
+      let resolvePersistence: (() => void) | undefined;
+      const persistence = new Promise<void>((resolve) => { resolvePersistence = resolve; });
+      let signalCallbackStarted: (() => void) | undefined;
+      const callbackStarted = new Promise<void>((resolve) => { signalCallbackStarted = resolve; });
+      const callback = vi.fn(async () => {
+        signalCallbackStarted?.();
+        await persistence;
+      });
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          access_token: 'durable-access-token',
+          refresh_token: 'durable-refresh-token',
+          expires_in: 3600,
+          token_type: 'Bearer',
+          scope: 'shops_r listings_r'
+        })
+      });
+
+      const tokenManager = new TokenManager({ ...mockConfig, refreshSaveAsync: callback });
+      let refreshSettled = false;
+      const refresh = tokenManager.refreshToken().then((tokens) => {
+        refreshSettled = true;
+        return tokens;
+      });
+
+      await callbackStarted;
+      expect(callback).toHaveBeenCalledOnce();
+      expect(refreshSettled).toBe(false);
+      expect(tokenManager.getCurrentTokens()?.access_token).toBe(mockConfig.accessToken);
+
+      resolvePersistence?.();
+      await expect(refresh).resolves.toMatchObject({ access_token: 'durable-access-token' });
+      expect(tokenManager.getCurrentTokens()?.access_token).toBe('durable-access-token');
+    });
+
     it('should call refresh callback when provided', async () => {
       const mockCallback = vi.fn();
       const configWithCallback = {

@@ -81,6 +81,7 @@ function priceInMajorUnits(price: { amount: number; divisor: number; currency_co
 }
 
 function defaultClient(credentials: EtsyCredentials, store: CredentialStore): EtsyReadClient {
+  let currentCredentials = { ...credentials };
   return new EtsyClient({
     keystring: credentials.keystring,
     sharedSecret: credentials.sharedSecret,
@@ -88,8 +89,8 @@ function defaultClient(credentials: EtsyCredentials, store: CredentialStore): Et
     refreshToken: credentials.refreshToken,
     expiresAt: new Date(credentials.expiresAt),
     caching: { enabled: false },
-    refreshSave: (accessToken, refreshToken, expiresAt): void => {
-      persistRefreshedTokens(store, credentials, accessToken, refreshToken, expiresAt);
+    refreshSaveAsync: async (accessToken, refreshToken, expiresAt): Promise<void> => {
+      currentCredentials = await persistRefreshedTokens(store, currentCredentials, accessToken, refreshToken, expiresAt);
     },
   });
 }
@@ -120,30 +121,26 @@ export function createCachedClientFactory(
   };
 }
 
-export function persistRefreshedTokens(
+export async function persistRefreshedTokens(
   store: CredentialStore,
   credentials: EtsyCredentials,
   accessToken: string,
   refreshToken: string,
   expiresAt: Date,
-): void {
-  const currentCredentials = store.read(credentials.shopId);
-  if (!currentCredentials || !sameCredentials(currentCredentials, credentials)) {
-    throw new CredentialStoreError("The Etsy connection changed during token refresh. Refreshed credentials were not saved; restart the MCP client and reconnect if needed.");
-  }
-  store.save({
-    ...currentCredentials,
+): Promise<EtsyCredentials> {
+  return store.saveRefreshedTokensIfCurrent(credentials, {
+    ...credentials,
     accessToken,
     refreshToken,
     expiresAt: expiresAt.toISOString(),
-  }, { activate: false });
+  });
 }
 
-function requireCredentials(store: CredentialStore, selectedShopId: string | null): EtsyCredentials {
+async function requireCredentials(store: CredentialStore, selectedShopId: string | null): Promise<EtsyCredentials> {
   if (selectedShopId === null) {
     throw new CredentialStoreError("No Etsy shop was selected when this MCP server started. Connect a shop and restart the MCP client.");
   }
-  const credentials = store.read(selectedShopId);
+  const credentials = await store.read(selectedShopId);
   if (!credentials) {
     throw new CredentialStoreError("The Etsy shop selected when this MCP server started is no longer connected. Reconnect it or restart the MCP client with another saved shop.");
   }
@@ -156,7 +153,7 @@ async function withClient<T>(
   selectedShopId: string | null,
   operation: (client: EtsyReadClient, credentials: EtsyCredentials) => Promise<T>,
 ): Promise<T> {
-  const credentials = requireCredentials(store, selectedShopId);
+  const credentials = await requireCredentials(store, selectedShopId);
   const grantedScopes = new Set(credentials.scope.split(/\s+/).filter(Boolean));
   if (grantedScopes.size !== REQUIRED_SCOPES.length || REQUIRED_SCOPES.some((scope) => !grantedScopes.has(scope))) {
     throw new CredentialStoreError("The saved Etsy connection must have exactly shops_r and listings_r. Run setup again and approve only those read permissions.");
@@ -243,9 +240,9 @@ async function getListingInventory(
   };
 }
 
-export function createEtsyMcpServer(dependencies: ToolDependencies = {}): McpServer {
+export async function createEtsyMcpServer(dependencies: ToolDependencies = {}): Promise<McpServer> {
   const store = dependencies.store ?? new CredentialStore();
-  const selectedShopId = store.read()?.shopId ?? null;
+  const selectedShopId = (await store.read())?.shopId ?? null;
   const createClient = dependencies.createClient ?? createCachedClientFactory();
   const server = new McpServer(
     { name: SERVER_NAME, version: packageManifest.version },

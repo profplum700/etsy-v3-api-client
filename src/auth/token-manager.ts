@@ -9,6 +9,7 @@ import {
   EtsyAuthError,
   EtsyClientConfig,
   TokenRefreshCallback,
+  TokenRefreshCallbackAsync,
   TokenStorage,
   TokenRotationConfig
 } from '../types';
@@ -39,7 +40,7 @@ export class MemoryTokenStorage implements TokenStorage {
 export class TokenManager {
   private keystring: string;
   private currentTokens: EtsyTokens | null = null;
-  private refreshCallback?: TokenRefreshCallback;
+  private refreshCallback?: TokenRefreshCallback | TokenRefreshCallbackAsync;
   private storage?: TokenStorage;
   private refreshPromise?: Promise<EtsyTokens>;
   private rotationConfig?: TokenRotationConfig;
@@ -47,7 +48,7 @@ export class TokenManager {
 
   constructor(config: EtsyClientConfig, storage?: TokenStorage, rotationConfig?: TokenRotationConfig) {
     this.keystring = config.keystring;
-    this.refreshCallback = config.refreshSave;
+    this.refreshCallback = config.refreshSaveAsync ?? config.refreshSave;
     this.storage = storage;
     this.rotationConfig = rotationConfig;
 
@@ -114,7 +115,7 @@ export class TokenManager {
       }
 
       if (this.refreshCallback) {
-        this.refreshCallback(
+        await this.refreshCallback(
           newTokens.access_token,
           newTokens.refresh_token,
           newTokens.expires_at

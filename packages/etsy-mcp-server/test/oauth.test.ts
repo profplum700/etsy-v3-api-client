@@ -88,7 +88,7 @@ describe("Etsy OAuth setup", () => {
     });
     expect(acceptedCode).toHaveBeenCalledExactlyOnceWith("valid-authorization-code", "expected-state");
     expect(result).toEqual({ shopName: "Verified print shop", shopId: "12345" });
-    expect(store.read()).toMatchObject({
+    expect(await store.read()).toMatchObject({
       keystring: "app-keystring",
       sharedSecret: "app-shared-secret",
       shopId: "12345",
@@ -120,6 +120,6 @@ describe("Etsy OAuth setup", () => {
     })).rejects.toThrow("exactly shops_r and listings_r");
 
     expect(createClient).not.toHaveBeenCalled();
-    expect(store.read()).toBeNull();
+    expect(await store.read()).toBeNull();
   });
 });

@@ -90,21 +90,21 @@ describe("shop profile commands", () => {
   it("switches the active shop and disconnects only that profile by default", async () => {
     const { store } = createMemoryStore();
     const liveShop = { ...validCredentials, shopId: "67890", shopName: "Live Print Shop" };
-    store.save(validCredentials);
-    store.save(liveShop);
+    await store.save(validCredentials);
+    await store.save(liveShop);
     const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
     const confirm = vi.fn(async () => true);
 
     try {
       await runUse(store, validCredentials.shopName);
-      expect(store.read()).toEqual(validCredentials);
+      expect(await store.read()).toEqual(validCredentials);
 
       await runDisconnect(store, [], confirm);
 
       expect(confirm).toHaveBeenCalledExactlyOnceWith(
         "Disconnect Etsy shop " + validCredentials.shopName + " (ID " + validCredentials.shopId + ")?",
       );
-      expect(store.listProfiles()).toEqual([{
+      expect(await store.listProfiles()).toEqual([{
         shopId: liveShop.shopId,
         shopName: liveShop.shopName,
         active: true,
@@ -118,8 +118,8 @@ describe("shop profile commands", () => {
   it("requires an explicit confirmation to disconnect every shop", async () => {
     const { store } = createMemoryStore();
     const liveShop = { ...validCredentials, shopId: "67890", shopName: "Live Print Shop" };
-    store.save(validCredentials);
-    store.save(liveShop);
+    await store.save(validCredentials);
+    await store.save(liveShop);
     const confirm = vi.fn(async () => true);
     const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
 
@@ -127,7 +127,7 @@ describe("shop profile commands", () => {
       await runDisconnect(store, ["--all"], confirm);
 
       expect(confirm).toHaveBeenCalledExactlyOnceWith("Clear credentials for all 2 connected Etsy shops?");
-      expect(store.listProfiles()).toEqual([]);
+      expect(await store.listProfiles()).toEqual([]);
       expect(log).toHaveBeenCalledWith("Cleared 2 Etsy shop connection(s) from the operating system credential store.");
     } finally {
       log.mockRestore();

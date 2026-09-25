@@ -174,9 +174,10 @@ function createReadClient(credentials, store) {
     expiresAt: new Date(credentials.expiresAt),
     caching: { enabled: false },
     rateLimiting: { maxRequestsPerSecond: 3, minRequestInterval: 350 },
-    refreshSave: (accessToken, refreshToken, expiresAt) => {
-      latest = { ...latest, accessToken, refreshToken, expiresAt: expiresAt.toISOString() };
-      store.save(latest, { activate: false });
+    refreshSaveAsync: async (accessToken, refreshToken, expiresAt) => {
+      const updated = { ...latest, accessToken, refreshToken, expiresAt: expiresAt.toISOString() };
+      await store.saveRefreshedTokensIfCurrent(latest, updated);
+      latest = updated;
     },
   });
 }
@@ -424,7 +425,7 @@ async function main() {
   validateProposal(rows);
   const resume = getResumeStatuses(resumePath);
   const store = new CredentialStore();
-  const credentials = store.read(options.shopId);
+  const credentials = await store.read(options.shopId);
   if (!credentials) throw new Error("No saved keyring profile exists for shop " + options.shopId + ". Run `etsy-mcp-server setup` for that shop first.");
   if (credentials.shopId !== options.shopId || credentials.shopName !== options.shopName) {
     throw new Error("The saved keyring profile does not match --shop-id/--shop-name. No Etsy requests were made.");

@@ -11,7 +11,7 @@ interface ConnectedTestServer {
 }
 
 async function connectServer(dependencies: ToolDependencies): Promise<ConnectedTestServer> {
-  const server = createEtsyMcpServer(dependencies);
+  const server = await createEtsyMcpServer(dependencies);
   const client = new Client({ name: "etsy-mcp-test-client", version: "1.0.0" });
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   await server.connect(serverTransport);
@@ -63,35 +63,35 @@ describe("read-only Etsy MCP tools", () => {
     expect(createClient).toHaveBeenCalledTimes(2);
   });
 
-  it("does not restore a disconnected profile when an in-flight token refresh completes", () => {
+  it("does not restore a disconnected profile when an in-flight token refresh completes", async () => {
     const { store } = createMemoryStore();
-    store.save(validCredentials);
-    store.clear(validCredentials.shopId);
+    await store.save(validCredentials);
+    await store.clear(validCredentials.shopId);
 
-    expect(() => persistRefreshedTokens(
+    await expect(persistRefreshedTokens(
       store,
       validCredentials,
       "refreshed-access-token",
       "refreshed-refresh-token",
       new Date("2030-01-01T01:00:00.000Z"),
-    )).toThrow("The Etsy connection changed during token refresh.");
-    expect(store.read()).toBeNull();
+    )).rejects.toThrow("The Etsy connection changed during token refresh.");
+    expect(await store.read()).toBeNull();
   });
 
-  it("does not overwrite a newer profile after an out-of-order token refresh", () => {
+  it("does not overwrite a newer profile after an out-of-order token refresh", async () => {
     const { store } = createMemoryStore();
     const newerCredentials = { ...validCredentials, accessToken: "newer-access-token" };
-    store.save(validCredentials);
-    store.save(newerCredentials);
+    await store.save(validCredentials);
+    await store.save(newerCredentials);
 
-    expect(() => persistRefreshedTokens(
+    await expect(persistRefreshedTokens(
       store,
       validCredentials,
       "stale-access-token",
       "stale-refresh-token",
       new Date("2030-01-01T01:00:00.000Z"),
-    )).toThrow("The Etsy connection changed during token refresh.");
-    expect(store.read()).toEqual(newerCredentials);
+    )).rejects.toThrow("The Etsy connection changed during token refresh.");
+    expect(await store.read()).toEqual(newerCredentials);
   });
 
   it("registers exactly the three read-only tools", async () => {
@@ -172,7 +172,7 @@ describe("read-only Etsy MCP tools", () => {
     });
     const value = JSON.parse(resultText(result)) as { shop_id: string };
 
-    expect(store.read(validCredentials.shopId)).toEqual(validCredentials);
+    expect(await store.read(validCredentials.shopId)).toEqual(validCredentials);
     expect(getListingsByShop).toHaveBeenCalledExactlyOnceWith(validCredentials.shopId, {
       state: "active",
       limit: 10,

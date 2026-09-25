@@ -186,12 +186,12 @@ export async function connectShop(
     refreshToken: latestRefreshToken,
     expiresAt: latestExpiry,
     caching: { enabled: false },
-    refreshSave: (accessToken, refreshToken, expiresAt): void => {
+    refreshSaveAsync: async (accessToken, refreshToken, expiresAt): Promise<void> => {
       latestAccessToken = accessToken;
       latestRefreshToken = refreshToken;
       latestExpiry = expiresAt;
       if (verifiedCredentials.current) {
-        store.save({
+        await store.save({
           ...verifiedCredentials.current,
           accessToken,
           refreshToken,
@@ -215,6 +215,6 @@ export async function connectShop(
   };
 
   verifiedCredentials.current = credentials;
-  store.save(credentials);
+  await store.save(credentials);
   return { shopName: shop.shop_name, shopId: String(shop.shop_id) };
 }

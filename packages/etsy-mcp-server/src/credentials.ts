@@ -1,7 +1,10 @@
 import { randomUUID } from "node:crypto";
+import { homedir } from "node:os";
+import { isAbsolute, join } from "node:path";
 import { Entry, type EntryOptions } from "@napi-rs/keyring";
 import { z } from "zod";
 import { REQUIRED_SCOPES } from "./constants.js";
+import { acquireCredentialLock, CredentialLockError } from "./credential-lock.js";
 
 const SERVICE_NAME = "com.profplum700.etsy-mcp-server";
 const ACCOUNT_NAME = "default";
@@ -120,6 +123,30 @@ function profileAccount(shopId: string): string {
   return PROFILE_ACCOUNT_PREFIX + shopId;
 }
 
+function lockFilePath(): string {
+  let configDirectory: string;
+  if (process.platform === "win32") {
+    configDirectory = process.env.LOCALAPPDATA || process.env.APPDATA || join(homedir(), "AppData", "Local");
+  } else if (process.platform === "darwin") {
+    configDirectory = join(homedir(), "Library", "Application Support");
+  } else {
+    const xdgConfigHome = process.env.XDG_CONFIG_HOME;
+    configDirectory = xdgConfigHome && isAbsolute(xdgConfigHome) ? xdgConfigHome : join(homedir(), ".config");
+  }
+  return join(configDirectory, "profplum700", "etsy-mcp-server", "credential-store.lock");
+}
+
+function isSameCredential(left: EtsyCredentials, right: EtsyCredentials): boolean {
+  return left.keystring === right.keystring
+    && left.sharedSecret === right.sharedSecret
+    && left.accessToken === right.accessToken
+    && left.refreshToken === right.refreshToken
+    && left.expiresAt === right.expiresAt
+    && left.scope === right.scope
+    && left.shopId === right.shopId
+    && left.shopName === right.shopName;
+}
+
 function profileSummary(credentials: EtsyCredentials, activeShopId: string): EtsyProfileSummary {
   return {
     shopId: credentials.shopId,
@@ -149,7 +176,38 @@ function resolveProfile(profiles: EtsyCredentials[], selector: string): EtsyCred
 }
 
 export class CredentialStore {
-  constructor(private readonly entryFactory: EntryFactory = createPlatformEntry) {}
+  constructor(
+    private readonly entryFactory: EntryFactory = createPlatformEntry,
+    private readonly transactionLockPath = lockFilePath(),
+  ) {}
+
+  private async withTransaction<T>(operation: () => T): Promise<T> {
+    let release: () => Promise<void>;
+    try {
+      release = await acquireCredentialLock(this.transactionLockPath);
+    } catch (error) {
+      if (error instanceof CredentialLockError) throw new CredentialStoreError(error.message);
+      throw new CredentialStoreError("The local Etsy credential lock could not be acquired safely. No credential change was made.");
+    }
+
+    let result: T | undefined;
+    let operationFailed = false;
+    let operationError: unknown;
+    try {
+      result = operation();
+    } catch (error) {
+      operationFailed = true;
+      operationError = error;
+    }
+    try {
+      await release();
+    } catch (error) {
+      if (error instanceof CredentialLockError) throw new CredentialStoreError(error.message);
+      throw new CredentialStoreError("The local Etsy credential lock could not be released cleanly. Check the local connection status before retrying.");
+    }
+    if (operationFailed) throw operationError;
+    return result as T;
+  }
 
   probe(): void {
     const account = "probe-" + randomUUID();
@@ -240,7 +298,7 @@ export class CredentialStore {
     this.writeRaw(ACCOUNT_NAME, JSON.stringify(index));
   }
 
-  read(shopId?: string): EtsyCredentials | null {
+  private readUnlocked(shopId?: string): EtsyCredentials | null {
     const database = this.readDatabase();
     if (database.credentials.length === 0) return null;
     if (!database.index) {
@@ -252,7 +310,11 @@ export class CredentialStore {
     return database.credentials.find((profile) => profile.shopId === selectedId) ?? null;
   }
 
-  listProfiles(): EtsyProfileSummary[] {
+  async read(shopId?: string): Promise<EtsyCredentials | null> {
+    return this.withTransaction(() => this.readUnlocked(shopId));
+  }
+
+  private listProfilesUnlocked(): EtsyProfileSummary[] {
     const database = this.readDatabase();
     if (database.credentials.length === 0) return [];
     const activeShopId = database.index?.activeShopId ?? database.credentials[0]?.shopId;
@@ -260,14 +322,22 @@ export class CredentialStore {
     return database.credentials.map((profile) => profileSummary(profile, activeShopId));
   }
 
-  findProfile(selector: string): EtsyProfileSummary {
+  async listProfiles(): Promise<EtsyProfileSummary[]> {
+    return this.withTransaction(() => this.listProfilesUnlocked());
+  }
+
+  private findProfileUnlocked(selector: string): EtsyProfileSummary {
     const database = this.readDatabase();
     const selected = resolveProfile(database.credentials, selector);
     const activeShopId = database.index?.activeShopId ?? database.credentials[0]?.shopId;
     return profileSummary(selected, activeShopId ?? selected.shopId);
   }
 
-  save(credentials: EtsyCredentials, options: SaveCredentialOptions = {}): void {
+  async findProfile(selector: string): Promise<EtsyProfileSummary> {
+    return this.withTransaction(() => this.findProfileUnlocked(selector));
+  }
+
+  private saveUnlocked(credentials: EtsyCredentials, options: SaveCredentialOptions = {}): void {
     const validated = parseCredentials(credentials);
     const previousIndexValue = this.readRaw(ACCOUNT_NAME);
     const database = this.readDatabase();
@@ -335,7 +405,26 @@ export class CredentialStore {
     }
   }
 
-  setActive(selector: string): EtsyProfileSummary {
+  async save(credentials: EtsyCredentials, options: SaveCredentialOptions = {}): Promise<void> {
+    return this.withTransaction(() => this.saveUnlocked(credentials, options));
+  }
+
+  async saveRefreshedTokensIfCurrent(expected: EtsyCredentials, updated: EtsyCredentials): Promise<EtsyCredentials> {
+    return this.withTransaction(() => {
+      const validatedUpdate = parseCredentials(updated);
+      if (validatedUpdate.shopId !== expected.shopId) {
+        throw new CredentialStoreError("The Etsy token refresh targeted a different shop. Refreshed credentials were not saved.");
+      }
+      const current = this.readUnlocked(expected.shopId);
+      if (!current || !isSameCredential(current, expected)) {
+        throw new CredentialStoreError("The Etsy connection changed during token refresh. Refreshed credentials were not saved; restart the MCP client and reconnect if needed.");
+      }
+      this.saveUnlocked(validatedUpdate, { activate: false });
+      return validatedUpdate;
+    });
+  }
+
+  private setActiveUnlocked(selector: string): EtsyProfileSummary {
     const database = this.readDatabase();
     if (database.credentials.length === 0) {
       throw new CredentialStoreError("No Etsy shop is connected. Run setup first.");
@@ -343,14 +432,18 @@ export class CredentialStore {
     const selected = resolveProfile(database.credentials, selector);
     if (!database.index) {
       // Convert an existing v1 single-shop entry into a v2 profile index.
-      this.save(selected, { activate: true });
+      this.saveUnlocked(selected, { activate: true });
     } else if (database.index.activeShopId !== selected.shopId) {
       this.writeIndex(database.credentials, selected.shopId);
     }
     return profileSummary(selected, selected.shopId);
   }
 
-  clear(selector?: string): EtsyProfileSummary | null {
+  async setActive(selector: string): Promise<EtsyProfileSummary> {
+    return this.withTransaction(() => this.setActiveUnlocked(selector));
+  }
+
+  private clearUnlocked(selector?: string): EtsyProfileSummary | null {
     const database = this.readDatabase();
     if (database.credentials.length === 0) return null;
 
@@ -405,12 +498,18 @@ export class CredentialStore {
     return summary;
   }
 
-  clearAll(): number {
+  async clear(selector?: string): Promise<EtsyProfileSummary | null> {
+    return this.withTransaction(() => this.clearUnlocked(selector));
+  }
+
+  async clearAll(): Promise<number> {
+    return this.withTransaction(() => {
     let removed = 0;
-    for (const profile of this.listProfiles()) {
-      this.clear(profile.shopId);
+    for (const profile of this.listProfilesUnlocked()) {
+      this.clearUnlocked(profile.shopId);
       removed += 1;
     }
     return removed;
+    });
   }
 }

@@ -155,7 +155,7 @@ async function runSetup(store: CredentialStore, options: SetupOptions): Promise<
   let keystring: string;
   let sharedSecret: string;
   if (options.reuseApp) {
-    const existing = store.read();
+    const existing = await store.read();
     if (!existing) throw new SetupError("There is no saved Etsy app to reuse. Run setup without --reuse-app first.");
     keystring = existing.keystring;
     sharedSecret = existing.sharedSecret;
@@ -185,14 +185,14 @@ async function runSetup(store: CredentialStore, options: SetupOptions): Promise<
 }
 
 async function runStatus(store: CredentialStore): Promise<void> {
-  const profiles = store.listProfiles();
+  const profiles = await store.listProfiles();
   if (profiles.length === 0) {
     console.log("Etsy is not connected. Run `npx --yes @profplum700/etsy-mcp-server@latest setup` in a local terminal.");
     return;
   }
   console.log("Connected Etsy shops:");
   for (const profile of profiles) {
-    const credentials = store.read(profile.shopId);
+    const credentials = await store.read(profile.shopId);
     console.log((profile.active ? "* " : "  ") + profile.shopName + " (ID " + profile.shopId + ")" + (profile.active ? " [active]" : ""));
     if (credentials) console.log("    Granted scopes: " + credentials.scope + ".");
   }
@@ -201,7 +201,7 @@ async function runStatus(store: CredentialStore): Promise<void> {
 }
 
 export async function runUse(store: CredentialStore, selector: string): Promise<void> {
-  const profile = store.setActive(selector);
+  const profile = await store.setActive(selector);
   console.log("Active Etsy shop: " + profile.shopName + " (ID " + profile.shopId + ").");
 }
 
@@ -210,7 +210,7 @@ export async function runDisconnect(
   args: string[],
   confirm: (question: string) => Promise<boolean> = askYesNo,
 ): Promise<void> {
-  const profiles = store.listProfiles();
+  const profiles = await store.listProfiles();
   if (profiles.length === 0) {
     console.log("No Etsy shops are connected.");
     return;
@@ -221,7 +221,7 @@ export async function runDisconnect(
       console.log("Cancelled; Etsy connections are unchanged.");
       return;
     }
-    const removedCount = store.clearAll();
+    const removedCount = await store.clearAll();
     console.log("Cleared " + removedCount + " Etsy shop connection(s) from the operating system credential store.");
     return;
   }
@@ -234,7 +234,7 @@ export async function runDisconnect(
   }
 
   const profile = selector
-    ? store.findProfile(selector)
+    ? await store.findProfile(selector)
     : profiles.find((candidate) => candidate.active);
   if (!profile) {
     console.log("No active Etsy shop is connected.");
@@ -245,7 +245,7 @@ export async function runDisconnect(
     return;
   }
 
-  const removed = store.clear(profile.shopId);
+  const removed = await store.clear(profile.shopId);
   if (removed) console.log("Disconnected Etsy shop " + removed.shopName + " (ID " + removed.shopId + ").");
 }
 
