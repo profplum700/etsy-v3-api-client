@@ -125,3 +125,11 @@ For each item, record the final commit or working-tree identity, commands and ou
 **Plan:** preserve fail-closed ordering safety, add an explicit regression test for the legacy pair after a zero response, and document that the legacy method is for dispatch pacing only. Show the migration to `waitForRateLimitWithReservation()` plus `updateFromHeaders(headers, reservationId)` (and `releaseRequestSlot` on transport failure) in the public README and method documentation. Update the changeset to describe this behavioral migration plainly. Do not accept uncorrelated positive headers after exhaustion.
 
 **Acceptance:** the legacy regression test passes and demonstrates that it cannot reopen quota; the new reservation-aware path can reopen through its correlated probe; existing stale concurrent-response cases remain blocked; documentation and release note state the required migration. Reply to review thread `PRRT_kwDOPMgnhs6mJHbS` with this compatibility limitation and why uncorrelated recovery cannot be restored safely. Keep the issue visible as an intentional behavior change, not a claim of full behavioral compatibility.
+
+### 18. Reverify every approved price target after batch writes
+
+**Finding:** PR review `4108425728` reports that preflight rows already at their approved target are marked `VERIFIED` and excluded from the final readback. A later write or external edit can change such a target while the batch still exits successfully.
+
+**Plan:** add a regression with one already-at-target approved row and a second `READY` row whose write changes the first row before final verification. Confirm the current script incorrectly succeeds or fails to flag drift. Then include all approved rows in final target-price verification while keeping writes limited to `READY` rows. Preserve per-listing baseline masking and unrelated-inventory drift checks.
+
+**Acceptance:** the regression fails before the fix and passes after; final readback verifies every approved row's target, but only preflight `READY` rows are written. Focused and full coverage tests pass, and the response to review thread `PRRT_kwDOPMgnhs6mJexU` includes exact evidence before resolution.

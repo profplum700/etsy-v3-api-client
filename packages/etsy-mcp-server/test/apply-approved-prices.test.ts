@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { inventoryFingerprint } from "../scripts/inventory-fingerprint.mjs";
+import { finalVerificationRows } from "../scripts/final-verification.mjs";
 
 function inventory(firstPrice: number, secondPrice: number, quantity = 4) {
   return {
@@ -19,6 +20,14 @@ function inventory(firstPrice: number, secondPrice: number, quantity = 4) {
 
 describe("approved price batch inventory fingerprints", () => {
   const targets = new Set(["10:101", "10:102"]);
+
+  it("includes already-at-target approved rows in final verification", () => {
+    const ready = { state: "READY", row: { listing_id: 1 } };
+    const alreadyAtTarget = { state: "VERIFIED", row: { listing_id: 2 } };
+    const stale = { state: "STALE", row: { listing_id: 3 } };
+
+    expect(finalVerificationRows([ready, alreadyAtTarget, stale])).toEqual([ready, alreadyAtTarget]);
+  });
 
   it("treats both approved variation price changes as expected in final verification", () => {
     const before = inventoryFingerprint(inventory(34, 38), targets);
