@@ -37,7 +37,7 @@
     "prepack": "pnpm run build:core",
     "changeset": "changeset",
     "version:packages": "changeset version && node scripts/sync-mcp-registry.mjs",
-    "test:release-tag": "node --test scripts/resolve-release-tag.test.mjs scripts/publish-package.test.mjs scripts/publish-registry-metadata.test.mjs",
+    "test:release-tag": "node --test scripts/resolve-release-tag.test.mjs scripts/publish-workflow.test.mjs scripts/publish-package.test.mjs scripts/publish-registry-metadata.test.mjs",
     "check:registry-metadata": "node scripts/sync-mcp-registry.mjs --check"
   },
   "keywords": [

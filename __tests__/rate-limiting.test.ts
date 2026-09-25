@@ -729,6 +729,20 @@ describe('EtsyRateLimiter', () => {
       expect(rateLimiter.getRemainingRequests()).toBe(7);
     });
 
+    it('should keep legacy uncorrelated recovery fail-closed after exhausted QPD', async () => {
+      const rateLimiter = new EtsyRateLimiter({ minRequestInterval: 0 });
+      rateLimiter.updateFromHeaders({ 'x-remaining-today': '0' });
+      await vi.advanceTimersByTimeAsync(60_000);
+
+      // The legacy method has no reservation ID to correlate with this
+      // response. A positive header could be stale, so safe recovery requires
+      // waitForRateLimitWithReservation() and updateFromHeaders(headers, id).
+      await rateLimiter.waitForRateLimit();
+      rateLimiter.updateFromHeaders({ 'x-remaining-today': '7' });
+
+      expect(rateLimiter.getRemainingRequests()).toBe(0);
+    });
+
     it('should not reopen exhausted QPD from an older uncorrelated response after concurrent convenience calls', async () => {
       const rateLimiter = new EtsyRateLimiter({ minRequestInterval: 0 });
       await Promise.all([rateLimiter.waitForRateLimit(), rateLimiter.waitForRateLimit()]);

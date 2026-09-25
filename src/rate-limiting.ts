@@ -517,6 +517,10 @@ export class EtsyRateLimiter {
   /**
    * Wait for rate limit constraints to be satisfied.
    * Uses header-based limits if available, falls back to config values.
+   * This source-compatible dispatch-only API does not return a reservation ID.
+   * Custom transports that feed response headers back to this limiter should
+   * use waitForRateLimitWithReservation() and pass its ID to updateFromHeaders()
+   * so a correlated quota probe can safely recover after exhaustion.
    */
   public async waitForRateLimit(): Promise<void> {
     // Keep the original convenience API for callers that only need a paced

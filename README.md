@@ -319,6 +319,22 @@ const remaining = client.getRemainingRequests();
 console.log(`${remaining} requests remaining in the rolling 24-hour window`);
 ```
 
+When building a custom transport around the exported `EtsyRateLimiter`, keep the reservation ID attached to its response so concurrent, out-of-order headers cannot incorrectly restore exhausted quota:
+
+```typescript
+const reservationId = await rateLimiter.waitForRateLimitWithReservation();
+let response: Response;
+try {
+  response = await fetch(url);
+} catch (error) {
+  rateLimiter.releaseRequestSlot(reservationId);
+  throw error;
+}
+rateLimiter.updateFromHeaders(response.headers, reservationId);
+```
+
+`waitForRateLimit()` remains available for source compatibility when you only need dispatch pacing. For custom transports that also feed response headers back to the limiter, use the reservation-aware method above; uncorrelated positive headers cannot safely reopen exhausted quota.
+
 ## 🔄 Caching
 
 Optional response caching to improve performance:

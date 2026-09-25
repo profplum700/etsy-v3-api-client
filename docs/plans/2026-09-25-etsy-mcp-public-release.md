@@ -109,3 +109,19 @@ For each item, record the final commit or working-tree identity, commands and ou
 - Write-capable Etsy tools or automated listing changes.
 - Publishing before the gates above pass.
 - Deprecating existing public SDK packages as part of this release.
+
+### 16. Bind release checkouts to the immutable event commit
+
+**Finding:** PR review `4108326311` reports that `.github/workflows/publish.yml` checks out `github.ref` in the validation and OIDC publishing jobs. For tag-triggered workflows, a tag can move after the workflow event, making the checked-out source differ from the immutable `github.sha` used by ancestry and CI checks.
+
+**Plan:** inspect every checkout in the package publish workflow and determine which jobs execute release source or scripts. Change each relevant checkout to the event's immutable `${{ github.sha }}`. Add or extend deterministic release-workflow validation so a future checkout by mutable tag ref is caught. Locally demonstrate the old source contains mutable refs and the revised source binds each applicable job to the event SHA; run the focused release tests and the full required PR gate after the change.
+
+**Acceptance:** every release job that builds, validates, or executes publication code checks out exactly the immutable event SHA; deterministic tests fail against the old workflow and pass against the fix; fresh independent review and GitHub CI pass for the pushed commit. Reply to and resolve review thread `PRRT_kwDOPMgnhs6mJPSu` only after evidence is available. No release tag, npm publication, or Registry publication is performed as part of this fix.
+
+### 17. Make the safe rate-limit recovery migration explicit
+
+**Finding:** fresh-context review of `941af52fc9a8721c613cf4e5cdaf8a419c61818c` found that the source-compatible legacy pair `waitForRateLimit()` followed by `updateFromHeaders(headers)` cannot reopen QPD after exhaustion. It discards the reservation ID, so positive uncorrelated headers must remain ignored to prevent a stale concurrent response from reopening quota.
+
+**Plan:** preserve fail-closed ordering safety, add an explicit regression test for the legacy pair after a zero response, and document that the legacy method is for dispatch pacing only. Show the migration to `waitForRateLimitWithReservation()` plus `updateFromHeaders(headers, reservationId)` (and `releaseRequestSlot` on transport failure) in the public README and method documentation. Update the changeset to describe this behavioral migration plainly. Do not accept uncorrelated positive headers after exhaustion.
+
+**Acceptance:** the legacy regression test passes and demonstrates that it cannot reopen quota; the new reservation-aware path can reopen through its correlated probe; existing stale concurrent-response cases remain blocked; documentation and release note state the required migration. Reply to review thread `PRRT_kwDOPMgnhs6mJHbS` with this compatibility limitation and why uncorrelated recovery cannot be restored safely. Keep the issue visible as an intentional behavior change, not a claim of full behavioral compatibility.
