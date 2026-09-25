@@ -121,8 +121,8 @@ importers:
   packages/etsy-cli:
     dependencies:
       '@profplum700/etsy-v3-api-client':
-        specifier: ^3.0.1
-        version: 3.0.1
+        specifier: workspace:^4.0.0
+        version: link:../..
       chalk:
         specifier: ^5.3.0
         version: 5.6.2
@@ -179,7 +179,7 @@ importers:
         specifier: ^2.1.0
         version: 2.1.0
       '@profplum700/etsy-v3-api-client':
-        specifier: workspace:^3.0.1
+        specifier: workspace:^4.0.0
         version: link:../..
       open:
         specifier: ^10.2.0
@@ -1358,10 +1358,6 @@ packages:
   '@pnpm/deps.graph-sequencer@1100.0.1':
     resolution: {integrity: sha512-pOr5+q1fLYKwFN3LAJuGZEnfXDcQ73zqgDHMtGy+K+uIoUqyY+6MeDCWFwfu+4EFuq76I5EPFofoNAI+Bmmq4A==}
     engines: {node: '>=22.13'}
-
-  '@profplum700/etsy-v3-api-client@3.0.1':
-    resolution: {integrity: sha512-xpX4eYwqt3P+veQ2XH6kaG2D/nrFs01AbfTSJnidsWcQTGf+U/txu3fS3xi7fK2yzRQbLUpi2WrvH22KzYCC8w==}
-    engines: {node: '>=24.0.0'}
 
   '@rollup/plugin-commonjs@29.0.3':
     resolution: {integrity: sha512-ZaOxZceP7SOUW7Lqw5IRVweSQYWaeIPnXIGLiB690EBA3FGJTO40EEr2L5yZplJWsgTCogILRSpcAe7+U0Otdg==}
@@ -4379,10 +4375,6 @@ snapshots:
     optional: true
 
   '@pnpm/deps.graph-sequencer@1100.0.1': {}
-
-  '@profplum700/etsy-v3-api-client@3.0.1':
-    dependencies:
-      '@eslint/js': 9.39.5
 
   '@rollup/plugin-commonjs@29.0.3(rollup@4.63.1)':
     dependencies:
