@@ -29,6 +29,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Test exact package release-tag validation
+        run: pnpm run test:release-tag
+
       - name: Run linting
         run: pnpm run lint
 
@@ -71,8 +74,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build MCP package for cross-process test workers
-        run: pnpm --filter @profplum700/etsy-mcp-server build
+      - name: Build workspace packages for cross-process test workers
+        run: pnpm run build
 
       - name: Install Linux Secret Service
         if: runner.os == 'Linux'

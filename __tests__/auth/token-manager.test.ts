@@ -295,6 +295,59 @@ describe('TokenManager', () => {
       expect(tokenManager.getCurrentTokens()?.access_token).toBe(mockConfig.accessToken);
     });
 
+    it('retries storage persistence of rotated tokens without exchanging the refresh token again', async () => {
+      const storage = new MemoryTokenStorage();
+      const save = vi.spyOn(storage, 'save');
+      save.mockRejectedValueOnce(new Error('Credential store temporarily unavailable'));
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          access_token: 'rotated-access-token',
+          refresh_token: 'rotated-refresh-token',
+          expires_in: 3600,
+          token_type: 'Bearer',
+          scope: 'shops_r listings_r'
+        })
+      });
+
+      const tokenManager = new TokenManager(mockConfig, storage);
+      await expect(tokenManager.refreshToken()).rejects.toThrow('Credential store temporarily unavailable');
+      expect(tokenManager.getCurrentTokens()?.access_token).toBe(mockConfig.accessToken);
+
+      await expect(tokenManager.refreshToken()).resolves.toMatchObject({
+        access_token: 'rotated-access-token',
+        refresh_token: 'rotated-refresh-token'
+      });
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(save).toHaveBeenCalledTimes(2);
+      await expect(storage.load()).resolves.toMatchObject({ access_token: 'rotated-access-token' });
+    });
+
+    it('retries an async persistence callback using retained rotated tokens', async () => {
+      const callback = vi.fn()
+        .mockRejectedValueOnce(new Error('Credential callback temporarily unavailable'))
+        .mockResolvedValue(undefined);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          access_token: 'rotated-access-token',
+          refresh_token: 'rotated-refresh-token',
+          expires_in: 3600,
+          token_type: 'Bearer',
+          scope: 'shops_r listings_r'
+        })
+      });
+
+      const tokenManager = new TokenManager({ ...mockConfig, refreshSaveAsync: callback });
+      await expect(tokenManager.refreshToken()).rejects.toThrow('Credential callback temporarily unavailable');
+      expect(tokenManager.getCurrentTokens()?.access_token).toBe(mockConfig.accessToken);
+
+      await expect(tokenManager.refreshToken()).resolves.toMatchObject({ access_token: 'rotated-access-token' });
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(callback).toHaveBeenCalledTimes(2);
+      expect(tokenManager.getCurrentTokens()?.access_token).toBe('rotated-access-token');
+    });
+
     it('waits for asynchronous refresh persistence before exposing rotated tokens', async () => {
       let resolvePersistence: (() => void) | undefined;
       const persistence = new Promise<void>((resolve) => { resolvePersistence = resolve; });

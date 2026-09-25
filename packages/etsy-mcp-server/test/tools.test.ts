@@ -135,6 +135,36 @@ describe("read-only Etsy MCP tools", () => {
     expect(value.listings[0]?.price).toEqual({ amount: 42.5, currency_code: "USD" });
   });
 
+  it.each([
+    { offset: 9950, limit: 50, count: 50, hasMore: true, nextOffset: 10000 },
+    { offset: 10000, limit: 50, count: 50, hasMore: false, nextOffset: null },
+    { offset: 9950, limit: 50, count: 12, hasMore: false, nextOffset: null },
+    { offset: 10000, limit: 50, count: 12, hasMore: false, nextOffset: null },
+  ])("keeps maximum-offset pagination actionable: $offset/$count", async ({ offset, limit, count, hasMore, nextOffset }) => {
+    const getListingsByShop = vi.fn(async () => Array.from({ length: count }, (_, index) => ({
+      listing_id: 1000 + index,
+      title: `Print ${index}`,
+      price: { amount: 4200, divisor: 100, currency_code: "USD" },
+      url: `https://www.etsy.com/listing/${1000 + index}`,
+      state: "active",
+    })));
+    const connected = await connectServer({
+      store: credentialStore(validCredentials),
+      createClient: clientFactory({ getUser: vi.fn(async () => ({ shop_id: 12345 })), getListingsByShop }),
+    });
+    activeClients.push(connected);
+
+    const result = await connected.client.callTool({
+      name: "etsy_list_active_listings",
+      arguments: { limit, offset },
+    });
+    const value = JSON.parse(resultText(result)) as { has_more: boolean; next_offset: number | null };
+
+    expect(value.has_more).toBe(hasMore);
+    expect(value.next_offset).toBe(nextOffset);
+    if (value.next_offset !== null) expect(value.next_offset).toBeLessThanOrEqual(10000);
+  });
+
   it("keeps a running server bound to its startup shop after the active profile changes", async () => {
     const secondShop: EtsyCredentials = {
       ...validCredentials,

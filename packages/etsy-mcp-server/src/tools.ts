@@ -190,14 +190,15 @@ async function listActiveListings(
     limit,
     offset,
   });
+  const hasMore = listings.length === limit && offset + listings.length <= MAX_LISTING_OFFSET;
   return {
     shop_id: credentials.shopId,
     state: "active",
     offset,
     limit,
     count: listings.length,
-    has_more: listings.length === limit,
-    next_offset: listings.length === limit ? offset + listings.length : null,
+    has_more: hasMore,
+    next_offset: hasMore ? offset + listings.length : null,
     listings: listings.map((listing) => ({
       listing_id: listing.listing_id,
       title: listing.title,
@@ -271,7 +272,7 @@ export async function createEtsyMcpServer(dependencies: ToolDependencies = {}): 
 
   server.registerTool("etsy_list_active_listings", {
     title: "List active Etsy listings",
-    description: "Inputs: limit (1-50, default 25) and offset (0-10000, default 0). Returns JSON with shop_id, state, offset, limit, count, has_more, next_offset, and listings containing listing_id, title, price, url, and state. Price amounts use major currency units. For example, pass the returned next_offset to get the next page while has_more is true. Prices are base listing prices; variation prices are available from etsy_get_listing_inventory.",
+    description: "Inputs: limit (1-50, default 25) and offset (0-10000, default 0). Returns JSON with shop_id, state, offset, limit, count, has_more, next_offset, and listings containing listing_id, title, price, url, and state. Price amounts use major currency units. When has_more is true, next_offset is always within the accepted offset range and can be passed to request the next page. Prices are base listing prices; variation prices are available from etsy_get_listing_inventory.",
     inputSchema: listingPageInput,
     annotations,
   }, async ({ limit, offset }) => {

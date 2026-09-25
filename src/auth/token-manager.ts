@@ -40,6 +40,7 @@ export class MemoryTokenStorage implements TokenStorage {
 export class TokenManager {
   private keystring: string;
   private currentTokens: EtsyTokens | null = null;
+  private pendingTokens?: EtsyTokens;
   private refreshCallback?: TokenRefreshCallback | TokenRefreshCallbackAsync;
   private storage?: TokenStorage;
   private refreshPromise?: Promise<EtsyTokens>;
@@ -108,28 +109,43 @@ export class TokenManager {
       throw new EtsyAuthError('No tokens available to refresh', 'NO_REFRESH_TOKEN');
     }
 
-    const refreshPromise = this.performTokenRefresh().then(async (newTokens) => {
-      // Keep all concurrent callers waiting until refreshed credentials are durable.
-      if (this.storage) {
-        await this.storage.save(newTokens);
-      }
-
-      if (this.refreshCallback) {
-        await this.refreshCallback(
-          newTokens.access_token,
-          newTokens.refresh_token,
-          newTokens.expires_at
-        );
-      }
-
-      this.currentTokens = newTokens;
-      return newTokens;
-    }).finally(() => {
+    const refreshPromise = (this.pendingTokens
+      ? this.retryPendingTokenPersistence()
+      : this.performTokenRefresh().then(async (newTokens) => {
+        this.pendingTokens = newTokens;
+        return this.persistRefreshedTokens(newTokens);
+      })).finally(() => {
       this.refreshPromise = undefined;
     });
 
     this.refreshPromise = refreshPromise;
     return refreshPromise;
+  }
+
+  private async persistRefreshedTokens(newTokens: EtsyTokens): Promise<EtsyTokens> {
+    // Keep all concurrent callers waiting until refreshed credentials are durable.
+    if (this.storage) {
+      await this.storage.save(newTokens);
+    }
+
+    if (this.refreshCallback) {
+      await this.refreshCallback(
+        newTokens.access_token,
+        newTokens.refresh_token,
+        newTokens.expires_at
+      );
+    }
+
+    this.currentTokens = newTokens;
+    this.pendingTokens = undefined;
+    return newTokens;
+  }
+
+  private async retryPendingTokenPersistence(): Promise<EtsyTokens> {
+    if (!this.pendingTokens) {
+      throw new EtsyAuthError('No rotated tokens are pending persistence', 'NO_PENDING_TOKENS');
+    }
+    return this.persistRefreshedTokens(this.pendingTokens);
   }
 
   /**
@@ -197,6 +213,7 @@ export class TokenManager {
    */
   public updateTokens(tokens: EtsyTokens): void {
     this.currentTokens = { ...tokens };
+    this.pendingTokens = undefined;
   }
 
   /**
@@ -232,6 +249,7 @@ export class TokenManager {
    */
   public async clearTokens(): Promise<void> {
     this.currentTokens = null;
+    this.pendingTokens = undefined;
     
     if (this.storage) {
       await this.storage.clear();
