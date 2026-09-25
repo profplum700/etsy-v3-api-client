@@ -1,30 +1,43 @@
 # AGENTS.md — Etsy API v3 Client
 
-## Purpose
+## Scope
 
-This repository is a TypeScript/JavaScript client library for the Etsy Open API v3. It provides OAuth 2.0 PKCE helpers, a universal Etsy client for browser/Node/Web Worker environments, package integrations under `packages/*`, examples, and documentation generated around the Etsy v3 API surface.
+This file provides durable repository-level guidance for coding agents. Use judgment: explicit task instructions and any more-local `AGENTS.md` take precedence.
 
-## Canon Block
+## Repository context
 
-- **Mode:** `single-main`.
-- **Default branch:** `master` is the current remote default and is the shared canon branch for this repo until it is renamed.
-- **Merge-gate command:** `pnpm run lint && pnpm run type-check && pnpm run test && pnpm run build`
-- **Standing deviations:** legacy default branch name is `master`; publishing is tag-driven through the release scripts/CI, not a side effect of every default-branch push; `fhah-tools-*` branches may exist only as parked integration work and must not be landed from this repo without explicit owner scope.
+This is a TypeScript/JavaScript client for the Etsy Open API v3. The root contains the core client; `packages/*` contains integrations and related packages; examples and documentation live alongside them.
 
-## Repository Rules
+- Runtime: Node.js 24+
+- Package manager: pnpm
+- Default branch: `master` until the repository is renamed
+- Release process: tag-driven; see `PUBLISHING.md`
 
-- Read this file before work; stricter user or repo-local instructions win.
-- Work canon-style on the default branch: pull/rebase, reserve files with Agent Mail before edits, run the merge gate, commit directly to the shared branch, push, and release reservations.
-- Do not commit Etsy credentials, OAuth tokens, generated secret files, `.env`, or local API test credentials. The existing `.gitignore` excludes `etsy-tokens.json`; keep token material out of Git.
-- Treat publishing as release-managed: update versions/tags only when explicitly scoped and follow `PUBLISHING.md`.
+## Working approach
 
-## Common Commands
+- Start from the requested task and inspect the code, tests, and docs relevant to it. Do not read the whole repository or a fixed stack of documents by default.
+- Prefer the smallest coherent change that fits existing patterns. Preserve public API and cross-environment behavior unless the task intentionally changes them.
+- Resolve routine, reversible implementation details autonomously. Stop for clarification only when ambiguity materially affects product behavior, security, public API compatibility, external data, or release scope.
+- Ground claims in repository evidence. When Etsy API semantics, scopes, or schemas matter and the repository is not authoritative, verify against Etsy's official API documentation/OpenAPI specification.
+- Keep changes scoped. Do not introduce unrelated refactors, dependency upgrades, formatting churn, or process scaffolding unless they are needed for the requested outcome.
 
-```bash
-pnpm install --frozen-lockfile
-pnpm run lint
-pnpm run type-check
-pnpm run test
-pnpm run build
-pnpm run test:packages
-```
+## Safety and external side effects
+
+- Never commit Etsy credentials, OAuth tokens, `.env` files, generated secret material, or local API credentials. Keep token material out of Git; `.gitignore` already excludes `etsy-tokens.json`.
+- Treat live Etsy mutations, permission/scope expansion, package publishing, release tags, and destructive Git operations as external or high-impact actions. Perform them only when the task explicitly requires them.
+- Publishing is release-managed. Do not bump versions, create/push release tags, or publish packages as an incidental part of another change; follow `PUBLISHING.md` when release work is in scope.
+
+## Verification
+
+Use verification proportional to the change.
+
+- During development, prefer the narrowest relevant tests/checks for fast feedback.
+- For changes that can affect runtime behavior, package output, types, or the public API, run the relevant targeted checks and, when practical before finalizing, the repository merge gate:
+  `pnpm run lint && pnpm run type-check && pnpm run test && pnpm run build`
+- When integration packages are affected, include `pnpm run test:packages` when relevant.
+- Documentation-only or other non-runtime changes do not require unrelated full-suite work.
+- Fix failures caused by the change. Report unrelated pre-existing failures rather than weakening checks or hiding them.
+
+## Keeping this file useful
+
+Keep `AGENTS.md` concise and model-agnostic. Add only durable repository-specific context, invariants, decision boundaries, or verification guidance that a capable agent cannot reliably infer from the codebase. Avoid model-specific prompt hacks, mandatory file-reading sequences, and step-by-step procedures unless there is evidence they prevent a real recurring failure.
