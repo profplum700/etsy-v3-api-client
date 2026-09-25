@@ -1,19 +1,31 @@
 name: Publish
 
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [master]
 
 jobs:
   publish:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'master'
     runs-on: ubuntu-latest
+    env:
+      MCP_PUBLISHER_VERSION: v1.8.1
     permissions:
-      contents: read
+      actions: read
+      contents: write
       id-token: write
+
     steps:
-      - name: Checkout code
+      - name: Checkout the verified commit
         uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
 
       - name: Install pnpm
         uses: pnpm/action-setup@v6
@@ -21,42 +33,95 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: '24'
-          registry-url: 'https://registry.npmjs.org'
-          cache: 'pnpm'
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+          cache: "pnpm"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build project
-        run: pnpm run build
+      - name: Validate MCP Registry metadata version
+        run: pnpm run check:registry-metadata
 
-      - name: Run type checking
-        run: pnpm run type-check
+      - name: Find previous successful main CI run
+        id: base
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const current = context.payload.workflow_run;
+            const response = await github.rest.actions.listWorkflowRunsForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: "ci.yml",
+              branch: "master",
+              event: "push",
+              status: "success",
+              per_page: 100,
+            });
+            const previous = response.data.workflow_runs
+              .filter((run) => run.id < current.id && run.head_sha !== current.head_sha)
+              .sort((left, right) => right.id - left.id)[0];
+            let baseSha = previous?.head_sha;
+            if (!baseSha) {
+              const commit = await github.rest.repos.getCommit({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: current.head_sha,
+              });
+              baseSha = commit.data.parents[0]?.sha ?? current.head_sha;
+            }
+            core.setOutput("sha", baseSha);
 
-      # Trusted Publishers (OIDC) requires npm 11.5.1+ (Node 24)
-      # Provenance is automatic with Trusted Publishers - no flag needed
-      - name: Publish core package
-        run: npm publish --access public
+      - name: Identify package version changes
+        id: versions
+        env:
+          BASE_SHA: ${{ steps.base.outputs.sha }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          VERSIONS_FILE: ${{ runner.temp }}/etsy-package-versions.json
+        run: node scripts/changed-package-versions.mjs "$BASE_SHA" "$HEAD_SHA" | tee "$VERSIONS_FILE"
 
-      # v3.0.1 changes only the core client. The workspace packages remain at
-      # their already-published 2.5.4 versions and must not be republished.
-      - name: Publish etsy-cli
-        if: github.ref != 'refs/tags/v3.0.1'
-        run: npm publish --access public
-        working-directory: packages/etsy-cli
+      - name: Publish changed npm packages
+        if: steps.versions.outputs.changed_packages != '[]'
+        run: pnpm run release:packages
 
-      - name: Publish etsy-react
-        if: github.ref != 'refs/tags/v3.0.1'
-        run: npm publish --access public
-        working-directory: packages/etsy-react
+      - name: Push package-specific Changesets tags
+        if: steps.versions.outputs.changed_packages != '[]'
+        env:
+          VERSIONS_FILE: ${{ runner.temp }}/etsy-package-versions.json
+        run: node scripts/push-changeset-tags.mjs "$VERSIONS_FILE"
 
-      - name: Publish etsy-nextjs
-        if: github.ref != 'refs/tags/v3.0.1'
-        run: npm publish --access public
-        working-directory: packages/etsy-nextjs
+      - name: Install Cosign
+        if: steps.versions.outputs.mcp_changed == 'true'
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
 
-      - name: Publish etsy-admin-ui
-        if: github.ref != 'refs/tags/v3.0.1'
-        run: npm publish --access public
-        working-directory: packages/etsy-admin-ui
+      - name: Download and verify MCP Registry publisher
+        if: steps.versions.outputs.mcp_changed == 'true'
+        run: |
+          set -euo pipefail
+          archive="mcp-publisher_linux_amd64.tar.gz"
+          base_url="https://github.com/modelcontextprotocol/registry/releases/download/${MCP_PUBLISHER_VERSION}"
+          curl --fail --location --silent --show-error --output "$archive" "$base_url/$archive"
+          curl --fail --location --silent --show-error --output "$archive.sigstore.json" "$base_url/$archive.sigstore.json"
+          cosign verify-blob \
+            --bundle "$archive.sigstore.json" \
+            --certificate-identity-regexp "^https://github.com/modelcontextprotocol/registry/.github/workflows/release.yml@refs/tags/${MCP_PUBLISHER_VERSION}$" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            "$archive"
+          tar -xzf "$archive" mcp-publisher
+          rm -f "$archive" "$archive.sigstore.json"
+
+      - name: Verify the MCP package is published to npm
+        if: steps.versions.outputs.mcp_changed == 'true'
+        run: node scripts/verify-mcp-published.mjs
+
+      - name: Validate MCP Registry metadata
+        if: steps.versions.outputs.mcp_changed == 'true'
+        run: ./mcp-publisher validate server.json
+
+      - name: Authenticate to MCP Registry with GitHub OIDC
+        if: steps.versions.outputs.mcp_changed == 'true'
+        run: ./mcp-publisher login github-oidc
+
+      - name: Publish MCP Registry metadata
+        if: steps.versions.outputs.mcp_changed == 'true'
+        run: ./mcp-publisher publish

@@ -31,15 +31,10 @@ jobs:
 
       - name: Run type checking
         run: pnpm run type-check
-
-      - name: Run tests
-        run: pnpm run test
-
+      - name: Validate MCP Registry metadata version
+        run: pnpm run check:registry-metadata
       - name: Run tests with coverage
         run: pnpm run test:coverage
-
-      - name: Build project
-        run: pnpm run build
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4

@@ -227,8 +227,8 @@ await client.getListingsByShop(shopId, { limit: 10 });
 **Problem**: Exceeded rate limit.
 
 **Etsy Rate Limits**:
-- 5 requests per second
-- 5,000 requests per day per app
+- Per-app QPS and rolling 24-hour QPD quotas are shown in the Etsy Developer Portal and response headers.
+- The SDK's local fallback is 5 requests per second and 5,000 requests per rolling 24 hours.
 
 **Solution**:
 ```typescript

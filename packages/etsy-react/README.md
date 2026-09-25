@@ -186,7 +186,12 @@ mutate({
     products: [
       {
         sku: 'SKU-001',
-        offerings: [{ price: 29.99, quantity: 10 }],
+        offerings: [{
+          price: 29.99,
+          quantity: 10,
+          is_enabled: true,
+          readiness_state_id: null,
+        }],
       },
     ],
   },

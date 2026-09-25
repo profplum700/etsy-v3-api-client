@@ -12,7 +12,7 @@ import { fileURLToPath } from 'url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, '..');
 
-const packages = ['etsy-cli', 'etsy-admin-ui', 'etsy-react', 'etsy-nextjs'];
+const packages = ['etsy-cli', 'etsy-react', 'etsy-admin-ui', 'etsy-nextjs', 'etsy-mcp-server'];
 
 console.log('Building core package...');
 try {

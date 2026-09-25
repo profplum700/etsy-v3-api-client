@@ -36,7 +36,7 @@
     "experimentalDecorators": false,
     "emitDecoratorMetadata": false,
     "incremental": true,
-    "tsBuildInfoFile": "./dist/.tsbuildinfo",
+    "tsBuildInfoFile": "./.cache/tsconfig.tsbuildinfo",
     "removeComments": true,
     "preserveConstEnums": true,
     "importsNotUsedAsValues": "remove",

@@ -524,16 +524,14 @@ export type ApproachingLimitCallback = (
  * used as fallbacks when Etsy response headers are unavailable. On serverless
  * platforms (Vercel, AWS Lambda, etc.) the process-local request counter
  * resets on every cold start, so only the header-based tracking
- * (`x-remaining-today`) is accurate — the local counter is best-effort.
- *
- * The daily reset timer assumes Etsy resets at UTC midnight. If Etsy uses a
- * different window the local counter may reset at the wrong time. Header-based
- * limits (preferred when available) are unaffected.
+ * (`x-remaining-today`) reflects usage across the API key. The local fallback
+ * tracks only this process's requests in a rolling 24-hour window and cannot
+ * account for calls made by other processes or apps using the same key.
  */
 export interface RateLimitConfig {
-  /** Daily request cap (default: 5000 — Etsy's actual limit). Used as fallback when headers unavailable. */
+  /** Rolling 24-hour request cap (default fallback: 5000). Etsy's actual app quota is available in the Developer Portal and response headers. */
   maxRequestsPerDay: number;
-  /** Per-second request cap (default: 5 — Etsy's actual limit). */
+  /** Per-second request cap (default fallback: 5). Etsy's actual app quota is available in the Developer Portal and response headers. */
   maxRequestsPerSecond: number;
   /** Minimum milliseconds between requests (default: 200, i.e. 1000 / 5 QPS). */
   minRequestInterval: number;
@@ -562,6 +560,7 @@ export interface RateLimitConfig {
 export interface RateLimitStatus {
   // Existing fields
   remainingRequests: number;
+  /** Estimated expiry of the oldest locally tracked request; prefer Etsy's Retry-After on 429 responses. */
   resetTime: Date;
   canMakeRequest: boolean;
 
@@ -1557,27 +1556,25 @@ export interface UpdateListingParams {
 
 export interface UpdateListingInventoryParams {
   products: Array<{
-    sku?: string;
-    property_values?: Array<{
+    sku?: string | null;
+    property_values: Array<{
       property_id: number;
       property_name?: string;
-      scale_id?: number;
-      scale_name?: string;
-      value_ids?: number[];
-      values?: string[];
+      scale_id?: number | null;
+      value_ids: number[];
+      values: string[];
     }>;
     offerings: Array<{
-      offering_id?: number;
       price: number;
       quantity: number;
       is_enabled: boolean;
-      readiness_state_id?: number;
+      readiness_state_id: number | null;
     }>;
   }>;
   price_on_property?: number[];
   quantity_on_property?: number[];
   sku_on_property?: number[];
-  readiness_state_on_property?: number[];
+  readiness_state_on_property?: number[] | null;
 }
 
 // ============================================================================

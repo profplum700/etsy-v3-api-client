@@ -473,6 +473,7 @@ describe('Edge Cases and Error Handling', () => {
         accessToken: 'test-token',
         refreshToken: 'test-refresh',
         expiresAt: new Date(Date.now() + 3600000),
+        rateLimiting: { enabled: false },
         caching: { enabled: true, ttl: 300 }
       });
 

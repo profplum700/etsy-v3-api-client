@@ -189,6 +189,7 @@ export class EtsyClient {
   private logger: LoggerInterface;
   private cache?: CacheStorage;
   private cacheTtl!: number;
+  private rateLimitingEnabled: boolean;
   private keystring: string;
   private sharedSecret: string;
   private bulkOperationManager: BulkOperationManager;
@@ -203,9 +204,10 @@ export class EtsyClient {
     this.logger = new DefaultLogger();
     this.keystring = config.keystring;
     this.sharedSecret = config.sharedSecret;
+    this.rateLimitingEnabled = config.rateLimiting?.enabled !== false;
     
     // Set up rate limiting
-    if (config.rateLimiting?.enabled !== false) {
+    if (this.rateLimitingEnabled) {
       this.rateLimiter = new EtsyRateLimiter({
         maxRequestsPerDay: config.rateLimiting?.maxRequestsPerDay || ETSY_RATE_LIMITS.MAX_REQUESTS_PER_DAY,
         maxRequestsPerSecond: config.rateLimiting?.maxRequestsPerSecond || ETSY_RATE_LIMITS.MAX_REQUESTS_PER_SECOND,
@@ -238,6 +240,35 @@ export class EtsyClient {
   /**
    * Make an authenticated request to the Etsy API
    */
+  private async acquireRateLimitSlot(): Promise<number | undefined> {
+    return this.rateLimitingEnabled
+      ? this.rateLimiter.acquireRequestSlot()
+      : undefined;
+  }
+
+  /** Send a single request from methods that do not use the standard retry loop. */
+  private async fetchOnceWithRateLimit(url: string, options: RequestInit): Promise<Response> {
+    const reservationId = await this.acquireRateLimitSlot();
+    let response: Response;
+    try {
+      response = await this.fetch(url, options);
+    } catch (error) {
+      if (reservationId !== undefined) this.rateLimiter.releaseRequestSlot(reservationId);
+      throw error;
+    }
+
+    if (response.status === 429) {
+      // Record shared cooldown/quota state but leave mutation replay to the
+      // caller, which must reconcile and rebuild its payload before retrying.
+      await this.rateLimiter.handleRateLimitResponse(response.headers, reservationId);
+      this.rateLimiter.resetRetryCount();
+    } else {
+      this.rateLimiter.updateFromHeaders(response.headers, reservationId);
+      if (response.ok) this.rateLimiter.resetRetryCount();
+    }
+    return response;
+  }
+
   private async makeRequest<T>(
     endpoint: string,
     options: RequestInit = {},
@@ -266,9 +297,6 @@ export class EtsyClient {
       }
     }
 
-    // Wait for rate limit
-    await this.rateLimiter.waitForRateLimit();
-
     // Get access token
     const accessToken = await this.tokenManager.getAccessToken();
 
@@ -296,21 +324,45 @@ export class EtsyClient {
   ): Promise<T> {
     while (true) {
       try {
-        const response = await this.fetch(url, options);
+        const reservationId = await this.acquireRateLimitSlot();
+        let response: Response;
+        try {
+          response = await this.fetch(url, options);
+        } catch (error) {
+          if (reservationId !== undefined) this.rateLimiter.releaseRequestSlot(reservationId);
+          throw error;
+        }
 
         // Handle 429 Rate Limited
         if (response.status === 429) {
           const { shouldRetry, delayMs } = await this.rateLimiter.handleRateLimitResponse(
-            response.headers
+            response.headers,
+            reservationId
           );
 
           if (shouldRetry) {
+            const method = (options.method ?? 'GET').toUpperCase();
+            if (method !== 'GET') {
+              // Mutations may carry a full-state or non-idempotent payload.
+              // Let the caller reconcile and rebuild it instead of replaying
+              // stale request data after a rate-limit delay.
+              this.rateLimiter.resetRetryCount();
+              const errorText = await response.text();
+              throw new EtsyApiError(
+                `Etsy API error: 429 ${response.statusText}; automatic retry skipped for ${method} requests`,
+                429,
+                errorText
+              );
+            }
             this.logger.warn(`Rate limited. Retrying in ${delayMs}ms...`);
             await this.sleep(delayMs);
             continue; // Retry the request
           }
           // If shouldRetry is false, handleRateLimitResponse will have thrown
         }
+
+        // Reconcile all non-429 responses too; they still consume a quota slot.
+        this.rateLimiter.updateFromHeaders(response.headers, reservationId);
 
         // Handle other errors
         if (!response.ok) {
@@ -322,8 +374,7 @@ export class EtsyClient {
           );
         }
 
-        // SUCCESS: Update rate limiter with response headers
-        this.rateLimiter.updateFromHeaders(response.headers);
+        // SUCCESS: reset retry state after processing an accepted response.
         this.rateLimiter.resetRetryCount();
 
         // Handle 204 No Content responses (typically from DELETE operations)
@@ -875,11 +926,97 @@ export class EtsyClient {
   ): Promise<EtsyListingInventory> {
     const legacy = options?.legacy;
     const query = legacy !== undefined ? `?legacy=${legacy}` : '';
+    // Build the wire body from Etsy's documented request fields. Callers can
+    // pass structurally wider objects (for example, a GET inventory response);
+    // serializing those objects directly can leak response-only fields into
+    // this mutation request. Inventory replacement requires callers to state
+    // each product's variation properties explicitly; [] means no properties.
+    if (!Array.isArray(params.products) || params.products.length === 0) {
+      throw new TypeError('Inventory update must contain at least one product.');
+    }
+    const body: UpdateListingInventoryParams = {
+      products: params.products.map((product, productIndex) => {
+        if ((product as typeof product & { is_deleted?: unknown }).is_deleted === true) {
+          throw new TypeError(`Inventory product ${productIndex} is deleted and cannot be submitted for replacement.`);
+        }
+        if (!Array.isArray(product.offerings) || product.offerings.length === 0) {
+          throw new TypeError(`Inventory product ${productIndex} must contain at least one offering.`);
+        }
+        if (!Array.isArray(product.property_values)) {
+          throw new TypeError(`Inventory product ${productIndex} must include property_values; pass [] when it has no variation properties.`);
+        }
+        if (product.sku !== undefined && product.sku !== null && typeof product.sku !== 'string') {
+          throw new TypeError(`Inventory product ${productIndex} sku must be a string or null.`);
+        }
+
+        return {
+          ...(product.sku !== undefined ? { sku: product.sku } : {}),
+          property_values: product.property_values.map((value, valueIndex) => {
+            if (!Number.isInteger(value.property_id) || value.property_id < 1) {
+              throw new TypeError(`Inventory product ${productIndex} property_values[${valueIndex}].property_id must be a positive integer.`);
+            }
+            if (!Array.isArray(value.value_ids) || value.value_ids.some((id) => !Number.isInteger(id))) {
+              throw new TypeError(`Inventory product ${productIndex} property_values[${valueIndex}].value_ids must be an integer array.`);
+            }
+            if (!Array.isArray(value.values) || value.values.some((entry) => typeof entry !== 'string')) {
+              throw new TypeError(`Inventory product ${productIndex} property_values[${valueIndex}].values must be a string array.`);
+            }
+            if (value.property_name !== undefined && typeof value.property_name !== 'string') {
+              throw new TypeError(`Inventory product ${productIndex} property_values[${valueIndex}].property_name must be a string.`);
+            }
+            if (value.scale_id !== undefined && value.scale_id !== null &&
+              (!Number.isInteger(value.scale_id) || value.scale_id < 1)) {
+              throw new TypeError(`Inventory product ${productIndex} property_values[${valueIndex}].scale_id must be a positive integer or null.`);
+            }
+
+            return {
+              property_id: value.property_id,
+              ...(value.property_name !== undefined ? { property_name: value.property_name } : {}),
+              ...(value.scale_id !== undefined ? { scale_id: value.scale_id } : {}),
+              value_ids: value.value_ids,
+              values: value.values,
+            };
+          }),
+          offerings: product.offerings.map((offering, offeringIndex) => {
+            if ((offering as typeof offering & { is_deleted?: unknown }).is_deleted === true) {
+              throw new TypeError(`Inventory product ${productIndex} offering ${offeringIndex} is deleted and cannot be submitted for replacement.`);
+            }
+            if (typeof offering.price !== 'number' || !Number.isFinite(offering.price)) {
+              throw new TypeError('Inventory offering price must be a finite decimal number in the listing currency.');
+            }
+            if (!Number.isInteger(offering.quantity)) {
+              throw new TypeError(`Inventory product ${productIndex} offering ${offeringIndex} quantity must be an integer.`);
+            }
+            if (typeof offering.is_enabled !== 'boolean') {
+              throw new TypeError(`Inventory product ${productIndex} offering ${offeringIndex} is_enabled must be a boolean.`);
+            }
+            if (offering.readiness_state_id === undefined ||
+              (offering.readiness_state_id !== null &&
+                (!Number.isInteger(offering.readiness_state_id) || offering.readiness_state_id < 1))) {
+              throw new TypeError('Inventory offering readiness_state_id is required; use null when not set.');
+            }
+
+            return {
+              price: offering.price,
+              quantity: offering.quantity,
+              is_enabled: offering.is_enabled,
+              readiness_state_id: offering.readiness_state_id,
+            };
+          }),
+        };
+      }),
+      ...(params.price_on_property !== undefined ? { price_on_property: params.price_on_property } : {}),
+      ...(params.quantity_on_property !== undefined ? { quantity_on_property: params.quantity_on_property } : {}),
+      ...(params.sku_on_property !== undefined ? { sku_on_property: params.sku_on_property } : {}),
+      ...(params.readiness_state_on_property !== undefined
+        ? { readiness_state_on_property: params.readiness_state_on_property }
+        : {}),
+    };
     return this.makeRequest<EtsyListingInventory>(
       `/listings/${listingId}/inventory${query}`,
       {
         method: 'PUT',
-        body: JSON.stringify(params)
+        body: JSON.stringify(body)
       },
       false
     );
@@ -910,10 +1047,9 @@ export class EtsyClient {
     if (params?.alt_text) formData.append('alt_text', params.alt_text);
 
     const url = `${this.baseUrl}/shops/${shopId}/listings/${listingId}/images`;
-    await this.rateLimiter.waitForRateLimit();
     const accessToken = await this.tokenManager.getAccessToken();
 
-    const response = await this.fetch(url, {
+    const response = await this.fetchOnceWithRateLimit(url, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
@@ -1468,10 +1604,11 @@ export class EtsyClient {
     paymentId: string
   ): Promise<EtsyPayment> {
     const payments = await this.getPayments(shopId, [Number(paymentId)]);
-    if (payments.length === 0) {
+    const payment = payments[0];
+    if (!payment) {
       throw new EtsyApiError('Payment not found', 404);
     }
-    return payments[0]!;
+    return payment;
   }
 
   // ============================================================================
@@ -1531,10 +1668,9 @@ export class EtsyClient {
     }
 
     const url = `${this.baseUrl}/shops/${shopId}/listings/${listingId}/properties/${propertyId}`;
-    await this.rateLimiter.waitForRateLimit();
     const accessToken = await this.tokenManager.getAccessToken();
 
-    const response = await this.fetch(url, {
+    const response = await this.fetchOnceWithRateLimit(url, {
       method: 'PUT',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
@@ -1543,10 +1679,6 @@ export class EtsyClient {
       },
       body: body.toString()
     });
-
-    // Update rate limiter from response headers
-    this.rateLimiter.updateFromHeaders(response.headers);
-    this.rateLimiter.resetRetryCount();
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -1843,10 +1975,9 @@ export class EtsyClient {
     if (params?.listing_file_id !== undefined) formData.append('listing_file_id', params.listing_file_id.toString());
 
     const url = `${this.baseUrl}/shops/${shopId}/listings/${listingId}/files`;
-    await this.rateLimiter.waitForRateLimit();
     const accessToken = await this.tokenManager.getAccessToken();
 
-    const response = await this.fetch(url, {
+    const response = await this.fetchOnceWithRateLimit(url, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
@@ -1935,10 +2066,9 @@ export class EtsyClient {
     if (params?.video_id !== undefined) formData.append('video_id', params.video_id.toString());
 
     const url = `${this.baseUrl}/shops/${shopId}/listings/${listingId}/videos`;
-    await this.rateLimiter.waitForRateLimit();
     const accessToken = await this.tokenManager.getAccessToken();
 
-    const response = await this.fetch(url, {
+    const response = await this.fetchOnceWithRateLimit(url, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${accessToken}`,

@@ -33,6 +33,22 @@ yarn add @profplum700/etsy-v3-api-client
 pnpm add @profplum700/etsy-v3-api-client
 ```
 
+## 🤖 Connect an agent to your Etsy shop
+
+The companion [`@profplum700/etsy-mcp-server`](packages/etsy-mcp-server/README.md) package runs locally over stdio and exposes read-only shop, active-listing, and listing-inventory tools. It requires Node.js 24+, your own approved Etsy developer app, and an OS credential store. It does not use a hosted endpoint.
+
+Register `http://localhost:3030/oauth/redirect` as the Etsy app callback if required, then run this in a local interactive terminal:
+
+```bash
+npx --yes @profplum700/etsy-mcp-server@latest setup
+```
+
+Enter your keystring and shared secret in the hidden terminal prompts, authorize only `shops_r` and `listings_r` in Etsy, then choose whether to add the server to your user-level Codex MCP configuration. For another stdio client, configure `npx --yes @profplum700/etsy-mcp-server@latest serve` as its launch command.
+
+You can connect multiple shops without replacing earlier profiles. Run `setup --reuse-app --manual-browser` to reuse the saved developer app credentials, then open the printed authorization URL in the browser profile signed in to the shop you want to add. Use `status` to see saved shops and `use <shop name or ID>` to choose which one MCP tools query. `disconnect` removes only the active shop; `disconnect --all` removes every saved profile. Use `remove-codex` to remove the Codex entry without disconnecting any shop.
+
+**Prompt for an agent:** “Set up the local Etsy MCP server. Do not ask me to paste Etsy credentials into chat or save them in a repository or environment file. Run the setup command in an interactive local terminal so I can enter them there; request only `shops_r` and `listings_r`, verify my shop, and offer the user-level Codex connection.”
+
 ## 🔧 Quick Start
 
 ### Basic Setup
@@ -173,7 +189,7 @@ const client = new EtsyClient({
   rateLimiting: {
     enabled: true,
     maxRequestsPerSecond: 5,
-    maxRequestsPerDay: 5000
+    maxRequestsPerDay: 5000 // Conservative local fallback; Etsy response headers report this app's actual quota
   },
   caching: {
     enabled: true,
@@ -292,15 +308,15 @@ const client = new EtsyClient({
   // ... other config
   rateLimiting: {
     enabled: true,
-    maxRequestsPerSecond: 5,     // Requests per second (Etsy's limit)
-    maxRequestsPerDay: 5000,     // Requests per day (Etsy's limit)
-    minRequestInterval: 200      // Minimum ms between requests (1000 / 5 QPS)
+    maxRequestsPerSecond: 5,     // Conservative QPS fallback
+    maxRequestsPerDay: 5000,     // Conservative rolling 24-hour fallback
+    minRequestInterval: 200      // Minimum ms between requests (5 QPS fallback)
   }
 });
 
-// Check remaining requests
+// Check remaining requests in the rolling local window
 const remaining = client.getRemainingRequests();
-console.log(`${remaining} requests remaining today`);
+console.log(`${remaining} requests remaining in the rolling 24-hour window`);
 ```
 
 ## 🔄 Caching
