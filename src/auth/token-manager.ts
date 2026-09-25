@@ -137,21 +137,30 @@ export class TokenManager {
   }
 
   private async repairPersistenceToCurrentTokens(): Promise<void> {
-    const current = this.currentTokens;
-    if (current) {
-      if (this.storage) await this.storage.save(current);
-      if (this.refreshCallback) {
-        await this.refreshCallback(current.access_token, current.refresh_token, current.expires_at);
+    while (true) {
+      const generation = this.tokenMutationGeneration;
+      const current = this.currentTokens ? { ...this.currentTokens } : null;
+      try {
+        if (current) {
+          if (this.storage) await this.storage.save(current);
+          if (this.refreshCallback) {
+            await this.refreshCallback(current.access_token, current.refresh_token, current.expires_at);
+          }
+        } else {
+          if (this.storage) await this.storage.clear();
+          if (this.clearCallback) await this.clearCallback();
+          else if (this.refreshClearRequired) {
+            throw new EtsyAuthError(
+              'A refresh persistence callback is configured without refreshClearAsync; durable tokens could not be cleared safely',
+              'TOKEN_CLEAR_CALLBACK_REQUIRED'
+            );
+          }
+        }
+      } catch (error) {
+        if (generation !== this.tokenMutationGeneration) continue;
+        throw error;
       }
-      return;
-    }
-    if (this.storage) await this.storage.clear();
-    if (this.clearCallback) await this.clearCallback();
-    else if (this.refreshClearRequired) {
-      throw new EtsyAuthError(
-        'A refresh persistence callback is configured without refreshClearAsync; durable tokens could not be cleared safely',
-        'TOKEN_CLEAR_CALLBACK_REQUIRED'
-      );
+      if (generation === this.tokenMutationGeneration) return;
     }
   }
 

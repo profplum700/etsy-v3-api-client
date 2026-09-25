@@ -419,6 +419,63 @@ describe('TokenManager', () => {
       await expect(storage.load()).resolves.toMatchObject({ access_token: 'manual-access-token' });
     });
 
+    it('repairs the latest token generation when updates race persistence repair', async () => {
+      const storage = new MemoryTokenStorage();
+      const originalSave = storage.save.bind(storage);
+      let releaseRefreshSave: (() => void) | undefined;
+      let signalRefreshSave: (() => void) | undefined;
+      let releaseRepairSave: (() => void) | undefined;
+      let signalRepairSave: (() => void) | undefined;
+      const blockedRefreshSave = new Promise<void>((resolve) => { releaseRefreshSave = resolve; });
+      const blockedRepairSave = new Promise<void>((resolve) => { releaseRepairSave = resolve; });
+      const refreshSaveStarted = new Promise<void>((resolve) => { signalRefreshSave = resolve; });
+      const repairSaveStarted = new Promise<void>((resolve) => { signalRepairSave = resolve; });
+      let saveCount = 0;
+      vi.spyOn(storage, 'save').mockImplementation(async (tokens) => {
+        saveCount += 1;
+        if (saveCount === 1) {
+          signalRefreshSave?.();
+          await blockedRefreshSave;
+        } else if (saveCount === 2) {
+          signalRepairSave?.();
+          await blockedRepairSave;
+        }
+        await originalSave(tokens);
+      });
+      let durableAccessToken = '';
+      const callback = vi.fn(async (accessToken: string) => { durableAccessToken = accessToken; });
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          access_token: 'rotated-access-token', refresh_token: 'rotated-refresh-token',
+          expires_in: 3600, token_type: 'Bearer', scope: 'shops_r listings_r'
+        })
+      });
+      const tokenManager = new TokenManager({ ...mockConfig, refreshSaveAsync: callback }, storage);
+      const firstReplacement = {
+        access_token: 'manual-access-token-1', refresh_token: 'manual-refresh-token-1',
+        expires_at: new Date(Date.now() + 60 * 60 * 1000), token_type: 'Bearer', scope: 'shops_r listings_r'
+      };
+      const latestReplacement = {
+        access_token: 'manual-access-token-2', refresh_token: 'manual-refresh-token-2',
+        expires_at: new Date(Date.now() + 60 * 60 * 1000), token_type: 'Bearer', scope: 'shops_r listings_r'
+      };
+
+      const refresh = tokenManager.refreshToken();
+      await refreshSaveStarted;
+      tokenManager.updateTokens(firstReplacement);
+      releaseRefreshSave?.();
+      await repairSaveStarted;
+      tokenManager.updateTokens(latestReplacement);
+      releaseRepairSave?.();
+
+      await expect(refresh).rejects.toMatchObject({ code: 'TOKEN_REFRESH_SUPERSEDED' });
+      expect(tokenManager.getCurrentTokens()?.access_token).toBe('manual-access-token-2');
+      await expect(storage.load()).resolves.toMatchObject({ access_token: 'manual-access-token-2' });
+      expect(durableAccessToken).toBe('manual-access-token-2');
+      expect(callback).toHaveBeenLastCalledWith('manual-access-token-2', 'manual-refresh-token-2', expect.any(Date));
+    });
+
     it('clears storage after an in-flight async persistence callback settles', async () => {
       let releaseCallback: (() => void) | undefined;
       let signalCallbackStarted: (() => void) | undefined;

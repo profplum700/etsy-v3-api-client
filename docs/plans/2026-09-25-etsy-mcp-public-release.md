@@ -181,3 +181,11 @@ For each item, record the final commit or working-tree identity, commands and ou
 **Plan:** inspect every Markdown code example that constructs `updateListingInventory()` input, including the hook README example. Add `property_values: []` for intentionally non-variant products and confirm all examples match the required TypeScript shape.
 
 **Acceptance:** every relevant no-variation product example explicitly supplies `property_values: []`; varied products keep their property definitions. A repository search confirms no incomplete examples remain, and type-check plus full coverage pass. Reply to and resolve `PRRT_kwDOPMgnhs6mKAgT` with exact files and evidence.
+
+### 25. Keep persistence repair fenced across repeated token updates
+
+**Finding:** PR review `4108675424` reports that `repairPersistenceToCurrentTokens()` can snapshot one manual token update, await storage/callback persistence, then finish after a second `updateTokens()` without repairing the newest generation.
+
+**Plan:** inspect refresh supersession, storage and callback persistence ordering. Add a deterministic test that blocks the first repair write, applies a second manual token update while it is pending, and confirms both storage and the durable callback end with the second update. Then make repair repeat from the latest in-memory token state until the mutation generation remains unchanged across all configured persistence operations; keep a clear operation repairable and preserve the original refresh's superseded error.
+
+**Acceptance:** the regression fails before the fix and passes after; storage and callback both hold the latest replacement after two concurrent token mutations, while the original refresh rejects as superseded. Token-manager tests, type-check, and full coverage pass. Reply to and resolve `PRRT_kwDOPMgnhs6mKNKw` only with this exact evidence.
