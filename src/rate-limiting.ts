@@ -304,12 +304,14 @@ export class EtsyRateLimiter {
       }
       const exhaustedByEarlierObservation = this.headerRemainingToday === 0 &&
         parsed.remainingToday > 0 && matchedReservationId !== undefined && !isQuotaProbe;
+      const exhaustedByUncorrelatedRecoveryProbe = this.headerRemainingToday === 0 &&
+        parsed.remainingToday > 0 && matchedReservationId === undefined;
       if (exhaustedByEarlierObservation) {
         // Client reservation order cannot establish Etsy's server processing
         // order. Once any response reports exhaustion, only the guarded probe
         // may reopen quota; a delayed response from an earlier-dispatched
         // request can still carry a stale positive snapshot.
-      } else if (isQuotaProbe || this.headerRemainingToday === undefined) {
+      } else if (isQuotaProbe || exhaustedByUncorrelatedRecoveryProbe || this.headerRemainingToday === undefined) {
         this.headerRemainingToday = parsed.remainingToday;
         this.latestHeaderReservationId = Math.max(this.latestHeaderReservationId, observationId);
       } else if (parsed.remainingToday < this.headerRemainingToday) {

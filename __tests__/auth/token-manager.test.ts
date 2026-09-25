@@ -385,6 +385,115 @@ describe('TokenManager', () => {
       expect(tokenManager.getCurrentTokens()?.access_token).toBe('durable-access-token');
     });
 
+    it('restores synchronous updateTokens after an in-flight storage save settles', async () => {
+      const storage = new MemoryTokenStorage();
+      const originalSave = storage.save.bind(storage);
+      let releaseSave: (() => void) | undefined;
+      let signalSaveStarted: (() => void) | undefined;
+      const saveStarted = new Promise<void>((resolve) => { signalSaveStarted = resolve; });
+      const blockedSave = new Promise<void>((resolve) => { releaseSave = resolve; });
+      vi.spyOn(storage, 'save').mockImplementationOnce(async (tokens) => {
+        signalSaveStarted?.();
+        await blockedSave;
+        await originalSave(tokens);
+      });
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          access_token: 'rotated-access-token', refresh_token: 'rotated-refresh-token',
+          expires_in: 3600, token_type: 'Bearer', scope: 'shops_r listings_r'
+        })
+      });
+      const tokenManager = new TokenManager(mockConfig, storage);
+      const replacement = {
+        access_token: 'manual-access-token', refresh_token: 'manual-refresh-token',
+        expires_at: new Date(Date.now() + 60 * 60 * 1000), token_type: 'Bearer', scope: 'shops_r listings_r'
+      };
+      const refresh = tokenManager.refreshToken();
+      await saveStarted;
+      tokenManager.updateTokens(replacement);
+      releaseSave?.();
+
+      await expect(refresh).rejects.toMatchObject({ code: 'TOKEN_REFRESH_SUPERSEDED' });
+      expect(tokenManager.getCurrentTokens()?.access_token).toBe('manual-access-token');
+      await expect(storage.load()).resolves.toMatchObject({ access_token: 'manual-access-token' });
+    });
+
+    it('clears storage after an in-flight async persistence callback settles', async () => {
+      let releaseCallback: (() => void) | undefined;
+      let signalCallbackStarted: (() => void) | undefined;
+      const callbackStarted = new Promise<void>((resolve) => { signalCallbackStarted = resolve; });
+      const blockedCallback = new Promise<void>((resolve) => { releaseCallback = resolve; });
+      const storage = new MemoryTokenStorage();
+      const callback = vi.fn(async () => {
+        signalCallbackStarted?.();
+        await blockedCallback;
+      });
+      const clearCallback = vi.fn(async () => undefined);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          access_token: 'rotated-access-token', refresh_token: 'rotated-refresh-token',
+          expires_in: 3600, token_type: 'Bearer', scope: 'shops_r listings_r'
+        })
+      });
+      const tokenManager = new TokenManager({ ...mockConfig, refreshSaveAsync: callback, refreshClearAsync: clearCallback }, storage);
+      const refresh = tokenManager.refreshToken();
+      await callbackStarted;
+      const clear = tokenManager.clearTokens();
+      releaseCallback?.();
+
+      await expect(refresh).rejects.toMatchObject({ code: 'TOKEN_REFRESH_SUPERSEDED' });
+      await clear;
+      expect(tokenManager.getCurrentTokens()).toBeNull();
+      await expect(storage.load()).resolves.toBeNull();
+      expect(clearCallback).toHaveBeenCalled();
+    });
+
+    it('repairs callback-backed persistence after updateTokens races an async callback', async () => {
+      let releaseCallback: (() => void) | undefined;
+      let signalCallbackStarted: (() => void) | undefined;
+      const callbackStarted = new Promise<void>((resolve) => { signalCallbackStarted = resolve; });
+      const blockedCallback = new Promise<void>((resolve) => { releaseCallback = resolve; });
+      let durableAccessToken = '';
+      const callback = vi.fn(async (accessToken: string) => {
+        if (callback.mock.calls.length === 1) {
+          signalCallbackStarted?.();
+          await blockedCallback;
+        }
+        durableAccessToken = accessToken;
+      });
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          access_token: 'rotated-access-token', refresh_token: 'rotated-refresh-token',
+          expires_in: 3600, token_type: 'Bearer', scope: 'shops_r listings_r'
+        })
+      });
+      const tokenManager = new TokenManager({ ...mockConfig, refreshSaveAsync: callback });
+      const replacement = {
+        access_token: 'manual-access-token', refresh_token: 'manual-refresh-token',
+        expires_at: new Date(Date.now() + 60 * 60 * 1000), token_type: 'Bearer', scope: 'shops_r listings_r'
+      };
+      const refresh = tokenManager.refreshToken();
+      await callbackStarted;
+      tokenManager.updateTokens(replacement);
+      releaseCallback?.();
+
+      await expect(refresh).rejects.toMatchObject({ code: 'TOKEN_REFRESH_SUPERSEDED' });
+      expect(tokenManager.getCurrentTokens()?.access_token).toBe('manual-access-token');
+      expect(durableAccessToken).toBe('manual-access-token');
+      expect(callback).toHaveBeenCalledTimes(2);
+    });
+
+    it('requires a matching clear callback before clearing callback-owned durable tokens', async () => {
+      const callback = vi.fn(async () => undefined);
+      const tokenManager = new TokenManager({ ...mockConfig, refreshSaveAsync: callback });
+
+      await expect(tokenManager.clearTokens()).rejects.toMatchObject({ code: 'TOKEN_CLEAR_CALLBACK_REQUIRED' });
+      expect(tokenManager.getCurrentTokens()).toBeNull();
+    });
+
     it('should call refresh callback when provided', async () => {
       const mockCallback = vi.fn();
       const configWithCallback = {

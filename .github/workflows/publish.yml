@@ -8,18 +8,18 @@ on:
 permissions:
   actions: read
   contents: read
-  id-token: write
 
 jobs:
-  publish:
-    if: startsWith(github.ref, 'refs/tags/@profplum700/')
+  prepare:
+    if: >-
+      startsWith(github.ref, 'refs/tags/@profplum700/') &&
+      github.event.deleted != true &&
+      github.sha != '0000000000000000000000000000000000000000'
     runs-on: ubuntu-latest
-    concurrency:
-      group: package-publish-${{ github.ref_name }}
-      cancel-in-progress: false
-    env:
-      MCP_PUBLISHER_VERSION: v1.8.1
-
+    outputs:
+      package_name: ${{ steps.package.outputs.package_name }}
+      package_version: ${{ steps.package.outputs.package_version }}
+      mcp_changed: ${{ steps.package.outputs.mcp_changed }}
     steps:
       - name: Checkout the tagged release commit
         uses: actions/checkout@v7
@@ -34,7 +34,6 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: '24'
-          registry-url: 'https://registry.npmjs.org'
           cache: 'pnpm'
 
       - name: Validate release tag and package version
@@ -77,35 +76,116 @@ jobs:
       - name: Build the verified workspace
         run: pnpm run build
 
-      - name: Pack the selected package
+      - name: Pack and validate the selected package
+        id: tarball
         env:
           PACKAGE_DIRECTORY: ${{ steps.package.outputs.package_directory }}
-        run: pnpm --dir "$PACKAGE_DIRECTORY" pack --pack-destination "$RUNNER_TEMP"
+          PACKAGE_NAME: ${{ steps.package.outputs.package_name }}
+          PACKAGE_VERSION: ${{ steps.package.outputs.package_version }}
+        run: |
+          set -euo pipefail
+          package_temp="$RUNNER_TEMP/etsy-release-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          mkdir -m 700 "$package_temp"
+          pnpm --dir "$PACKAGE_DIRECTORY" pack --pack-destination "$package_temp"
+          mapfile -t archives < <(find "$package_temp" -maxdepth 1 -type f -name '*.tgz' -print)
+          if [[ ${#archives[@]} -ne 1 ]]; then
+            echo "Expected one selected package archive, found ${#archives[@]}." >&2
+            exit 1
+          fi
+          node -e 'const {execFileSync}=require("node:child_process"); const m=JSON.parse(execFileSync("tar",["-xOf",process.argv[1],"package/package.json"],{encoding:"utf8"})); if(m.name!==process.env.PACKAGE_NAME||m.version!==process.env.PACKAGE_VERSION) throw Error("Tarball package manifest does not match release tag.")' "${archives[0]}"
+          echo "path=${archives[0]}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload the exact release tarball
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ steps.tarball.outputs.path }}
+          if-no-files-found: error
+          retention-days: 1
+
+  publish-npm:
+    needs: prepare
+    if: >-
+      startsWith(github.ref, 'refs/tags/@profplum700/') &&
+      github.event.deleted != true &&
+      github.sha != '0000000000000000000000000000000000000000'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    concurrency:
+      group: package-publish-${{ github.ref_name }}
+      cancel-in-progress: false
+    steps:
+      - name: Checkout the verified release scripts
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Setup Node.js with npm Trusted Publishing
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Download the exact release tarball
+        uses: actions/download-artifact@v4
+        with:
+          name: package-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/etsy-release
 
       - name: Require npm Trusted Publishing CLI support
         run: |
           NPM_VERSION="$(npm --version)" node -e 'const [major, minor, patch] = process.env.NPM_VERSION.split(".").map(Number); if (major < 11 || (major === 11 && (minor < 5 || (minor === 5 && patch < 1)))) process.exit(1)'
 
-      - name: Publish selected package with npm Trusted Publishing
+      - name: Publish only the selected package with npm Trusted Publishing
+        env:
+          PACKAGE_NAME: ${{ needs.prepare.outputs.package_name }}
+          PACKAGE_VERSION: ${{ needs.prepare.outputs.package_version }}
+          TARBALL_DIRECTORY: ${{ runner.temp }}/etsy-release
         run: |
-          shopt -s nullglob
-          archives=("$RUNNER_TEMP"/*.tgz)
+          set -euo pipefail
+          mapfile -t archives < <(find "$TARBALL_DIRECTORY" -maxdepth 1 -type f -name '*.tgz' -print)
           if [[ ${#archives[@]} -ne 1 ]]; then
-            echo "Expected one package archive, found ${#archives[@]}." >&2
+            echo "Expected one verified package archive, found ${#archives[@]}." >&2
             exit 1
           fi
-          npm publish "${archives[0]}" --access public
+          node scripts/publish-package.mjs "${archives[0]}" "$PACKAGE_NAME" "$PACKAGE_VERSION"
+
+  publish-registry:
+    needs: [prepare, publish-npm]
+    if: >-
+      startsWith(github.ref, 'refs/tags/@profplum700/') &&
+      github.event.deleted != true &&
+      github.sha != '0000000000000000000000000000000000000000' &&
+      needs.prepare.outputs.mcp_changed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    concurrency:
+      group: package-publish-${{ github.ref_name }}
+      cancel-in-progress: false
+    env:
+      MCP_PUBLISHER_VERSION: v1.8.1
+    steps:
+      - name: Checkout the verified release metadata
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
 
       - name: Verify the MCP package is published to npm
-        if: steps.package.outputs.mcp_changed == 'true'
         run: node scripts/verify-mcp-published.mjs
 
       - name: Install Cosign
-        if: steps.package.outputs.mcp_changed == 'true'
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
 
       - name: Download and verify MCP Registry publisher
-        if: steps.package.outputs.mcp_changed == 'true'
         run: |
           set -euo pipefail
           archive="mcp-publisher_linux_amd64.tar.gz"
@@ -121,15 +201,12 @@ jobs:
           rm -f "$archive" "$archive.sigstore.json"
 
       - name: Validate MCP Registry metadata
-        if: steps.package.outputs.mcp_changed == 'true'
         run: |
-          pnpm run check:registry-metadata
+          node scripts/sync-mcp-registry.mjs --check
           ./mcp-publisher validate server.json
 
       - name: Authenticate to MCP Registry with GitHub OIDC
-        if: steps.package.outputs.mcp_changed == 'true'
         run: ./mcp-publisher login github-oidc
 
       - name: Publish MCP Registry metadata
-        if: steps.package.outputs.mcp_changed == 'true'
-        run: ./mcp-publisher publish
+        run: node scripts/publish-registry-metadata.mjs server.json

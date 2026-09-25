@@ -5,6 +5,7 @@ import { dirname, resolve } from "node:path";
 import { AuthHelper, EtsyClient } from "@profplum700/etsy-v3-api-client";
 import { CredentialStore } from "../dist/credentials.js";
 import { getAuthorizationCode } from "../dist/oauth.js";
+import { inventoryFingerprint } from "./inventory-fingerprint.mjs";
 
 const DEFAULT_REDIRECT_URI = "http://localhost:3030/oauth/redirect";
 const READ_SCOPES = ["shops_r", "listings_r"];
@@ -346,38 +347,6 @@ function inventoryPayload(inventory, targetProductId, targetOfferingId, newPrice
   return payload;
 }
 
-function normalizedProperties(product) {
-  return (product.property_values ?? []).map((property) => ({
-    property_id: property.property_id,
-    property_name: property.property_name,
-    scale_id: property.scale_id ?? null,
-    scale_name: property.scale_name ?? null,
-    value_ids: [...(property.value_ids ?? [])],
-    values: [...(property.values ?? [])],
-  })).sort((left, right) => left.property_id - right.property_id);
-}
-
-function inventoryFingerprint(inventory, targetProductId, targetOfferingId) {
-  const products = (inventory.products ?? []).filter((product) => !product.is_deleted).map((product) => ({
-    product_id: String(product.product_id),
-    sku: product.sku ?? null,
-    property_values: normalizedProperties(product),
-    offerings: (product.offerings ?? []).filter((offering) => !offering.is_deleted).map((offering) => ({
-      offering_id: String(offering.offering_id),
-      price: String(product.product_id) === targetProductId && String(offering.offering_id) === targetOfferingId
-        ? "TARGET_PRICE"
-        : major(offering.price),
-      currency_code: offering.price.currency_code,
-      quantity: offering.quantity,
-      is_enabled: offering.is_enabled,
-      readiness_state_id: offering.readiness_state_id ?? null,
-    })).sort((left, right) => left.offering_id.localeCompare(right.offering_id)),
-  })).sort((left, right) => left.product_id.localeCompare(right.product_id));
-  const flags = Object.fromEntries(["price_on_property", "quantity_on_property", "sku_on_property", "readiness_state_on_property"]
-    .map((key) => [key, inventory[key] ?? null]));
-  return JSON.stringify({ products, flags });
-}
-
 function redact(value, secrets) {
   let text = String(value ?? "");
   for (const secret of secrets) {
@@ -480,6 +449,13 @@ async function main() {
   console.log("Write scope and selected shop identity verified. Applying the approved target prices.");
   const resultIndexByIdentity = new Map(results.map((row, index) => [identity(row), index]));
   const baselineFingerprints = new Map();
+  const targetOfferingsByListing = new Map();
+  for (const item of ready) {
+    const listingId = String(item.row.listing_id);
+    const targets = targetOfferingsByListing.get(listingId) ?? new Set();
+    targets.add(`${item.productId}:${item.offeringId}`);
+    targetOfferingsByListing.set(listingId, targets);
+  }
 
   for (const item of ready) {
     const row = item.row;
@@ -494,7 +470,13 @@ async function main() {
         writeReport(reportPath, results);
         throw new Error("Listing " + row.listing_id + " changed after preflight; stopping before any further updates.");
       }
-      const beforeFingerprint = inventoryFingerprint(inventory, current.productId, current.offeringId);
+      const beforeFingerprint = inventoryFingerprint(inventory, new Set([`${current.productId}:${current.offeringId}`]));
+      if (!baselineFingerprints.has(String(row.listing_id))) {
+        baselineFingerprints.set(String(row.listing_id), inventoryFingerprint(
+          inventory,
+          targetOfferingsByListing.get(String(row.listing_id)) ?? new Set(),
+        ));
+      }
       const payload = inventoryPayload(inventory, current.productId, current.offeringId, Number(row.proposed_gbp));
       try {
         await writer.updateListingInventory(row.listing_id, payload);
@@ -511,7 +493,6 @@ async function main() {
       if (after.productId !== current.productId || after.offeringId !== current.offeringId || !closePrice(after.price, Number(row.proposed_gbp)) || afterFingerprint !== beforeFingerprint) {
         throw new Error("Readback did not match the approved target or another inventory field changed.");
       }
-      baselineFingerprints.set(identity(row), beforeFingerprint);
       results[resultIndex] = statusRow(row, "VERIFIED", "Target price and all other inventory fields verified.", new Date().toISOString());
       writeReport(reportPath, results);
       console.log("Verified " + row.listing_id + " at £" + Number(row.proposed_gbp).toFixed(2));
@@ -531,7 +512,10 @@ async function main() {
     try {
       const inventory = await writer.getListingInventory(row.listing_id, { show_deleted: false });
       const target = findTarget({ has_variations: row.pricing_scope === "variation", state: "active", shop_id: options.shopId }, inventory, row);
-      const unchanged = inventoryFingerprint(inventory, String(target.product.product_id), String(target.offering.offering_id)) === baselineFingerprints.get(identity(row));
+      const unchanged = inventoryFingerprint(
+        inventory,
+        targetOfferingsByListing.get(String(row.listing_id)) ?? new Set(),
+      ) === baselineFingerprints.get(String(row.listing_id));
       if (!closePrice(major(target.offering.price), Number(row.proposed_gbp)) || !unchanged) throw new Error("Final independent readback mismatch.");
       const resultIndex = resultIndexByIdentity.get(identity(row));
       if (resultIndex !== undefined) results[resultIndex] = statusRow(row, "VERIFIED", "Target and full inventory read back again after the batch.", new Date().toISOString());
