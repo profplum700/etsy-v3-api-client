@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { inventoryFingerprint } from "../scripts/inventory-fingerprint.mjs";
-import { finalVerificationRows } from "../scripts/final-verification.mjs";
+import { finalVerificationRows, verifyFinalListingSnapshots } from "../scripts/final-verification.mjs";
 
 function inventory(firstPrice: number, secondPrice: number, quantity = 4) {
   return {
@@ -27,6 +27,27 @@ describe("approved price batch inventory fingerprints", () => {
     const stale = { state: "STALE", row: { listing_id: 3 } };
 
     expect(finalVerificationRows([ready, alreadyAtTarget, stale])).toEqual([ready, alreadyAtTarget]);
+  });
+
+  it("verifies same-listing targets from one shared final inventory snapshot", async () => {
+    const rows = [
+      { state: "READY", row: { listing_id: 1, offering_id: 101 } },
+      { state: "READY", row: { listing_id: 1, offering_id: 102 } },
+    ];
+    let reads = 0;
+    const observed: number[] = [];
+
+    await verifyFinalListingSnapshots(
+      rows,
+      async () => {
+        reads += 1;
+        return reads === 1 ? new Map([[101, 31.5], [102, 60.5]]) : new Map([[101, 38], [102, 60.5]]);
+      },
+      (candidate, snapshot) => { observed.push(snapshot.get(candidate.row.offering_id)!); },
+    );
+
+    expect(reads).toBe(1);
+    expect(observed).toEqual([31.5, 60.5]);
   });
 
   it("treats both approved variation price changes as expected in final verification", () => {

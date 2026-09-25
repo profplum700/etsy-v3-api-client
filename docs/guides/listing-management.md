@@ -347,6 +347,7 @@ inventory.products.forEach(product => {
 await client.updateListingInventory(listingId, {
   products: [{
     sku: 'MUG-001',
+    property_values: [], // No variations
     offerings: [{
       price: 24.99,
       quantity: 10,

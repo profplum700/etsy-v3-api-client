@@ -6,7 +6,7 @@ import { AuthHelper, EtsyClient } from "@profplum700/etsy-v3-api-client";
 import { CredentialStore } from "../dist/credentials.js";
 import { getAuthorizationCode } from "../dist/oauth.js";
 import { inventoryFingerprint } from "./inventory-fingerprint.mjs";
-import { finalVerificationRows } from "./final-verification.mjs";
+import { finalVerificationRows, verifyFinalListingSnapshots } from "./final-verification.mjs";
 import { resolveExecutionReportPath } from "./report-path.mjs";
 
 const DEFAULT_REDIRECT_URI = "http://localhost:3030/oauth/redirect";
@@ -509,26 +509,39 @@ async function main() {
   }
 
   let finalMismatch = false;
-  for (const item of finalVerificationRows(preflight)) {
-    const row = item.row;
-    try {
-      const inventory = await writer.getListingInventory(row.listing_id, { show_deleted: false });
-      const target = findTarget({ has_variations: row.pricing_scope === "variation", state: "active", shop_id: options.shopId }, inventory, row);
-      const baseline = baselineFingerprints.get(String(row.listing_id));
-      const unchanged = baseline === undefined || inventoryFingerprint(
-        inventory,
-        targetOfferingsByListing.get(String(row.listing_id)) ?? new Set(),
-      ) === baseline;
-      if (!closePrice(major(target.offering.price), Number(row.proposed_gbp)) || !unchanged) throw new Error("Final independent readback mismatch.");
-      const resultIndex = resultIndexByIdentity.get(identity(row));
-      if (resultIndex !== undefined) results[resultIndex] = statusRow(row, "VERIFIED", "Target and full inventory read back again after the batch.", new Date().toISOString());
-    } catch (error) {
-      finalMismatch = true;
-      const resultIndex = resultIndexByIdentity.get(identity(row));
-      if (resultIndex !== undefined) results[resultIndex] = statusRow(row, "FAILED_OR_READBACK_MISMATCH", safeError(error, secrets));
-    }
-    writeReport(reportPath, results);
-  }
+  await verifyFinalListingSnapshots(
+    finalVerificationRows(preflight),
+    async (listingId) => {
+      try {
+        const inventory = await writer.getListingInventory(listingId, { show_deleted: false });
+        const baseline = baselineFingerprints.get(String(listingId));
+        const unchanged = baseline === undefined || inventoryFingerprint(
+          inventory,
+          targetOfferingsByListing.get(String(listingId)) ?? new Set(),
+        ) === baseline;
+        return { inventory, unchanged };
+      } catch (error) {
+        return { error };
+      }
+    },
+    async (item, snapshot) => {
+      const row = item.row;
+      try {
+        if ("error" in snapshot) throw snapshot.error;
+        const target = findTarget({ has_variations: row.pricing_scope === "variation", state: "active", shop_id: options.shopId }, snapshot.inventory, row);
+        if (!closePrice(major(target.offering.price), Number(row.proposed_gbp)) || !snapshot.unchanged) {
+          throw new Error("Final independent readback mismatch.");
+        }
+        const resultIndex = resultIndexByIdentity.get(identity(row));
+        if (resultIndex !== undefined) results[resultIndex] = statusRow(row, "VERIFIED", "Target and full inventory read back again after the batch.", new Date().toISOString());
+      } catch (error) {
+        finalMismatch = true;
+        const resultIndex = resultIndexByIdentity.get(identity(row));
+        if (resultIndex !== undefined) results[resultIndex] = statusRow(row, "FAILED_OR_READBACK_MISMATCH", safeError(error, secrets));
+      }
+      writeReport(reportPath, results);
+    },
+  );
 
   const verified = results.filter((row) => row.execution_status === "VERIFIED").length;
   console.log(JSON.stringify({ shop_id: options.shopId, shop_name: options.shopName, currency: options.currency, proposal_rows: rows.length, verified_rows: verified, report: reportPath, write_token_saved_to_disk: false }, null, 2));

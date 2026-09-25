@@ -165,3 +165,19 @@ For each item, record the final commit or working-tree identity, commands and ou
 **Plan:** inspect callback types and token persistence flows. Track whether persistence uses the new async durable callback contract or the legacy callback. Preserve the prior successful `clearTokens()` behavior for legacy `refreshSave`; continue requiring `refreshClearAsync` for `refreshSaveAsync`, whose contract explicitly represents durable asynchronous persistence. Add regressions for both cases, including ordering after an in-flight refresh.
 
 **Acceptance:** legacy `refreshSave` clears memory/storage and resolves without a clear callback; `refreshSaveAsync` without `refreshClearAsync` retains the actionable failure; paired async callbacks still clear durable data. Focused token-manager tests and full coverage pass; reply to and resolve `PRRT_kwDOPMgnhs6mJxlr` with evidence.
+
+### 23. Verify all approved prices from one final inventory snapshot per listing
+
+**Finding:** PR review `4108642913` reports that separately reading a same-listing batch once per target allows a later approved target's fingerprint mask to hide an earlier target that reverted between reads.
+
+**Plan:** inspect the final batch verifier and its report/test harness. Group final checks by listing, fetch one inventory snapshot per listing, compare its non-target fingerprint once, then validate every approved target against that same snapshot. Add a regression where the mock returns a reverted first target on the second read; the verifier must either use one snapshot and catch the changed target or fail closed. Preserve preflight and per-write checks.
+
+**Acceptance:** every approved target in a listing is verified from the same final snapshot and the shared baseline is compared once; a target reverting before final verification makes the command fail. Focused price-script tests and full coverage pass; reply to and resolve `PRRT_kwDOPMgnhs6mKAgR` with exact evidence.
+
+### 24. Fix inventory-update examples missing required `property_values`
+
+**Finding:** PR review `4108642916` reports that no-variation code examples in the listing-management guide and React README omit the now-required `property_values` array.
+
+**Plan:** inspect every Markdown code example that constructs `updateListingInventory()` input, including the hook README example. Add `property_values: []` for intentionally non-variant products and confirm all examples match the required TypeScript shape.
+
+**Acceptance:** every relevant no-variation product example explicitly supplies `property_values: []`; varied products keep their property definitions. A repository search confirms no incomplete examples remain, and type-check plus full coverage pass. Reply to and resolve `PRRT_kwDOPMgnhs6mKAgT` with exact files and evidence.

@@ -186,6 +186,7 @@ mutate({
     products: [
       {
         sku: 'SKU-001',
+        property_values: [], // No variations
         offerings: [{
           price: 29.99,
           quantity: 10,
