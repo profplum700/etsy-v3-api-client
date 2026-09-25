@@ -7,7 +7,7 @@
     "composite": false,
     "declaration": false,
     "declarationMap": false,
-    "tsBuildInfoFile": "./dist/.tsbuildinfo"
+    "tsBuildInfoFile": "./.cache/tsconfig.tsbuildinfo"
   },
   "include": ["src/**/*", "jest.setup.ts"],
   "exclude": ["node_modules", "dist", "__tests__"]

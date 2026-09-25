@@ -105,6 +105,7 @@ export class AuthHelper {
       assertFetchSupport();
       const response = await fetch('https://api.etsy.com/v3/public/oauth/token', {
         method: 'POST',
+        redirect: 'error',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
           'Accept': 'application/json'

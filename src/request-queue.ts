@@ -6,6 +6,8 @@
 import { EtsyRateLimitError } from './types';
 import { ETSY_RATE_LIMITS } from './rate-limiting';
 
+const QPD_WINDOW_MS = 24 * 60 * 60 * 1000;
+
 /**
  * Priority levels for requests
  */
@@ -91,8 +93,7 @@ export class GlobalRequestQueue {
   private queue: QueuedRequest<unknown>[] = [];
   private processing = false;
   private rateLimits = new Map<string, RateLimitInfo>();
-  private requestCount = 0;
-  private dailyReset = new Date();
+  private requestTimestamps: number[] = [];
   private lastRequestTime = 0;
 
   // Configuration — sourced from the shared ETSY_RATE_LIMITS constant
@@ -100,9 +101,7 @@ export class GlobalRequestQueue {
   private readonly maxRequestsPerSecond = ETSY_RATE_LIMITS.MAX_REQUESTS_PER_SECOND;
   private readonly minRequestInterval = ETSY_RATE_LIMITS.MIN_REQUEST_INTERVAL;
 
-  private constructor() {
-    this.setNextDailyReset();
-  }
+  private constructor() {}
 
   /**
    * Get the singleton instance
@@ -158,13 +157,16 @@ export class GlobalRequestQueue {
     queueLength: number;
     processing: boolean;
     remainingRequests: number;
+    /** Estimated expiry of the oldest locally tracked request in the rolling QPD window. */
     resetTime: Date;
   } {
+    const now = Date.now();
+    this.pruneRequestTimestamps(now);
     return {
       queueLength: this.queue.length,
       processing: this.processing,
-      remainingRequests: Math.max(0, this.maxRequestsPerDay - this.requestCount),
-      resetTime: this.dailyReset,
+      remainingRequests: Math.max(0, this.maxRequestsPerDay - this.requestTimestamps.length),
+      resetTime: this.getNextRequestExpiry(now),
     };
   }
 
@@ -190,23 +192,18 @@ export class GlobalRequestQueue {
 
     try {
       while (this.queue.length > 0) {
-        // Reset daily counter if needed
-        if (Date.now() >= this.dailyReset.getTime()) {
-          this.requestCount = 0;
-          this.setNextDailyReset();
-        }
+        const now = Date.now();
+        this.pruneRequestTimestamps(now);
 
-        // Check daily limit
-        if (this.requestCount >= this.maxRequestsPerDay) {
-          const timeUntilReset = this.dailyReset.getTime() - Date.now();
+        // Etsy's QPD quota is a rolling 24-hour window, not a UTC calendar day.
+        if (this.requestTimestamps.length >= this.maxRequestsPerDay) {
+          const timeUntilReset = Math.max(0, this.getNextRequestExpiry(now).getTime() - now);
           console.warn(
-            `Daily rate limit reached. Waiting ${Math.ceil(timeUntilReset / 1000 / 60)} minutes until reset.`
+            `Daily rate limit reached. Waiting ${Math.ceil(timeUntilReset / 1000 / 60)} minutes for the oldest request to leave the rolling 24-hour window.`
           );
 
-          // Wait until reset
           await this.delay(timeUntilReset);
-          this.requestCount = 0;
-          this.setNextDailyReset();
+          continue;
         }
 
         // Wait for rate limit
@@ -259,7 +256,7 @@ export class GlobalRequestQueue {
             });
 
             try {
-              result = await Promise.race([item.request(), timeoutPromise]);
+              result = await Promise.race([this.startRequest(item.request), timeoutPromise]);
             } finally {
               if (timeoutId) {
                 clearTimeout(timeoutId);
@@ -267,12 +264,10 @@ export class GlobalRequestQueue {
             }
           } else {
             // No timeout specified
-            result = await item.request();
+            result = await this.startRequest(item.request);
           }
 
           item.resolve(result);
-          this.requestCount++;
-          this.lastRequestTime = Date.now();
         } catch (error) {
           // Update rate limit info from error
           if (error instanceof EtsyRateLimitError) {
@@ -299,7 +294,8 @@ export class GlobalRequestQueue {
     const globalRateLimit = this.rateLimits.get('global');
     if (globalRateLimit && now < globalRateLimit.resetAt) {
       const waitTime = globalRateLimit.resetAt - now;
-      console.log(`Global rate limit active. Waiting ${waitTime}ms`);
+      // Keep diagnostic output off stdout so stdio protocols such as MCP stay valid.
+      console.warn(`Global rate limit active. Waiting ${waitTime}ms`);
       await this.delay(waitTime);
     }
 
@@ -324,14 +320,25 @@ export class GlobalRequestQueue {
     }
   }
 
-  /**
-   * Set next daily reset time (midnight UTC)
-   */
-  private setNextDailyReset(): void {
-    const now = new Date();
-    this.dailyReset = new Date(now);
-    this.dailyReset.setUTCDate(this.dailyReset.getUTCDate() + 1);
-    this.dailyReset.setUTCHours(0, 0, 0, 0);
+  private pruneRequestTimestamps(now: number): void {
+    const oldestAllowed = now - QPD_WINDOW_MS;
+    while (this.requestTimestamps[0] !== undefined && this.requestTimestamps[0] <= oldestAllowed) {
+      this.requestTimestamps.shift();
+    }
+  }
+
+  private getNextRequestExpiry(now: number): Date {
+    this.pruneRequestTimestamps(now);
+    const oldestRequest = this.requestTimestamps[0] ?? now;
+    return new Date(oldestRequest + QPD_WINDOW_MS);
+  }
+
+  private startRequest<T>(request: () => Promise<T>): Promise<T> {
+    const startedAt = Date.now();
+    this.pruneRequestTimestamps(startedAt);
+    this.requestTimestamps.push(startedAt);
+    this.lastRequestTime = startedAt;
+    return request();
   }
 
   /**

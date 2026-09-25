@@ -1,0 +1,60 @@
+{
+  "name": "@profplum700/etsy-mcp-server",
+  "mcpName": "io.github.profplum700/etsy-mcp-server",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Local read-only Etsy MCP server for AI agents",
+  "type": "module",
+  "bin": {
+    "etsy-mcp-server": "./dist/cli.js"
+  },
+  "files": [
+    "dist/**/*",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "node scripts/clean-dist.mjs && tsc -p tsconfig.build.json && node scripts/prepare-bin.mjs",
+    "prepack": "pnpm run build",
+    "test": "pnpm --dir ../.. exec vitest run --project etsy-mcp-server",
+    "lint": "eslint --config ../../eslint.config.mjs src test scripts",
+    "type-check": "tsc --noEmit -p tsconfig.json"
+  },
+  "keywords": [
+    "etsy",
+    "mcp",
+    "model-context-protocol",
+    "stdio",
+    "read-only",
+    "agent"
+  ],
+  "author": {
+    "name": "profplum700",
+    "email": "profplum700@users.noreply.github.com"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/profplum700/etsy-v3-api-client.git",
+    "directory": "packages/etsy-mcp-server"
+  },
+  "bugs": {
+    "url": "https://github.com/profplum700/etsy-v3-api-client/issues"
+  },
+  "homepage": "https://github.com/profplum700/etsy-v3-api-client/tree/master/packages/etsy-mcp-server#readme",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "^2.1.0",
+    "@napi-rs/keyring": "^2.1.0",
+    "@profplum700/etsy-v3-api-client": "workspace:^3.0.1",
+    "open": "^10.2.0",
+    "zod": "^4.6.5"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "^2.1.0"
+  }
+}

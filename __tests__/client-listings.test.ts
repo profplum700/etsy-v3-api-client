@@ -2,7 +2,7 @@
  * Listing tests - read, write, images, inventory, properties
  */
 
-import { ListingParams } from '../src/types';
+import { ListingParams, UpdateListingInventoryParams } from '../src/types';
 import { setupClientMocks, MockClientContext, create204Response } from './helpers/client-test-setup';
 
 describe('EtsyClient Listings', () => {
@@ -285,10 +285,12 @@ describe('EtsyClient Listings', () => {
     it('should update listing inventory', async () => {
       const inventoryParams = {
         products: [{
+          property_values: [],
           offerings: [{
             price: 29.99,
             quantity: 10,
-            is_enabled: true
+            is_enabled: true,
+            readiness_state_id: null
           }]
         }]
       };
@@ -310,6 +312,30 @@ describe('EtsyClient Listings', () => {
       expect(result).toEqual(mockInventory);
     });
 
+    it('should not automatically replay a full inventory mutation after a 429', async () => {
+      ctx.mockRateLimiter.handleRateLimitResponse.mockResolvedValue({
+        shouldRetry: true,
+        delayMs: 1000,
+      });
+      ctx.mockFetch.mockResolvedValue({
+        ok: false,
+        status: 429,
+        statusText: 'Too Many Requests',
+        text: vi.fn().mockResolvedValue('rate limit reached'),
+        headers: new Headers({ 'retry-after': '1' }),
+      });
+
+      await expect(ctx.client.updateListingInventory('789', {
+        products: [{ property_values: [], offerings: [{ price: 29.99, quantity: 10, is_enabled: true, readiness_state_id: null }] }],
+      })).rejects.toMatchObject({
+        _statusCode: 429,
+        _response: 'rate limit reached',
+      });
+
+      expect(ctx.mockFetch).toHaveBeenCalledTimes(1);
+      expect(ctx.mockRateLimiter.resetRetryCount).toHaveBeenCalledTimes(1);
+    });
+
     it('should include readiness_state_id in offerings for physical listings', async () => {
       const inventoryParams = {
         products: [{
@@ -323,6 +349,7 @@ describe('EtsyClient Listings', () => {
           property_values: [{
             property_id: 507,
             property_name: 'Material',
+            value_ids: [],
             values: ['Walnut']
           }]
         }],
@@ -344,6 +371,132 @@ describe('EtsyClient Listings', () => {
       expect(sentBody.products[0].offerings[0].readiness_state_id).toBe(18201076875);
       expect(sentBody.readiness_state_on_property).toEqual([507]);
       expect(result).toEqual(mockInventory);
+    });
+
+    it('should send only fields allowed by the Etsy inventory request schema', async () => {
+      ctx.mockFetch.mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ products: [] })
+      });
+
+      const enrichedParams = {
+        products: [{
+          product_id: 111,
+          sku: 'WOOD-001',
+          property_values: [{
+            property_id: 507,
+            property_name: 'Material',
+            value_ids: [1],
+            values: ['Walnut'],
+            value: 'ignored',
+          }],
+          offerings: [{
+            offering_id: 222,
+            price: 8,
+            quantity: 44,
+            is_enabled: true,
+            readiness_state_id: null,
+            readiness_state: { readiness_state_id: 333 },
+          }],
+        }],
+        price_on_property: [507],
+        stale_response_field: 'ignored',
+      };
+      const params: UpdateListingInventoryParams = enrichedParams;
+
+      await ctx.client.updateListingInventory('789', params);
+
+      const requestBody = JSON.parse(ctx.mockFetch.mock.calls[0]![1].body as string);
+      expect(requestBody).toEqual({
+        products: [{
+          sku: 'WOOD-001',
+          property_values: [{
+            property_id: 507,
+            property_name: 'Material',
+            value_ids: [1],
+            values: ['Walnut'],
+          }],
+          offerings: [{
+            price: 8,
+            quantity: 44,
+            is_enabled: true,
+            readiness_state_id: null,
+          }],
+        }],
+        price_on_property: [507],
+      });
+    });
+
+    it('should preserve an explicit empty property_values array for a product with no variations', async () => {
+      ctx.mockFetch.mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ products: [] })
+      });
+
+      await ctx.client.updateListingInventory('789', {
+        products: [{
+          property_values: [],
+          offerings: [{ price: 8, quantity: 1, is_enabled: true, readiness_state_id: null }],
+        }],
+      });
+
+      const requestBody = JSON.parse(ctx.mockFetch.mock.calls[0]![1].body as string);
+      expect(requestBody.products[0].property_values).toEqual([]);
+    });
+
+    it('should reject omitted property_values instead of inferring an empty variation mapping', async () => {
+      await expect(ctx.client.updateListingInventory('789', {
+        products: [{
+          offerings: [{ price: 8, quantity: 1, is_enabled: true, readiness_state_id: null }],
+        }],
+      } as unknown as UpdateListingInventoryParams)).rejects.toThrow(
+        'must include property_values; pass [] when it has no variation properties.'
+      );
+
+      expect(ctx.mockFetch).not.toHaveBeenCalled();
+    });
+
+    it('should reject deleted inventory products before replacement', async () => {
+      await expect(ctx.client.updateListingInventory('789', {
+        products: [{
+          property_values: [],
+          offerings: [{ price: 8, quantity: 1, is_enabled: true, readiness_state_id: null }],
+          is_deleted: true,
+        }],
+      } as unknown as UpdateListingInventoryParams)).rejects.toThrow('is deleted and cannot be submitted');
+
+      expect(ctx.mockFetch).not.toHaveBeenCalled();
+    });
+
+    it('should reject response Money objects instead of sending a non-numeric update price', async () => {
+      await expect(ctx.client.updateListingInventory('789', {
+        products: [{
+          property_values: [],
+          offerings: [{
+            price: { amount: 800, divisor: 100, currency_code: 'GBP' },
+            quantity: 1,
+            is_enabled: true,
+            readiness_state_id: null,
+          }],
+        }],
+      } as unknown as UpdateListingInventoryParams)).rejects.toThrow(
+        'Inventory offering price must be a finite decimal number in the listing currency.'
+      );
+
+      expect(ctx.mockFetch).not.toHaveBeenCalled();
+    });
+
+    it('should require readiness_state_id in runtime inventory updates', async () => {
+      await expect(ctx.client.updateListingInventory('789', {
+        products: [{
+          property_values: [],
+          offerings: [{ price: 8, quantity: 1, is_enabled: true }],
+        }],
+      } as unknown as UpdateListingInventoryParams)).rejects.toThrow(
+        'Inventory offering readiness_state_id is required; use null when not set.'
+      );
+
+      expect(ctx.mockFetch).not.toHaveBeenCalled();
     });
   });
 

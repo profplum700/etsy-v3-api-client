@@ -8,7 +8,7 @@ This repository is a TypeScript/JavaScript client library for the Etsy Open API 
 
 - **Mode:** `single-main`.
 - **Default branch:** `master` is the current remote default and is the shared canon branch for this repo until it is renamed.
-- **Merge-gate command:** `pnpm run lint && pnpm run type-check && pnpm run test && pnpm run build`
+- **Merge-gate command:** `pnpm run lint && pnpm run type-check && pnpm run test:coverage`
 - **Standing deviations:** legacy default branch name is `master`; publishing is tag-driven through the release scripts/CI, not a side effect of every default-branch push; `fhah-tools-*` branches may exist only as parked integration work and must not be landed from this repo without explicit owner scope.
 
 ## Repository Rules
@@ -16,7 +16,7 @@ This repository is a TypeScript/JavaScript client library for the Etsy Open API 
 - Read this file before work; stricter user or repo-local instructions win.
 - Work canon-style on the default branch: pull/rebase, reserve files with Agent Mail before edits, run the merge gate, commit directly to the shared branch, push, and release reservations.
 - Do not commit Etsy credentials, OAuth tokens, generated secret files, `.env`, or local API test credentials. The existing `.gitignore` excludes `etsy-tokens.json`; keep token material out of Git.
-- Treat publishing as release-managed: update versions/tags only when explicitly scoped and follow `PUBLISHING.md`.
+- Treat publishing as release-managed: add a Changeset for published package changes and follow `PUBLISHING.md`.
 
 ## Common Commands
 

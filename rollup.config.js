@@ -19,6 +19,14 @@ const nodeExternal = [
 // No externals for browser builds - we bundle everything except Node.js built-ins
 const browserExternal = [];
 
+// TypeScript emits source paths relative to its build output directory. Adjust
+// them for bundles written inside dist/ so published source maps resolve to
+// the repository's sibling src/ directory instead of escaping two levels up.
+const transformSourceMapPath = (relativeSourcePath) =>
+  relativeSourcePath
+    .replace(/\\/g, '/')
+    .replace(/^\.\.\/\.\.\/src\//, '../src/');
+
 // Node.js build plugins
 const nodePlugins = [
   resolve({
@@ -110,6 +118,7 @@ export default [
       file: 'dist/node.esm.js',
       format: 'esm',
       sourcemap: true,
+      sourcemapPathTransform: transformSourceMapPath,
       inlineDynamicImports: true
     },
     external: nodeExternal,
@@ -124,6 +133,7 @@ export default [
       file: 'dist/node.cjs',
       format: 'cjs',
       sourcemap: true,
+      sourcemapPathTransform: transformSourceMapPath,
       exports: 'named',
       inlineDynamicImports: true
     },
@@ -139,6 +149,7 @@ export default [
       file: 'dist/browser.esm.js',
       format: 'esm',
       sourcemap: true,
+      sourcemapPathTransform: transformSourceMapPath,
       inlineDynamicImports: true
     },
     external: browserExternal,
@@ -154,6 +165,7 @@ export default [
       format: 'umd',
       name: 'EtsyApiClient',
       sourcemap: true,
+      sourcemapPathTransform: transformSourceMapPath,
       inlineDynamicImports: true,
       exports: 'named'
     },
@@ -169,6 +181,7 @@ export default [
       file: pkg.module,
       format: 'esm',
       sourcemap: true,
+      sourcemapPathTransform: transformSourceMapPath,
       inlineDynamicImports: true
     },
     external: nodeExternal,
@@ -183,6 +196,7 @@ export default [
       file: 'dist/index.cjs',
       format: 'cjs',
       sourcemap: true,
+      sourcemapPathTransform: transformSourceMapPath,
       exports: 'named',
       inlineDynamicImports: true
     },

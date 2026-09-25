@@ -7,10 +7,15 @@
   "module": "dist/index.esm.js",
   "types": "dist/index.d.ts",
   "files": [
-    "dist/**/*",
+    "dist/*.js",
+    "dist/*.js.map",
+    "dist/*.cjs",
+    "dist/*.cjs.map",
+    "dist/*.d.ts",
     "README.md"
   ],
   "scripts": {
+    "prepack": "pnpm run build",
     "build": "rollup -c",
     "build:watch": "rollup -c --watch",
     "test": "vitest run --passWithNoTests",
@@ -51,13 +56,13 @@
   },
   "peerDependencies": {
     "@profplum700/etsy-react": "^2.3.1",
-    "@profplum700/etsy-v3-api-client": "^2.0.0",
+    "@profplum700/etsy-v3-api-client": "^2.0.0 || ^3.0.0",
     "react": "^18.0.0 || ^19.0.0",
     "react-dom": "^18.0.0 || ^19.0.0"
   },
   "devDependencies": {
-    "@profplum700/etsy-react": "workspace:*",
-    "@profplum700/etsy-v3-api-client": "workspace:*",
+    "@profplum700/etsy-react": "workspace:^",
+    "@profplum700/etsy-v3-api-client": "workspace:^",
     "@rollup/plugin-commonjs": "^29.0.3",
     "@rollup/plugin-node-resolve": "^16.0.3",
     "@rollup/plugin-typescript": "^12.3.0",

@@ -1,0 +1,9 @@
+export const REQUIRED_SCOPES = ["shops_r", "listings_r"] as const;
+export const OAUTH_REDIRECT_URI = "http://localhost:3030/oauth/redirect";
+export const CODEX_SERVER_NAME = "etsy-mcp-server";
+export const SERVER_NAME = "etsy-mcp-server";
+export const MAX_LISTING_PAGE_SIZE = 50;
+export const MAX_LISTING_OFFSET = 10_000;
+export const MAX_INVENTORY_PAGE_SIZE = 50;
+export const MAX_INVENTORY_OFFSET = Number.MAX_SAFE_INTEGER;
+export const MAX_TOOL_RESPONSE_CHARACTERS = 25_000;

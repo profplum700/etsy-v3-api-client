@@ -75,6 +75,7 @@ describe('EtsyClient Core', () => {
       expect(ctx.mockFetch).toHaveBeenCalledWith(
         'https://api.etsy.com/v3/application/users/me',
         expect.objectContaining({
+          redirect: 'error',
           headers: expect.objectContaining({
             'Authorization': 'Bearer test-access-token',
             'x-api-key': 'test-api-key:test-shared-secret',
@@ -112,6 +113,8 @@ describe('EtsyClient Core', () => {
 
       const mockRateLimiter = {
         waitForRateLimit: vi.fn().mockResolvedValue(undefined),
+        acquireRequestSlot: vi.fn().mockResolvedValue(1),
+        releaseRequestSlot: vi.fn(),
         getRemainingRequests: vi.fn().mockReturnValue(4999),
         getRateLimitStatus: vi.fn().mockReturnValue({
           remainingRequests: 4999,

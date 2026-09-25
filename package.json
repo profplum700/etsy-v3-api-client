@@ -7,7 +7,11 @@
   "module": "dist/index.esm.js",
   "types": "dist/index.d.ts",
   "files": [
-    "dist/**/*",
+    "dist/*.js",
+    "dist/*.js.map",
+    "dist/*.cjs",
+    "dist/*.cjs.map",
+    "dist/*.d.ts",
     "README.md",
     "CHANGELOG.md"
   ],
@@ -19,7 +23,7 @@
     "build:watch": "rollup -c --watch",
     "test": "vitest run",
     "test:core": "vitest run --project root",
-    "test:packages": "vitest run --project etsy-react --project etsy-admin-ui --project etsy-nextjs --project etsy-cli",
+    "test:packages": "vitest run --project etsy-react --project etsy-admin-ui --project etsy-nextjs --project etsy-cli --project etsy-mcp-server",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:integration": "vitest run __tests__/integration",
@@ -30,15 +34,11 @@
     "type-check": "pnpm run build && tsc --noEmit && pnpm --filter './packages/*' run type-check",
     "dev": "rollup -c --watch",
     "clean": "rm -rf dist && pnpm --filter './packages/*' exec rm -rf dist",
-    "prepack": "pnpm run build",
-    "version:patch": "node scripts/bump-version.mjs patch",
-    "version:minor": "node scripts/bump-version.mjs minor",
-    "version:major": "node scripts/bump-version.mjs major",
-    "version:commit": "node scripts/commit-version.mjs",
-    "release:patch": "node scripts/release.mjs patch --push",
-    "release:minor": "node scripts/release.mjs minor --push",
-    "release:major": "node scripts/release.mjs major --push",
-    "release": "pnpm run release:patch"
+    "prepack": "pnpm run build:core",
+    "changeset": "changeset",
+    "version:packages": "changeset version && node scripts/sync-mcp-registry.mjs",
+    "test:release-tag": "node --test scripts/resolve-release-tag.test.mjs scripts/publish-workflow.test.mjs scripts/publish-package.test.mjs scripts/publish-registry-metadata.test.mjs",
+    "check:registry-metadata": "node scripts/sync-mcp-registry.mjs --check"
   },
   "keywords": [
     "etsy",
@@ -78,6 +78,7 @@
     "node": ">=24.0.0"
   },
   "devDependencies": {
+    "@changesets/cli": "^3.0.3",
     "@rollup/plugin-commonjs": "^29.0.3",
     "@rollup/plugin-node-resolve": "^16.0.3",
     "@rollup/plugin-replace": "^6.0.3",
@@ -100,6 +101,7 @@
   },
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "browser": {
         "import": "./dist/browser.esm.js",
         "require": "./dist/browser.umd.js"
@@ -109,18 +111,17 @@
         "require": "./dist/node.cjs"
       },
       "import": "./dist/index.esm.js",
-      "require": "./dist/index.cjs",
-      "types": "./dist/index.d.ts"
+      "require": "./dist/index.cjs"
     },
     "./browser": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/browser.esm.js",
-      "require": "./dist/browser.umd.js",
-      "types": "./dist/index.d.ts"
+      "require": "./dist/browser.umd.js"
     },
     "./node": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/node.esm.js",
-      "require": "./dist/node.cjs",
-      "types": "./dist/index.d.ts"
+      "require": "./dist/node.cjs"
     }
   },
   "sideEffects": false,

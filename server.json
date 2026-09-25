@@ -1,0 +1,28 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json",
+  "name": "io.github.profplum700/etsy-mcp-server",
+  "description": "A local read-only MCP server for Etsy shops, active listings, and listing variation inventory.",
+  "repository": {
+    "url": "https://github.com/profplum700/etsy-v3-api-client",
+    "source": "github",
+    "subfolder": "packages/etsy-mcp-server"
+  },
+  "version": "0.0.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@profplum700/etsy-mcp-server",
+      "version": "0.0.0",
+      "runtimeHint": "npx",
+      "runtimeArguments": [
+        { "type": "positional", "value": "--yes" }
+      ],
+      "packageArguments": [
+        { "type": "positional", "value": "serve" }
+      ],
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}

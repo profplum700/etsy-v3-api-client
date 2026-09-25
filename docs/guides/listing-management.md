@@ -347,14 +347,20 @@ inventory.products.forEach(product => {
 await client.updateListingInventory(listingId, {
   products: [{
     sku: 'MUG-001',
+    property_values: [], // No variations
     offerings: [{
       price: 24.99,
       quantity: 10,
-      is_enabled: true
+      is_enabled: true,
+      readiness_state_id: null // Use the existing processing profile ID when set; otherwise null
     }]
   }]
 });
 ```
+
+Inventory updates replace listing inventory. Supply the complete product and offering set and include `property_values` for every product. Use `[]` only when the product intentionally has no variation properties; the client rejects an omitted field rather than guessing. Do not submit deleted products or offerings. When rebuilding an update from `getListingInventory`, convert each response Money value to a decimal (`price.amount / price.divisor`) before passing it to this method. Update offerings require a numeric price and an explicit `readiness_state_id` (use `null` when unset).
+
+Etsy does not provide an atomic conditional inventory replacement for this flow. A buyer or another editor can still change inventory after the final read and before the update arrives. Re-read immediately before writing, stop if any approved baseline field changed, and treat that remaining race as a limitation; do not use a price-only replacement during active stock or variation edits.
 
 ### Variations (e.g., Size, Color)
 
@@ -369,25 +375,28 @@ await client.updateListingInventory(listingId, {
     {
       sku: 'MUG-BLUE-SMALL',
       property_values: [
-        { property_id: 200, values: ['Blue'] },
-        { property_id: 100, values: ['Small'] }
+        // Use the Etsy value IDs that correspond to each value.
+        { property_id: 200, value_ids: [2001], values: ['Blue'] },
+        { property_id: 100, value_ids: [1001], values: ['Small'] }
       ],
       offerings: [{
         price: 24.99,
         quantity: 5,
-        is_enabled: true
+        is_enabled: true,
+        readiness_state_id: null
       }]
     },
     {
       sku: 'MUG-BLUE-LARGE',
       property_values: [
-        { property_id: 200, values: ['Blue'] },
-        { property_id: 100, values: ['Large'] }
+        { property_id: 200, value_ids: [2001], values: ['Blue'] },
+        { property_id: 100, value_ids: [1002], values: ['Large'] }
       ],
       offerings: [{
         price: 29.99,
         quantity: 3,
-        is_enabled: true
+        is_enabled: true,
+        readiness_state_id: null
       }]
     }
   ],

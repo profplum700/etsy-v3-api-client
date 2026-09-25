@@ -51,6 +51,8 @@ export function setupClientMocks(): MockClientContext {
 
   const mockRateLimiter = {
     waitForRateLimit: vi.fn().mockResolvedValue(undefined),
+    acquireRequestSlot: vi.fn().mockResolvedValue(1),
+    releaseRequestSlot: vi.fn(),
     getRemainingRequests: vi.fn().mockReturnValue(4999),
     getRateLimitStatus: vi.fn().mockReturnValue({
       remainingRequests: 4999,

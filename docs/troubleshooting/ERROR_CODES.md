@@ -418,8 +418,8 @@ async function updateListingWithRetry(
 **Meaning:** You've exceeded Etsy's rate limits.
 
 **Etsy Rate Limits:**
-- **5 requests per second** (per API key)
-- **5,000 requests per day** (per API key)
+- Etsy assigns QPS and rolling 24-hour QPD limits to each API key; check the Developer Portal for this app's actual values.
+- The SDK fallback is 5 requests per second and 5,000 requests per rolling 24 hours until response headers provide the app's actual quota.
 
 **Common Causes:**
 
@@ -740,16 +740,12 @@ const client = new EtsyClient(config);
 // Check rate limit status
 const status = client.getRateLimitStatus();
 console.log(`Remaining requests: ${status.remainingRequests}`);
-console.log(`Reset time: ${status.resetTime}`);
+console.log(`Estimated local quota slot expiry: ${status.resetTime}`);
 console.log(`Can make request: ${status.canMakeRequest}`);
 
-// Wait for rate limit
-if (!status.canMakeRequest) {
-  console.log('Rate limit reached. Waiting...');
-  await new Promise(resolve =>
-    setTimeout(resolve, status.resetTime.getTime() - Date.now())
-  );
-}
+// EtsyClient waits internally for its QPS interval and Retry-After cooldown.
+// On HTTP 429, follow the Retry-After value in the EtsyRateLimitError; the
+// status resetTime is only a local estimate and cannot see other app instances.
 ```
 
 ### Custom Rate Limiting
