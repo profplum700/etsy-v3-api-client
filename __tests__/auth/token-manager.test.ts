@@ -711,6 +711,22 @@ describe('TokenManager', () => {
 
       expect(clearSpy).toHaveBeenCalled();
     });
+
+    it('preserves legacy refreshSave clear behavior without a paired callback', async () => {
+      const storage = new MemoryTokenStorage();
+      await storage.save({
+        access_token: 'saved-access-token',
+        refresh_token: 'saved-refresh-token',
+        expires_at: new Date(Date.now() + 60 * 60 * 1000),
+        token_type: 'Bearer',
+        scope: 'shops_r listings_r',
+      });
+      const tokenManager = new TokenManager({ ...mockConfig, refreshSave: vi.fn() }, storage);
+
+      await expect(tokenManager.clearTokens()).resolves.toBeUndefined();
+      expect(tokenManager.getCurrentTokens()).toBeNull();
+      await expect(storage.load()).resolves.toBeNull();
+    });
   });
 
   describe('getTimeUntilExpiration', () => {

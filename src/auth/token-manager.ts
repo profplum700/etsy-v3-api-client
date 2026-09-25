@@ -43,6 +43,7 @@ export class TokenManager {
   private currentTokens: EtsyTokens | null = null;
   private pendingTokens?: EtsyTokens;
   private refreshCallback?: TokenRefreshCallback | TokenRefreshCallbackAsync;
+  private refreshClearRequired: boolean;
   private storage?: TokenStorage;
   private clearCallback?: TokenRefreshClearCallbackAsync;
   private tokenMutationGeneration = 0;
@@ -53,6 +54,7 @@ export class TokenManager {
   constructor(config: EtsyClientConfig, storage?: TokenStorage, rotationConfig?: TokenRotationConfig) {
     this.keystring = config.keystring;
     this.refreshCallback = config.refreshSaveAsync ?? config.refreshSave;
+    this.refreshClearRequired = config.refreshSaveAsync !== undefined;
     this.storage = storage;
     this.clearCallback = config.refreshClearAsync;
     this.rotationConfig = rotationConfig;
@@ -145,7 +147,7 @@ export class TokenManager {
     }
     if (this.storage) await this.storage.clear();
     if (this.clearCallback) await this.clearCallback();
-    else if (this.refreshCallback) {
+    else if (this.refreshClearRequired) {
       throw new EtsyAuthError(
         'A refresh persistence callback is configured without refreshClearAsync; durable tokens could not be cleared safely',
         'TOKEN_CLEAR_CALLBACK_REQUIRED'
@@ -302,7 +304,7 @@ export class TokenManager {
       await this.storage.clear();
     }
     if (this.clearCallback) await this.clearCallback();
-    else if (this.refreshCallback) {
+    else if (this.refreshClearRequired) {
       throw new EtsyAuthError(
         'A refresh persistence callback is configured without refreshClearAsync; durable tokens could not be cleared safely',
         'TOKEN_CLEAR_CALLBACK_REQUIRED'

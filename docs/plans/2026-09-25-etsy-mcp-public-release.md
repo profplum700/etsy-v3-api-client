@@ -157,3 +157,11 @@ For each item, record the final commit or working-tree identity, commands and ou
 **Plan:** inspect redirect URI parsing, callback listener host/port binding, OAuth URL generation, and CLI option validation. Define the supported contract as loopback HTTP with an explicit valid port (unless inspection proves the listener correctly supports more). Reject unsupported scheme, non-loopback hosts, absent/invalid ports, and mismatched paths before opening a browser; test valid supported forms and each invalid class without network or browser side effects.
 
 **Acceptance:** every accepted redirect URI exactly matches the listener's bound scheme/host/port/path; unsupported forms fail quickly with actionable errors and no listener/browser wait. Focused OAuth/CLI tests pass and thread `PRRT_kwDOPMgnhs6mJpnv` is replied to and resolved with evidence.
+
+### 22. Preserve `clearTokens()` behavior for legacy refresh callbacks
+
+**Finding:** PR review `4108545779` reports that the new missing-clear-callback error is applied to legacy synchronous `refreshSave` integrations, causing logout/reset to reject after in-memory state was already cleared.
+
+**Plan:** inspect callback types and token persistence flows. Track whether persistence uses the new async durable callback contract or the legacy callback. Preserve the prior successful `clearTokens()` behavior for legacy `refreshSave`; continue requiring `refreshClearAsync` for `refreshSaveAsync`, whose contract explicitly represents durable asynchronous persistence. Add regressions for both cases, including ordering after an in-flight refresh.
+
+**Acceptance:** legacy `refreshSave` clears memory/storage and resolves without a clear callback; `refreshSaveAsync` without `refreshClearAsync` retains the actionable failure; paired async callbacks still clear durable data. Focused token-manager tests and full coverage pass; reply to and resolve `PRRT_kwDOPMgnhs6mJxlr` with evidence.
