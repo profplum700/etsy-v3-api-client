@@ -59,6 +59,18 @@ Complete these items in order. Before starting each item, re-check its assumptio
 
 **Current verification:** the opt-in native test passes locally on Windows using a random service namespace and synthetic values; the five separate-process lock tests, including 90 repeated acquisitions across three processes, also pass. The ordinary full gate passes (946 tests and one intentionally skipped native test). The new three-OS workflow has not yet run; item 2 remains open until Linux Secret Service, Windows, and macOS matrix results are read back.
 
+**PR #52 issue plan (reviewed at `354365f`):**
+
+1. Fix the three-OS integration job setup first. The worker imports the built MCP package from `dist`; add an explicit package build before running the native/lock suites, then verify all three hosted OS jobs and the full repository gate. The failing matrix is not acceptable evidence for cross-platform support.
+2. Resolve CodeQL's least-privilege finding by setting workflow-level `permissions: contents: read` in CI; verify CodeQL and CI pass.
+3. Restore an explicit release authorization boundary. The repository canon requires tag-driven publication. Keep Changesets for independent package versions, but revise the plan and `PUBLISHING.md` so only a release tag for the verified version commit can start publishing. Ensure tag creation is a deliberate release action and cannot be caused by an arbitrary push to `master`; verify workflow event/ref/package-version matching before any publication.
+4. Make the publish baseline depend on a successfully completed actual publication, not merely a successful workflow run that could have skipped every publishing step. Add a safe durable marker or equivalent selection rule; test skipped/stale and successful-run selection deterministically.
+5. Preserve Etsy-rotated tokens across credential persistence failures without returning them to callers until durable save/callback succeeds. A subsequent refresh attempt must retry persistence of those rotated tokens without repeating the OAuth exchange. Add regression tests for failure then recovery and concurrent waiters.
+6. Keep listing pagination internally consistent at the maximum accepted offset: do not report an actionable next offset above the schema bound, and define `has_more` as whether another accepted page can be requested. Add boundary tests for offsets 9,950 and 10,000 with full and short pages.
+7. Answer the Codecov report with the resulting coverage status and rationale for any uncovered lines. Do not add tests solely to raise a percentage; cover the new edge behavior from items 4–6.
+
+**Review-fix acceptance:** all six inline review/CodeQL threads receive a direct response after their changes are present; the Codecov conversation receives a direct response; every required thread is re-fetched and verified. CI, CodeQL, and all OS keyring/lock matrix jobs pass on the final PR head. No npm/Registry publication is triggered during this review-fix work.
+
 **Acceptance:** all required operations pass on each supported OS; injected failure cases fail closed; CI names platform and result; Linux run explicitly exercises Secret Service rather than an in-memory provider. If a platform cannot be supported reliably, adjust the declared support contract and user-facing setup errors before release.
 
 ### 3. Verify the exact distributable and live read-only protocol
