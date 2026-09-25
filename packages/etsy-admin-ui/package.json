@@ -7,10 +7,13 @@
   "module": "dist/index.esm.js",
   "types": "dist/index.d.ts",
   "files": [
-    "dist/**/*",
+    "dist/*.js",
+    "dist/*.js.map",
+    "dist/*.d.ts",
     "README.md"
   ],
   "scripts": {
+    "prepack": "pnpm run build",
     "build": "rollup -c",
     "build:watch": "rollup -c --watch",
     "test": "vitest run --passWithNoTests",
