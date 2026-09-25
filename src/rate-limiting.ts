@@ -304,14 +304,15 @@ export class EtsyRateLimiter {
       }
       const exhaustedByEarlierObservation = this.headerRemainingToday === 0 &&
         parsed.remainingToday > 0 && matchedReservationId !== undefined && !isQuotaProbe;
-      const exhaustedByUncorrelatedRecoveryProbe = this.headerRemainingToday === 0 &&
+      const exhaustedByUncorrelatedObservation = this.headerRemainingToday === 0 &&
         parsed.remainingToday > 0 && matchedReservationId === undefined;
-      if (exhaustedByEarlierObservation) {
+      if (exhaustedByEarlierObservation || exhaustedByUncorrelatedObservation) {
         // Client reservation order cannot establish Etsy's server processing
         // order. Once any response reports exhaustion, only the guarded probe
         // may reopen quota; a delayed response from an earlier-dispatched
-        // request can still carry a stale positive snapshot.
-      } else if (isQuotaProbe || exhaustedByUncorrelatedRecoveryProbe || this.headerRemainingToday === undefined) {
+        // request or an uncorrelated convenience response can still carry a
+        // stale positive snapshot.
+      } else if (isQuotaProbe || this.headerRemainingToday === undefined) {
         this.headerRemainingToday = parsed.remainingToday;
         this.latestHeaderReservationId = Math.max(this.latestHeaderReservationId, observationId);
       } else if (parsed.remainingToday < this.headerRemainingToday) {
@@ -518,11 +519,20 @@ export class EtsyRateLimiter {
    * Uses header-based limits if available, falls back to config values.
    */
   public async waitForRateLimit(): Promise<void> {
-    // Keep the original convenience API. New client internals use
-    // acquireRequestSlot/updateFromHeaders so each outbound request can be
-    // reconciled with its own response.
+    // Keep the original convenience API for callers that only need a paced
+    // dispatch. Without a returned reservation ID, response headers cannot
+    // safely be correlated when concurrent calls complete out of order.
     const reservationId = await this.acquireRequestSlot();
     this.finishReservation(reservationId, false);
+  }
+
+  /**
+   * Reserve a paced request and return its identity for response reconciliation.
+   * Pass the returned ID to updateFromHeaders() (or releaseRequestSlot() if
+   * transport fails) so out-of-order responses cannot reopen exhausted quota.
+   */
+  public async waitForRateLimitWithReservation(): Promise<number> {
+    return this.acquireRequestSlot();
   }
 
   /**

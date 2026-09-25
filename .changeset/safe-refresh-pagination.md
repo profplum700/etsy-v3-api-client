@@ -3,4 +3,4 @@
 '@profplum700/etsy-mcp-server': patch
 ---
 
-Retry persistence of Etsy-rotated tokens without repeating OAuth refresh, fence refresh persistence against concurrent token updates or clears, restore exhausted-quota recovery for the convenience API, and keep active-listing pagination metadata within its accepted offset limit.
+Retry persistence of Etsy-rotated tokens without repeating OAuth refresh, fence refresh persistence against concurrent token updates or clears, preserve quota-probe response identity for safe exhausted-quota recovery, and keep active-listing pagination metadata within its accepted offset limit.

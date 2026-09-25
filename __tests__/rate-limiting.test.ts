@@ -718,15 +718,41 @@ describe('EtsyRateLimiter', () => {
       expect(rateLimiter.getRemainingRequests()).toBe(0);
     });
 
-    it('should reopen exhausted QPD after an uncorrelated convenience-API recovery probe', async () => {
+    it('should reopen exhausted QPD after a correlated convenience-API recovery probe', async () => {
       const rateLimiter = new EtsyRateLimiter({ minRequestInterval: 0 });
       rateLimiter.updateFromHeaders({ 'x-remaining-today': '0' });
       await vi.advanceTimersByTimeAsync(60_000);
 
-      await rateLimiter.waitForRateLimit();
-      rateLimiter.updateFromHeaders({ 'x-remaining-today': '7' });
+      const probeReservation = await rateLimiter.waitForRateLimitWithReservation();
+      rateLimiter.updateFromHeaders({ 'x-remaining-today': '7' }, probeReservation);
 
       expect(rateLimiter.getRemainingRequests()).toBe(7);
+    });
+
+    it('should not reopen exhausted QPD from an older uncorrelated response after concurrent convenience calls', async () => {
+      const rateLimiter = new EtsyRateLimiter({ minRequestInterval: 0 });
+      await Promise.all([rateLimiter.waitForRateLimit(), rateLimiter.waitForRateLimit()]);
+
+      // The newer request's exhausted response arrives before the older
+      // request's stale positive snapshot. Without a reservation ID, the
+      // positive response cannot safely be treated as a quota-probe result.
+      rateLimiter.updateFromHeaders({ 'x-remaining-today': '0' });
+      rateLimiter.updateFromHeaders({ 'x-remaining-today': '7' });
+
+      expect(rateLimiter.getRemainingRequests()).toBe(0);
+    });
+
+    it('should preserve reservation identity for concurrent convenience calls with out-of-order responses', async () => {
+      const rateLimiter = new EtsyRateLimiter({ minRequestInterval: 0 });
+      const [olderReservation, newerReservation] = await Promise.all([
+        rateLimiter.waitForRateLimitWithReservation(),
+        rateLimiter.waitForRateLimitWithReservation(),
+      ]);
+
+      rateLimiter.updateFromHeaders({ 'x-remaining-today': '0' }, newerReservation);
+      rateLimiter.updateFromHeaders({ 'x-remaining-today': '7' }, olderReservation);
+
+      expect(rateLimiter.getRemainingRequests()).toBe(0);
     });
 
     it('should hold the last known QPD slot until the in-flight response reconciles it', async () => {
