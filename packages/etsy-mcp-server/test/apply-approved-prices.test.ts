@@ -27,6 +27,14 @@ describe("approved price batch inventory fingerprints", () => {
     expect(after).toBe(before);
   });
 
+  it("masks only the active target during immediate write/readback verification", () => {
+    const oneTarget = new Set(["10:101"]);
+    const before = inventoryFingerprint(inventory(34, 38), oneTarget);
+
+    expect(inventoryFingerprint(inventory(31.5, 38), oneTarget)).toBe(before);
+    expect(inventoryFingerprint(inventory(31.5, 39), oneTarget)).not.toBe(before);
+  });
+
   it("still detects unrelated inventory changes after masking approved targets", () => {
     const before = inventoryFingerprint(inventory(34, 38), targets);
     const after = inventoryFingerprint(inventory(31.5, 60.5, 3), targets);

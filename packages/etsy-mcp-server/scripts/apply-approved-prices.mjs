@@ -6,6 +6,7 @@ import { AuthHelper, EtsyClient } from "@profplum700/etsy-v3-api-client";
 import { CredentialStore } from "../dist/credentials.js";
 import { getAuthorizationCode } from "../dist/oauth.js";
 import { inventoryFingerprint } from "./inventory-fingerprint.mjs";
+import { resolveExecutionReportPath } from "./report-path.mjs";
 
 const DEFAULT_REDIRECT_URI = "http://localhost:3030/oauth/redirect";
 const READ_SCOPES = ["shops_r", "listings_r"];
@@ -388,7 +389,7 @@ async function main() {
   }
 
   const proposalPath = resolve(options.proposalPath);
-  const reportPath = resolve(options.reportPath ?? proposalPath.replace(/\.csv$/i, ".execution.csv"));
+  const reportPath = resolveExecutionReportPath(proposalPath, options.reportPath);
   const resumePath = options.resumeReportPath ? resolve(options.resumeReportPath) : undefined;
   const rows = parseCsv(readFileSync(proposalPath, "utf8"));
   validateProposal(rows);
@@ -484,12 +485,12 @@ async function main() {
         const afterError = await writer.getListingInventory(row.listing_id, { show_deleted: false });
         const target = findTarget(listing, afterError, row);
         const afterPrice = major(target.offering.price);
-        const sameOtherFields = inventoryFingerprint(afterError, current.productId, current.offeringId) === beforeFingerprint;
+        const sameOtherFields = inventoryFingerprint(afterError, new Set([`${current.productId}:${current.offeringId}`])) === beforeFingerprint;
         if (!closePrice(afterPrice, Number(row.proposed_gbp)) || !sameOtherFields) throw writeError;
       }
       const inventoryAfter = await writer.getListingInventory(row.listing_id, { show_deleted: false });
       const after = inventoryTargetState(listing, inventoryAfter, row, options.shopId, options.currency);
-      const afterFingerprint = inventoryFingerprint(inventoryAfter, current.productId, current.offeringId);
+      const afterFingerprint = inventoryFingerprint(inventoryAfter, new Set([`${current.productId}:${current.offeringId}`]));
       if (after.productId !== current.productId || after.offeringId !== current.offeringId || !closePrice(after.price, Number(row.proposed_gbp)) || afterFingerprint !== beforeFingerprint) {
         throw new Error("Readback did not match the approved target or another inventory field changed.");
       }
