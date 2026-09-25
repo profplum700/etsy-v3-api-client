@@ -107,18 +107,12 @@ export class TokenManager {
       throw new EtsyAuthError('No tokens available to refresh', 'NO_REFRESH_TOKEN');
     }
 
-    this.refreshPromise = this.performTokenRefresh();
-    
-    try {
-      const newTokens = await this.refreshPromise;
-      this.currentTokens = newTokens;
-      
-      // Save to storage if available
+    const refreshPromise = this.performTokenRefresh().then(async (newTokens) => {
+      // Keep all concurrent callers waiting until refreshed credentials are durable.
       if (this.storage) {
         await this.storage.save(newTokens);
       }
-      
-      // Call refresh callback if provided
+
       if (this.refreshCallback) {
         this.refreshCallback(
           newTokens.access_token,
@@ -126,11 +120,15 @@ export class TokenManager {
           newTokens.expires_at
         );
       }
-      
+
+      this.currentTokens = newTokens;
       return newTokens;
-    } finally {
+    }).finally(() => {
       this.refreshPromise = undefined;
-    }
+    });
+
+    this.refreshPromise = refreshPromise;
+    return refreshPromise;
   }
 
   /**

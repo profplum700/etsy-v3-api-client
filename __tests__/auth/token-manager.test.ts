@@ -260,6 +260,36 @@ describe('TokenManager', () => {
       expect(results[1]).toEqual(results[2]);
     });
 
+    it('keeps concurrent callers waiting when refreshed-token persistence fails', async () => {
+      const callbackError = new Error('Credential persistence failed');
+      const configWithCallback = {
+        ...mockConfig,
+        refreshSave: vi.fn(() => { throw callbackError; })
+      };
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          access_token: 'new-access-token',
+          refresh_token: 'new-refresh-token',
+          expires_in: 3600,
+          token_type: 'Bearer',
+          scope: 'shops_r listings_r'
+        })
+      });
+
+      const tokenManager = new TokenManager(configWithCallback);
+      const refreshPromises = [
+        tokenManager.refreshToken(),
+        tokenManager.refreshToken(),
+        tokenManager.refreshToken()
+      ];
+      const results = await Promise.allSettled(refreshPromises);
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(results.every((result) => result.status === 'rejected')).toBe(true);
+      expect(tokenManager.getCurrentTokens()?.access_token).toBe(mockConfig.accessToken);
+    });
+
     it('should call refresh callback when provided', async () => {
       const mockCallback = vi.fn();
       const configWithCallback = {
