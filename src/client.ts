@@ -279,7 +279,10 @@ export class EtsyClient {
     // Set default method to GET if not specified
     const requestOptions: RequestInit = {
       method: 'GET',
-      ...options
+      ...options,
+      // Etsy requests carry both bearer and API-key credentials. Reject redirects
+      // so custom credentials and mutation bodies are never forwarded elsewhere.
+      redirect: 'error'
     };
 
     const cacheKey = `${url}:${JSON.stringify(requestOptions)}`;

@@ -75,6 +75,7 @@ describe('EtsyClient Core', () => {
       expect(ctx.mockFetch).toHaveBeenCalledWith(
         'https://api.etsy.com/v3/application/users/me',
         expect.objectContaining({
+          redirect: 'error',
           headers: expect.objectContaining({
             'Authorization': 'Bearer test-access-token',
             'x-api-key': 'test-api-key:test-shared-secret',

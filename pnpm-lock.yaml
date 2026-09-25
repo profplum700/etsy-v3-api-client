@@ -179,8 +179,8 @@ importers:
         specifier: ^2.1.0
         version: 2.1.0
       '@profplum700/etsy-v3-api-client':
-        specifier: ^3.0.1
-        version: 3.0.1
+        specifier: workspace:^3.0.1
+        version: link:../..
       open:
         specifier: ^10.2.0
         version: 10.2.0

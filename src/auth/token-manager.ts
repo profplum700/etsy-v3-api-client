@@ -148,6 +148,7 @@ export class TokenManager {
     try {
       const response = await this.fetch('https://api.etsy.com/v3/public/oauth/token', {
         method: 'POST',
+        redirect: 'error',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
           'Accept': 'application/json'

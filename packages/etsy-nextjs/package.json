@@ -26,6 +26,8 @@
   "files": [
     "dist/*.js",
     "dist/*.js.map",
+    "dist/*.cjs",
+    "dist/*.cjs.map",
     "dist/*.d.ts",
     "README.md"
   ],

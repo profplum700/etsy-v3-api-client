@@ -219,6 +219,11 @@ describe('TokenManager', () => {
       const tokenManager = new TokenManager(mockConfig);
       const result = await tokenManager.refreshToken();
 
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.etsy.com/v3/public/oauth/token',
+        expect.objectContaining({ method: 'POST', redirect: 'error' })
+      );
+
       expect(result).toEqual({
         access_token: 'new-access-token',
         refresh_token: 'new-refresh-token',

@@ -47,7 +47,7 @@
   "dependencies": {
     "@modelcontextprotocol/server": "^2.1.0",
     "@napi-rs/keyring": "^2.1.0",
-    "@profplum700/etsy-v3-api-client": "^3.0.1",
+    "@profplum700/etsy-v3-api-client": "workspace:^3.0.1",
     "open": "^10.2.0",
     "zod": "^4.6.5"
   },
