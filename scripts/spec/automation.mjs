@@ -22,7 +22,7 @@ export async function run({ fetchSpec = download, request = fetch, branch = BRAN
   const token = process.env.GH_TOKEN;
   if (!token) throw new Error('Workflow token is required');
   async function api(path, method = 'GET', body) {
-    const response = await request(`https://api.github.com/repos/${repo}/${path}`, { method, headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' }, body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(30_000) });
+    const response = await request(`https://api.github.com/repos/${repo}${path ? `/${path}` : ''}`, { method, headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' }, body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(30_000) });
     if (!response.ok) throw new Error(`GitHub API ${method} ${path}: ${response.status}`);
     return response.status === 204 ? null : response.json();
   }

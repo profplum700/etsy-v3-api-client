@@ -18,7 +18,8 @@ test('real Git lifecycle with isolated origin and simulated GitHub API: changed,
   const prs = [];
   const dispatches = [];
   const request = async (url, options) => {
-    const path = url.split('/etsy-v3-api-client/')[1];
+    assert.ok(!url.endsWith('/'), 'GitHub repository metadata URL must not have a trailing slash');
+    const path = url.replace('https://api.github.com/repos/profplum700/etsy-v3-api-client', '').replace(/^\//, '');
     const body = options.body ? JSON.parse(options.body) : undefined;
     let result;
     if (path === '') result = { private: false };
