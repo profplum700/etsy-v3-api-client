@@ -40,7 +40,7 @@
     "removeComments": true,
     "preserveConstEnums": true,
     "importsNotUsedAsValues": "remove",
-    "types": ["vitest/globals"]
+    "types": ["node", "vitest/globals"]
   },
   "include": [
     "src/**/*",
