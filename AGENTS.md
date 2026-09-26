@@ -14,7 +14,7 @@ This repository is a TypeScript/JavaScript client library for the Etsy Open API 
 ## Repository Rules
 
 - Read this file before work; stricter user or repo-local instructions win.
-- Work canon-style on the default branch: pull/rebase, reserve files with Agent Mail before edits, run the merge gate, commit directly to the shared branch, push, and release reservations.
+- Work canon-style on the default branch: pull/rebase, run the merge gate, commit directly to the shared branch, and push.
 - Do not commit Etsy credentials, OAuth tokens, generated secret files, `.env`, or local API test credentials. The existing `.gitignore` excludes `etsy-tokens.json`; keep token material out of Git.
 - Treat publishing as release-managed: add a Changeset for published package changes and follow `PUBLISHING.md`.
 - OpenAPI maintenance is an explicit exception to direct default-branch commits: the scheduled workflow owns `automation/etsy-openapi` and proposes reviewed draft PRs. It may change only the pinned specification, provenance, internal generated declarations and reports. It must use standard GitHub-hosted runners in the public repository, with no paid services or AI subscriptions. See `docs/OPENAPI_MAINTENANCE.md`.
