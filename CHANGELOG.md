@@ -1,5 +1,19 @@
 # Changelog
 
+## 4.0.0
+
+### Major Changes
+
+- a147325: Keep partial rate-limit settings from erasing retry defaults, track the QPD fallback over a rolling 24-hour window, serialize concurrent request reservations, honor Etsy's shared Retry-After cooldown, avoid automatically replaying mutations, and align inventory update inputs with Etsy's accepted request fields.
+
+### Minor Changes
+
+- a147325: Add an async token refresh persistence callback that the client awaits before exposing refreshed tokens. Keep the existing synchronous callback type unchanged.
+
+### Patch Changes
+
+- a147325: Retry persistence of Etsy-rotated tokens without repeating OAuth refresh, fence refresh persistence against concurrent token updates or clears, preserve legacy synchronous `refreshSave` clearing behavior while requiring a paired clear callback for new async persistence, preserve quota-probe response identity for safe exhausted-quota recovery (custom transports must migrate from uncorrelated `updateFromHeaders` calls to the reservation-aware API), keep active-listing pagination metadata within its accepted offset limit, accept listing IDs returned by the list tool, page large inventory results, validate local OAuth callback addresses, verify same-listing price targets from one final inventory snapshot, and include required `property_values` in non-variation inventory examples.
+
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),

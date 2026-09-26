@@ -7,18 +7,24 @@
     "source": "github",
     "subfolder": "packages/etsy-mcp-server"
   },
-  "version": "0.0.0",
+  "version": "1.0.0",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "@profplum700/etsy-mcp-server",
-      "version": "0.0.0",
+      "version": "1.0.0",
       "runtimeHint": "npx",
       "runtimeArguments": [
-        { "type": "positional", "value": "--yes" }
+        {
+          "type": "positional",
+          "value": "--yes"
+        }
       ],
       "packageArguments": [
-        { "type": "positional", "value": "serve" }
+        {
+          "type": "positional",
+          "value": "serve"
+        }
       ],
       "transport": {
         "type": "stdio"
