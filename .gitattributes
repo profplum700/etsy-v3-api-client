@@ -1,0 +1,3 @@
+# Preserve upstream bytes for provenance on every runner platform.
+spec/etsy-openapi.json -text
+spec/generated/*.d.ts text eol=lf

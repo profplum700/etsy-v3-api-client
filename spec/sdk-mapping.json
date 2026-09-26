@@ -1,0 +1,8 @@
+{
+  "getShop": "getShop",
+  "getShopByOwnerUserId": "getShopByOwnerUserId",
+  "getMe": "getMe",
+  "findAllActiveListingsByShop": "findAllActiveListingsByShop",
+  "getListingInventory": "getListingInventory",
+  "updateListing": "updateListing"
+}

@@ -1,0 +1,73 @@
+name: Validate specification candidate
+run-name: Validate specification candidate ${{ inputs.candidate_sha }}
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_sha:
+        description: Exact automation branch commit to validate
+        required: true
+        type: string
+      candidate_branch:
+        description: Maintenance branch
+        type: choice
+        default: automation/etsy-openapi
+        options:
+          - automation/etsy-openapi
+          - automation/etsy-openapi-rehearsal
+permissions:
+  contents: read
+jobs:
+  validate:
+    if: github.repository == 'profplum700/etsy-v3-api-client' && github.event.repository.private == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      statuses: write
+    steps:
+      - name: Validate immutable candidate identity
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CANDIDATE: ${{ inputs.candidate_sha }}
+          CANDIDATE_BRANCH: ${{ inputs.candidate_branch }}
+        run: |
+          [[ "$CANDIDATE" =~ ^[0-9a-f]{40}$ ]]
+          case "$CANDIDATE_BRANCH" in automation/etsy-openapi|automation/etsy-openapi-rehearsal) ;; *) exit 1 ;; esac
+          ACTUAL=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/$CANDIDATE_BRANCH" --jq .object.sha)
+          test "$CANDIDATE" = "$ACTUAL"
+          gh api "repos/$GITHUB_REPOSITORY/statuses/$CANDIDATE" -f state=pending -f context=spec-candidate -f description='Validating exact specification candidate'
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: master
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - name: Overlay verified candidate data onto trusted tooling
+        env:
+          CANDIDATE: ${{ inputs.candidate_sha }}
+          CANDIDATE_BRANCH: ${{ inputs.candidate_branch }}
+        run: node scripts/spec/validate-candidate.mjs
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run spec:check
+      - run: pnpm run lint
+      - run: pnpm run type-check
+      - run: pnpm run test:coverage
+      - name: Record exact commit result
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CANDIDATE: ${{ inputs.candidate_sha }}
+          CANDIDATE_BRANCH: ${{ inputs.candidate_branch }}
+          RESULT: ${{ job.status }}
+        run: |
+          [[ "$CANDIDATE" =~ ^[0-9a-f]{40}$ ]]
+          STATE=failure
+          if [ "$RESULT" = success ]; then STATE=success; fi
+          case "$CANDIDATE_BRANCH" in automation/etsy-openapi|automation/etsy-openapi-rehearsal) ;; *) exit 1 ;; esac
+          ACTUAL=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/$CANDIDATE_BRANCH" --jq .object.sha)
+          if [ "$ACTUAL" != "$CANDIDATE" ]; then STATE=failure; fi
+          gh api "repos/$GITHUB_REPOSITORY/statuses/$CANDIDATE" -f state="$STATE" -f context=spec-candidate -f description="Exact candidate validation: $RESULT" -f target_url="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          echo "Candidate: $CANDIDATE; result: $RESULT" >> "$GITHUB_STEP_SUMMARY"

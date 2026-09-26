@@ -35,6 +35,9 @@ jobs:
       - name: Run linting
         run: pnpm run lint
 
+      - name: Verify pinned OpenAPI maintenance tooling
+        run: pnpm run spec:check
+
       - name: Run type checking
         run: pnpm run type-check
       - name: Validate MCP Registry metadata version
