@@ -51,6 +51,25 @@ describe('EtsyRateLimiter', () => {
       expect(config.maxRequestsPerSecond).toBe(5); // default
       expect(config.minRequestInterval).toBe(200); // default
     });
+
+    it('should ignore undefined overrides so retry defaults stay finite', async () => {
+      const rateLimiter = new EtsyRateLimiter({
+        maxRequestsPerSecond: 3,
+        minRequestInterval: 350,
+        maxRetries: undefined,
+        baseDelayMs: undefined,
+        maxDelayMs: undefined,
+        jitter: undefined,
+        qpdWarningThreshold: undefined,
+      });
+
+      const retry = await rateLimiter.handleRateLimitResponse({ 'x-remaining-today': '5000' });
+
+      expect(Number.isFinite(retry.delayMs)).toBe(true);
+      expect(retry.delayMs).toBeGreaterThan(0);
+      expect(rateLimiter.getConfig().maxRetries).toBe(3);
+      expect(rateLimiter.getConfig().baseDelayMs).toBe(1000);
+    });
   });
 
   describe('waitForRateLimit', () => {
@@ -82,6 +101,57 @@ describe('EtsyRateLimiter', () => {
       expect(rateLimiter.getRemainingRequests()).toBe(4998);
     });
 
+    it('should serialize concurrent reservations at the configured interval', async () => {
+      const rateLimiter = new EtsyRateLimiter({ minRequestInterval: 100 });
+      const startedAt = Date.now();
+      const dispatchTimes: number[] = [];
+      const requests = Array.from({ length: 5 }, async () => {
+        await rateLimiter.waitForRateLimit();
+        dispatchTimes.push(Date.now());
+      });
+
+      await vi.runAllTimersAsync();
+      await Promise.all(requests);
+
+      expect(dispatchTimes).toEqual([0, 100, 200, 300, 400].map((offset) => startedAt + offset));
+      expect(rateLimiter.getRemainingRequests()).toBe(4995);
+    });
+
+    it('should apply Retry-After to queued requests and keep it as a strict minimum', async () => {
+      const rateLimiter = new EtsyRateLimiter({
+        minRequestInterval: 100,
+        baseDelayMs: 100,
+        jitter: 0,
+      });
+      await rateLimiter.waitForRateLimit();
+      const startedAt = Date.now();
+      const dispatchedAt: number[] = [];
+      const request = rateLimiter.waitForRateLimit().then(() => dispatchedAt.push(Date.now()));
+      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(50);
+      const retry = await rateLimiter.handleRateLimitResponse({ 'retry-after': '2' });
+      expect(retry.delayMs).toBe(2000);
+
+      await vi.advanceTimersByTimeAsync(1999);
+      expect(dispatchedAt).toEqual([]);
+      await vi.advanceTimersByTimeAsync(1);
+      await request;
+      expect(dispatchedAt).toEqual([startedAt + 2050]);
+    });
+
+    it('should never jitter below Etsy Retry-After', async () => {
+      const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0);
+      const rateLimiter = new EtsyRateLimiter({
+        baseDelayMs: 1000,
+        jitter: 0.5,
+      });
+
+      const retry = await rateLimiter.handleRateLimitResponse({ 'retry-after': '10' });
+
+      expect(retry.delayMs).toBeGreaterThanOrEqual(10000);
+      randomSpy.mockRestore();
+    });
+
     it('should throw error when daily limit exceeded', async () => {
       const rateLimiter = new EtsyRateLimiter({
         maxRequestsPerDay: 2,
@@ -97,22 +167,24 @@ describe('EtsyRateLimiter', () => {
       await expect(rateLimiter.waitForRateLimit()).rejects.toThrow('Daily rate limit exhausted');
     });
 
-    it('should reset daily counter at midnight UTC', async () => {
+    it('should keep each request charged for 24 hours instead of resetting at midnight', async () => {
       const rateLimiter = new EtsyRateLimiter({
         maxRequestsPerDay: 1,
         minRequestInterval: 0 // Remove delay for testing
       });
-      
-      // Make request to reach limit
+
+      const firstRequestAt = Date.now();
       await rateLimiter.waitForRateLimit();
       expect(rateLimiter.getRemainingRequests()).toBe(0);
-      
-      // Manually reset the rate limiter (simulating midnight reset)
-      rateLimiter.reset();
-      
-      // Should be able to make another request after reset
+
+      vi.setSystemTime(firstRequestAt + 24 * 60 * 60 * 1000 - 1);
+      expect(rateLimiter.getRemainingRequests()).toBe(0);
+      expect(rateLimiter.getRateLimitStatus().resetTime.getTime()).toBe(firstRequestAt + 24 * 60 * 60 * 1000);
+      await expect(rateLimiter.waitForRateLimit()).rejects.toThrow('rolling 24-hour window');
+
+      vi.setSystemTime(firstRequestAt + 24 * 60 * 60 * 1000);
+      expect(rateLimiter.getRemainingRequests()).toBe(1);
       await rateLimiter.waitForRateLimit();
-      
       expect(rateLimiter.getRemainingRequests()).toBe(0);
     });
   });
@@ -319,13 +391,8 @@ describe('EtsyRateLimiter', () => {
         minRequestInterval: 100
       });
       
-      // Make multiple requests with timer advancement
-      const promises = [];
-      for (let i = 0; i < 5; i++) {
-        promises.push(rateLimiter.waitForRateLimit());
-        // Advance timers to allow the setTimeout to complete
-        vi.advanceTimersByTime(100);
-      }
+      const promises = Array.from({ length: 5 }, () => rateLimiter.waitForRateLimit());
+      await vi.runAllTimersAsync();
       await Promise.all(promises);
       
       // Should have processed all requests
@@ -541,6 +608,217 @@ describe('EtsyRateLimiter', () => {
         expect(error.errorType).toBe('qpd_exhausted');
         expect(error.isRetryable()).toBe(false);
       }
+    });
+
+    it('should honor Retry-After and require a fresh response before restoring exhausted quota', async () => {
+      const rateLimiter = new EtsyRateLimiter({ minRequestInterval: 0 });
+
+      await expect(rateLimiter.handleRateLimitResponse({
+        'retry-after': '1',
+        'x-remaining-today': '0',
+      })).rejects.toMatchObject({ errorType: 'qpd_exhausted', _retryAfter: 1 });
+
+      await vi.advanceTimersByTimeAsync(999);
+      expect(rateLimiter.getRemainingRequests()).toBe(0);
+      await vi.advanceTimersByTimeAsync(1);
+      const probeId = await rateLimiter.acquireRequestSlot();
+      expect(rateLimiter.getRemainingRequests()).toBe(0);
+      rateLimiter.updateFromHeaders({ 'x-remaining-today': '4999' }, probeId);
+      expect(rateLimiter.getRemainingRequests()).toBe(4999);
+    });
+
+    it('should probe a shared exhausted quota before the local 24-hour window expires', async () => {
+      const rateLimiter = new EtsyRateLimiter({
+        maxRequestsPerDay: 1,
+        minRequestInterval: 0,
+      });
+      const firstRequestAt = Date.now();
+
+      const firstReservation = await rateLimiter.acquireRequestSlot();
+      rateLimiter.updateFromHeaders({
+        'x-limit-per-day': '1',
+        'x-remaining-today': '0',
+      }, firstReservation);
+
+      expect(rateLimiter.getRateLimitStatus().resetTime.getTime())
+        .toBe(firstRequestAt + 60_000);
+
+      let nextRequestStarted = false;
+      const nextRequest = rateLimiter.acquireRequestSlot().then((reservationId) => {
+        nextRequestStarted = true;
+        return reservationId;
+      });
+      await vi.advanceTimersByTimeAsync(60_000 - 1);
+      expect(nextRequestStarted).toBe(false);
+
+      await vi.advanceTimersByTimeAsync(1);
+      const probeId = await nextRequest;
+      expect(nextRequestStarted).toBe(true);
+      expect(rateLimiter.getRemainingRequests()).toBe(0);
+      rateLimiter.updateFromHeaders({ 'x-remaining-today': '1' }, probeId);
+      expect(rateLimiter.getRemainingRequests()).toBe(1);
+    });
+
+    it('should let only one guarded recovery probe run at a time', async () => {
+      const rateLimiter = new EtsyRateLimiter({ minRequestInterval: 0 });
+      rateLimiter.updateFromHeaders({ 'x-remaining-today': '0' });
+      await vi.advanceTimersByTimeAsync(60_000);
+
+      const probeId = await rateLimiter.acquireRequestSlot();
+      let secondProbeStarted = false;
+      const secondRequest = rateLimiter.acquireRequestSlot().then((id) => {
+        secondProbeStarted = true;
+        return id;
+      });
+      await vi.advanceTimersByTimeAsync(0);
+      expect(secondProbeStarted).toBe(false);
+
+      rateLimiter.updateFromHeaders({ 'x-remaining-today': '2' }, probeId);
+      const secondId = await secondRequest;
+      expect(secondProbeStarted).toBe(true);
+      expect(rateLimiter.getRemainingRequests()).toBe(1);
+      rateLimiter.updateFromHeaders({ 'x-remaining-today': '1' }, secondId);
+    });
+
+    it('should not let an older response increase a newer remaining-quota observation', async () => {
+      const rateLimiter = new EtsyRateLimiter({ minRequestInterval: 0 });
+      const olderRequestId = await rateLimiter.acquireRequestSlot();
+      const newerRequestId = await rateLimiter.acquireRequestSlot();
+
+      rateLimiter.updateFromHeaders({ 'x-remaining-today': '4' }, newerRequestId);
+      rateLimiter.updateFromHeaders({ 'x-remaining-today': '5' }, olderRequestId);
+
+      expect(rateLimiter.getRemainingRequests()).toBe(4);
+    });
+
+    it('should not reopen positive quota from a delayed response with a higher reservation ID', async () => {
+      const rateLimiter = new EtsyRateLimiter({ minRequestInterval: 0 });
+      const earlierRequestId = await rateLimiter.acquireRequestSlot();
+      const laterRequestId = await rateLimiter.acquireRequestSlot();
+
+      // Etsy may process the higher-ID request first (remaining 2), then the
+      // earlier request (remaining 1), even if the response order is reversed.
+      rateLimiter.updateFromHeaders({ 'x-remaining-today': '1' }, earlierRequestId);
+      rateLimiter.updateFromHeaders({ 'x-remaining-today': '2' }, laterRequestId);
+
+      expect(rateLimiter.getRemainingRequests()).toBe(1);
+    });
+
+    it('should not reopen exhausted QPD from a later-arriving response with a higher reservation ID', async () => {
+      const rateLimiter = new EtsyRateLimiter({ minRequestInterval: 0 });
+      const earlierRequestId = await rateLimiter.acquireRequestSlot();
+      const laterRequestId = await rateLimiter.acquireRequestSlot();
+
+      // Etsy may process the higher-ID request first, then the earlier request.
+      // Its response arrives first with zero remaining; the delayed response
+      // must not restore a stale positive count based on client dispatch order.
+      rateLimiter.updateFromHeaders({ 'x-remaining-today': '0' }, earlierRequestId);
+      rateLimiter.updateFromHeaders({ 'x-remaining-today': '1' }, laterRequestId);
+
+      expect(rateLimiter.getRemainingRequests()).toBe(0);
+    });
+
+    it('should reopen exhausted QPD after a correlated convenience-API recovery probe', async () => {
+      const rateLimiter = new EtsyRateLimiter({ minRequestInterval: 0 });
+      rateLimiter.updateFromHeaders({ 'x-remaining-today': '0' });
+      await vi.advanceTimersByTimeAsync(60_000);
+
+      const probeReservation = await rateLimiter.waitForRateLimitWithReservation();
+      rateLimiter.updateFromHeaders({ 'x-remaining-today': '7' }, probeReservation);
+
+      expect(rateLimiter.getRemainingRequests()).toBe(7);
+    });
+
+    it('should keep legacy uncorrelated recovery fail-closed after exhausted QPD', async () => {
+      const rateLimiter = new EtsyRateLimiter({ minRequestInterval: 0 });
+      rateLimiter.updateFromHeaders({ 'x-remaining-today': '0' });
+      await vi.advanceTimersByTimeAsync(60_000);
+
+      // The legacy method has no reservation ID to correlate with this
+      // response. A positive header could be stale, so safe recovery requires
+      // waitForRateLimitWithReservation() and updateFromHeaders(headers, id).
+      await rateLimiter.waitForRateLimit();
+      rateLimiter.updateFromHeaders({ 'x-remaining-today': '7' });
+
+      expect(rateLimiter.getRemainingRequests()).toBe(0);
+    });
+
+    it('should not reopen exhausted QPD from an older uncorrelated response after concurrent convenience calls', async () => {
+      const rateLimiter = new EtsyRateLimiter({ minRequestInterval: 0 });
+      await Promise.all([rateLimiter.waitForRateLimit(), rateLimiter.waitForRateLimit()]);
+
+      // The newer request's exhausted response arrives before the older
+      // request's stale positive snapshot. Without a reservation ID, the
+      // positive response cannot safely be treated as a quota-probe result.
+      rateLimiter.updateFromHeaders({ 'x-remaining-today': '0' });
+      rateLimiter.updateFromHeaders({ 'x-remaining-today': '7' });
+
+      expect(rateLimiter.getRemainingRequests()).toBe(0);
+    });
+
+    it('should preserve reservation identity for concurrent convenience calls with out-of-order responses', async () => {
+      const rateLimiter = new EtsyRateLimiter({ minRequestInterval: 0 });
+      const [olderReservation, newerReservation] = await Promise.all([
+        rateLimiter.waitForRateLimitWithReservation(),
+        rateLimiter.waitForRateLimitWithReservation(),
+      ]);
+
+      rateLimiter.updateFromHeaders({ 'x-remaining-today': '0' }, newerReservation);
+      rateLimiter.updateFromHeaders({ 'x-remaining-today': '7' }, olderReservation);
+
+      expect(rateLimiter.getRemainingRequests()).toBe(0);
+    });
+
+    it('should hold the last known QPD slot until the in-flight response reconciles it', async () => {
+      const rateLimiter = new EtsyRateLimiter({ minRequestInterval: 0 });
+      rateLimiter.updateFromHeaders({ 'x-remaining-today': '1' });
+      const firstReservation = await rateLimiter.acquireRequestSlot();
+
+      let secondStarted = false;
+      const secondRequest = rateLimiter.acquireRequestSlot().then((id) => {
+        secondStarted = true;
+        return id;
+      });
+      await vi.advanceTimersByTimeAsync(0);
+      expect(secondStarted).toBe(false);
+      expect(rateLimiter.getRemainingRequests()).toBe(0);
+
+      rateLimiter.updateFromHeaders({ 'x-remaining-today': '1' }, firstReservation);
+      const secondReservation = await secondRequest;
+      expect(secondStarted).toBe(true);
+      expect(rateLimiter.getRemainingRequests()).toBe(0);
+
+      rateLimiter.releaseRequestSlot(secondReservation);
+      expect(rateLimiter.getRemainingRequests()).toBe(0);
+      expect(rateLimiter.canMakeRequest()).toBe(true); // A single probe checks whether the lost response was charged.
+    });
+
+    it('should isolate retry counts for concurrent logical requests', async () => {
+      const rateLimiter = new EtsyRateLimiter({ maxRetries: 1, minRequestInterval: 0, jitter: 0 });
+
+      await expect(rateLimiter.handleRateLimitResponse({}, undefined, 1))
+        .resolves.toMatchObject({ shouldRetry: true });
+      rateLimiter.resetRetryCount(); // An unrelated successful request must not reset the first request's budget.
+      await expect(rateLimiter.handleRateLimitResponse({}, undefined, 2))
+        .rejects.toMatchObject({ errorType: 'qps_exhausted' });
+    });
+
+    it('should charge a request locally when its response omits QPD headers', async () => {
+      const rateLimiter = new EtsyRateLimiter({ minRequestInterval: 0 });
+      rateLimiter.updateFromHeaders({ 'x-remaining-today': '2' });
+      const reservationId = await rateLimiter.acquireRequestSlot();
+
+      rateLimiter.updateFromHeaders({}, reservationId);
+
+      expect(rateLimiter.getRemainingRequests()).toBe(1);
+    });
+
+    it('should classify a 429 from its current headers, not a cached zero QPD value', async () => {
+      const rateLimiter = new EtsyRateLimiter({ minRequestInterval: 0, jitter: 0 });
+      rateLimiter.updateFromHeaders({ 'x-remaining-today': '0' });
+
+      await expect(rateLimiter.handleRateLimitResponse({ 'retry-after': '1' }))
+        .resolves.toMatchObject({ shouldRetry: true, delayMs: 1000 });
     });
 
     it('should throw after max retries exceeded', async () => {

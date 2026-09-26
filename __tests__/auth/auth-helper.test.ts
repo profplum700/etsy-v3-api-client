@@ -163,6 +163,7 @@ describe('AuthHelper', () => {
         'https://api.etsy.com/v3/public/oauth/token',
         expect.objectContaining({
           method: 'POST',
+          redirect: 'error',
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
             'Accept': 'application/json'

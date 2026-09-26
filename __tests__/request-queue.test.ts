@@ -11,6 +11,10 @@ describe('GlobalRequestQueue', () => {
     GlobalRequestQueue.resetInstance();
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   afterAll(() => {
     GlobalRequestQueue.resetInstance();
   });
@@ -279,6 +283,27 @@ describe('GlobalRequestQueue', () => {
   });
 
   describe('Rate Limit Handling', () => {
+    it('writes rate-limit cooldown diagnostics to stderr, not stdout', async () => {
+      vi.useFakeTimers();
+      const queue = GlobalRequestQueue.getInstance();
+      const internal = queue as unknown as {
+        rateLimits: Map<string, { remaining: number; resetAt: number }>;
+        waitForRateLimit: () => Promise<void>;
+      };
+      internal.rateLimits.set('global', { remaining: 0, resetAt: Date.now() + 1000 });
+      const stdout = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+      const stderr = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+      const waiting = internal.waitForRateLimit();
+      expect(stderr).toHaveBeenCalledWith(expect.stringContaining('Global rate limit active. Waiting'));
+      expect(stdout).not.toHaveBeenCalled();
+
+      await vi.advanceTimersByTimeAsync(1000);
+      await waiting;
+      stdout.mockRestore();
+      stderr.mockRestore();
+    });
+
     it('should handle rate limit errors', async () => {
       const queue = GlobalRequestQueue.getInstance();
 
@@ -471,6 +496,42 @@ describe('GlobalRequestQueue', () => {
 
       const finalStatus = queue.getStatus();
       expect(finalStatus.remainingRequests).toBe(initialRemaining - 1);
+    });
+
+    it('counts attempted requests even when the request rejects', async () => {
+      const queue = GlobalRequestQueue.getInstance();
+      const initialRemaining = queue.getStatus().remainingRequests;
+      const request = vi.fn().mockRejectedValue(new Error('request failed'));
+
+      await expect(queue.enqueue(request)).rejects.toThrow('request failed');
+
+      expect(queue.getStatus().remainingRequests).toBe(initialRemaining - 1);
+    });
+
+    it('waits for the oldest request to expire from the rolling 24-hour window', async () => {
+      vi.useFakeTimers();
+      const queue = GlobalRequestQueue.getInstance();
+      const now = Date.now();
+      const internal = queue as unknown as { requestTimestamps: number[]; lastRequestTime: number };
+      internal.requestTimestamps = Array.from({ length: 5000 }, () => now - (24 * 60 * 60 * 1000) + 1000);
+      internal.lastRequestTime = now - 200;
+      const warning = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      const request = vi.fn().mockResolvedValue('after rolling quota slot expires');
+
+      expect(queue.getStatus().remainingRequests).toBe(0);
+      expect(queue.getStatus().resetTime.getTime()).toBe(now + 1000);
+
+      const result = queue.enqueue(request);
+      await vi.advanceTimersByTimeAsync(999);
+      expect(request).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(1);
+      await expect(result).resolves.toBe('after rolling quota slot expires');
+      await vi.runAllTimersAsync();
+
+      expect(request).toHaveBeenCalledOnce();
+      expect(queue.getStatus().remainingRequests).toBe(4999);
+      expect(warning).toHaveBeenCalledWith(expect.stringContaining('rolling 24-hour window'));
+      warning.mockRestore();
     });
   });
 
