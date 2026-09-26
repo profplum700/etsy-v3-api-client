@@ -130,8 +130,8 @@ describe('EtsyClient Core', () => {
         setWarningThreshold: vi.fn()
       };
 
-      (TokenManager as Mock).mockImplementation(() => mockTokenManager);
-      (EtsyRateLimiter as Mock).mockImplementation(() => mockRateLimiter);
+      (TokenManager as Mock).mockImplementation(function () { return mockTokenManager; });
+      (EtsyRateLimiter as Mock).mockImplementation(function () { return mockRateLimiter; });
 
       const clientWithSecret = new EtsyClient(configWithSecret);
 

@@ -71,8 +71,8 @@ export function setupClientMocks(): MockClientContext {
   const mockFetch = vi.fn();
   (global as unknown as { fetch: Mock }).fetch = mockFetch;
 
-  (TokenManager as Mock).mockImplementation(() => mockTokenManager);
-  (EtsyRateLimiter as Mock).mockImplementation(() => mockRateLimiter);
+  (TokenManager as Mock).mockImplementation(function () { return mockTokenManager; });
+  (EtsyRateLimiter as Mock).mockImplementation(function () { return mockRateLimiter; });
 
   const client = new EtsyClient(mockConfig);
 
