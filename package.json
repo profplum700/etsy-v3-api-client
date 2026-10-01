@@ -82,7 +82,7 @@
     "node": ">=24.0.0"
   },
   "devDependencies": {
-    "@apidevtools/swagger-parser": "12.1.0",
+    "@apidevtools/swagger-parser": "13.1.0",
     "@changesets/cli": "^3.0.3",
     "@rollup/plugin-commonjs": "^29.0.3",
     "@rollup/plugin-node-resolve": "^16.0.3",
