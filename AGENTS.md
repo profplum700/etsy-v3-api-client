@@ -14,10 +14,16 @@ This repository is a TypeScript/JavaScript client library for the Etsy Open API 
 ## Repository Rules
 
 - Read this file before work; stricter user or repo-local instructions win.
+- Do not add a CLAUDE.md; Claude Code reads AGENTS.md directly.
 - Work canon-style on the default branch: pull/rebase, run the merge gate, commit directly to the shared branch, and push.
-- Do not commit Etsy credentials, OAuth tokens, generated secret files, `.env`, or local API test credentials. The existing `.gitignore` excludes `etsy-tokens.json`; keep token material out of Git.
+- Never print, log or commit secrets. Do not commit Etsy credentials, OAuth tokens, generated secret files, `.env`, or local API test credentials. The existing `.gitignore` excludes `etsy-tokens.json`; keep token material out of Git.
 - Treat publishing as release-managed: add a Changeset for published package changes and follow `PUBLISHING.md`.
 - OpenAPI maintenance is an explicit exception to direct default-branch commits: the scheduled workflow owns `automation/etsy-openapi` and proposes reviewed draft PRs. It may change only the pinned specification, provenance, internal generated declarations and reports. It must use standard GitHub-hosted runners in the public repository, with no paid services or AI subscriptions. See `docs/OPENAPI_MAINTENANCE.md`.
+
+## Pull Requests and Merging
+
+- Direct default-branch commits (above) stay the norm. When a change does go through a PR (for example Dependabot, or a PR opened on request), the rule below applies on top of the merge gate and any explicit owner scope. Draft PRs, including the `automation/etsy-openapi` ones, are not merged until marked ready for review.
+- Merge (squash) without asking once **all CI checks pass** and **every review comment and review thread has been answered**, including ones that arrive after later pushes. Answer each comment (fix it, or reply why not) before merging. Never merge red or conflicted PRs.
 
 ## Common Commands
 
