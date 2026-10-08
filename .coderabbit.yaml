@@ -1,4 +1,7 @@
 # yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+# Merge with the organisation settings (en-GB, request-changes workflow,
+# early access) instead of replacing them.
+inheritance: true
 reviews:
   auto_review:
     enabled: true
