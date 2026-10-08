@@ -1,0 +1,610 @@
+{
+  "schemaVersion": 1,
+  "beforeSha256": "874b2d9ce091d74297687a204a1f53292123d64e00100d52b05cbe57ba417975",
+  "afterSha256": "22da1a4b25700ca12b8e3026ea52d8b586fbb9a71280695c69c19330d8f12d20",
+  "changes": [
+    {
+      "pointer": "/components/schemas/TransactionVariations/properties/mime_type",
+      "kind": "added",
+      "category": "structural",
+      "operationId": null,
+      "sdkMethod": null,
+      "before": null,
+      "after": {
+        "type": "string",
+        "description": "MIME type of an uploaded personalization file. Null for non-upload questions.",
+        "nullable": true,
+        "enum": [
+          "image/jpeg",
+          "image/png",
+          "image/gif",
+          "image/svg+xml",
+          "image/heif",
+          "image/heic",
+          "application/pdf"
+        ]
+      }
+    },
+    {
+      "pointer": "/paths/~1v3~1application~1listings~1{listing_id}~1inventory/put/parameters/1/description",
+      "kind": "changed",
+      "category": "prose",
+      "operationId": "updateListingInventory",
+      "sdkMethod": null,
+      "before": "Coming soon: This parameter determines whether a third variation can be added to or updated for a listing. It accepts values of 2 or 3, where 3 enables third-variation support.",
+      "after": "This parameter determines whether a third variation can be added to or updated for a listing. It accepts values of 2 or 3, where 3 enables third-variation support."
+    },
+    {
+      "pointer": "/paths/~1v3~1application~1listings~1{listing_id}~1inventory/put/parameters/1/schema/description",
+      "kind": "changed",
+      "category": "prose",
+      "operationId": "updateListingInventory",
+      "sdkMethod": null,
+      "before": "Coming soon: This parameter determines whether a third variation can be added to or updated for a listing. It accepts values of 2 or 3, where 3 enables third-variation support.",
+      "after": "This parameter determines whether a third variation can be added to or updated for a listing. It accepts values of 2 or 3, where 3 enables third-variation support."
+    },
+    {
+      "pointer": "/paths/~1v3~1application~1seller-taxonomy~1nodes~1{taxonomy_id}~1properties/get/parameters",
+      "kind": "changed",
+      "category": "structural",
+      "operationId": "getPropertiesByTaxonomyId",
+      "sdkMethod": null,
+      "before": [
+        {
+          "name": "taxonomy_id",
+          "in": "path",
+          "description": "The unique numeric ID of an Etsy taxonomy node, which is a metadata category for listings organized into the seller taxonomy hierarchy tree. For example, the \"shoes\" taxonomy node (ID: 1429, level: 1) is higher in the hierarchy than \"girls' shoes\" (ID: 1440, level: 2). The taxonomy nodes assigned to a listing support access to specific standardized product scales and properties. For example, listings assigned the taxonomy nodes \"shoes\" or \"girls' shoes\" support access to the \"EU\" shoe size scale with its associated property names and IDs for EU shoe sizes, such as property `value_id`:\"1394\", and `name`:\"38\".",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "description": "The unique numeric ID of an Etsy taxonomy node, which is a metadata category for listings organized into the seller taxonomy hierarchy tree. For example, the \"shoes\" taxonomy node (ID: 1429, level: 1) is higher in the hierarchy than \"girls' shoes\" (ID: 1440, level: 2). The taxonomy nodes assigned to a listing support access to specific standardized product scales and properties. For example, listings assigned the taxonomy nodes \"shoes\" or \"girls' shoes\" support access to the \"EU\" shoe size scale with its associated property names and IDs for EU shoe sizes, such as property `value_id`:\"1394\", and `name`:\"38\".",
+            "format": "int64",
+            "minimum": 1
+          }
+        }
+      ],
+      "after": [
+        {
+          "name": "taxonomy_id",
+          "in": "path",
+          "description": "The unique numeric ID of an Etsy taxonomy node, which is a metadata category for listings organized into the seller taxonomy hierarchy tree. For example, the \"shoes\" taxonomy node (ID: 1429, level: 1) is higher in the hierarchy than \"girls' shoes\" (ID: 1440, level: 2). The taxonomy nodes assigned to a listing support access to specific standardized product scales and properties. For example, listings assigned the taxonomy nodes \"shoes\" or \"girls' shoes\" support access to the \"EU\" shoe size scale with its associated property names and IDs for EU shoe sizes, such as property `value_id`:\"1394\", and `name`:\"38\".",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "description": "The unique numeric ID of an Etsy taxonomy node, which is a metadata category for listings organized into the seller taxonomy hierarchy tree. For example, the \"shoes\" taxonomy node (ID: 1429, level: 1) is higher in the hierarchy than \"girls' shoes\" (ID: 1440, level: 2). The taxonomy nodes assigned to a listing support access to specific standardized product scales and properties. For example, listings assigned the taxonomy nodes \"shoes\" or \"girls' shoes\" support access to the \"EU\" shoe size scale with its associated property names and IDs for EU shoe sizes, such as property `value_id`:\"1394\", and `name`:\"38\".",
+            "format": "int64",
+            "minimum": 1
+          }
+        },
+        {
+          "name": "supports_variations",
+          "in": "query",
+          "description": "When `true`, returns properties that support variations. When `false`, returns properties that do not support variations.",
+          "required": false,
+          "schema": {
+            "type": "boolean",
+            "description": "When `true`, returns properties that support variations. When `false`, returns properties that do not support variations.",
+            "nullable": true
+          }
+        },
+        {
+          "name": "supports_attributes",
+          "in": "query",
+          "description": "When `true`, returns properties that support attributes. When `false`, returns properties that do not support attributes.",
+          "required": false,
+          "schema": {
+            "type": "boolean",
+            "description": "When `true`, returns properties that support attributes. When `false`, returns properties that do not support attributes.",
+            "nullable": true
+          }
+        }
+      ]
+    },
+    {
+      "pointer": "/paths/~1v3~1application~1shops~1{shop_id}~1receipts~1{receipt_id}~1tracking/post/description",
+      "kind": "changed",
+      "category": "prose",
+      "operationId": "createReceiptShipment",
+      "sdkMethod": null,
+      "before": "<div class=\"wt-display-flex-xs wt-align-items-center wt-mt-xs-2 wt-mb-xs-3\"><span class=\"wt-badge wt-badge--notificationPrimary wt-bg-slime-tint wt-mr-xs-2\">General Release</span><a class=\"wt-text-link\" href=\"https://github.com/etsy/open-api/discussions\" target=\"_blank\" rel=\"noopener noreferrer\">Report bug</a></div><div class=\"wt-display-flex-xs wt-align-items-center wt-mt-xs-2 wt-mb-xs-3\"><p class=\"wt-text-body-01 banner-text\">This endpoint is ready for production use.</p></div>\n\nSubmits tracking information for a Shop Receipt, which creates a Shop Receipt Shipment entry for the given receipt_id. Each time you successfully submit tracking info, Etsy sends a notification email to the buyer User. When send_bcc is true, Etsy sends shipping notifications to the seller as well. When tracking_code and carrier_name aren't sent, the receipt is marked as shipped only. If the carrier is not supported, you may use `other` as the carrier name so you can provide the tracking code. **NOTES** When shipping within the United States AND the order is over $10 _or_ when shipping to India, tracking code and carrier name ARE required. Access to ShopReceipt's first_line, second_line, city, state, zip, country_iso and formatted_address is contingent in some regions to a preferred partnership status with Etsy",
+      "after": "<div class=\"wt-display-flex-xs wt-align-items-center wt-mt-xs-2 wt-mb-xs-3\"><span class=\"wt-badge wt-badge--notificationPrimary wt-bg-slime-tint wt-mr-xs-2\">General Release</span><a class=\"wt-text-link\" href=\"https://github.com/etsy/open-api/discussions\" target=\"_blank\" rel=\"noopener noreferrer\">Report bug</a></div><div class=\"wt-display-flex-xs wt-align-items-center wt-mt-xs-2 wt-mb-xs-3\"><p class=\"wt-text-body-01 banner-text\">This endpoint is ready for production use.</p></div>\n\nSubmits tracking information for a Shop Receipt, which creates a Shop Receipt Shipment entry for the given receipt_id. Each time you successfully submit tracking info, Etsy sends a notification email to the buyer User. When send_bcc is true, Etsy sends shipping notifications to the seller as well. When tracking_code and carrier_name aren't sent, the receipt is marked as shipped only. If the carrier is not supported, you may use `other` as the carrier name so you can provide the tracking code. **NOTES** When shipping within the United States AND the order is over $10 _or_ when shipping to India, tracking code and carrier name ARE required. **ACCESS RESTRICTION** In regions where Etsy's Preferred Partner Program is enforced, this endpoint is only available to applications that are approved fulfillment partners. Requests from other applications return `403 Forbidden`, even when the API key is valid, the OAuth token has the `transactions_w` scope and other receipt endpoints respond successfully. A request is authorized if the application is a commercial-access application categorized as Fulfillment or Print On Demand, if it is a personal-use application owned by the authenticated seller, or if the seller authorized the application before the Preferred Partner Program launched in their region. If your application doesn't meet these criteria, contact Etsy API support to ask about partner eligibility. Access to ShopReceipt's first_line, second_line, city, state, zip, country_iso and formatted_address is contingent in some regions to a preferred partnership status with Etsy"
+    }
+  ],
+  "unmappedOperations": [
+    {
+      "path": "/v3/application/buyer-taxonomy/nodes",
+      "method": "get",
+      "operationId": "getBuyerTaxonomyNodes"
+    },
+    {
+      "path": "/v3/application/buyer-taxonomy/nodes/{taxonomy_id}/properties",
+      "method": "get",
+      "operationId": "getPropertiesByBuyerTaxonomyId"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/listings",
+      "method": "post",
+      "operationId": "createDraftListing"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/listings",
+      "method": "get",
+      "operationId": "getListingsByShop"
+    },
+    {
+      "path": "/v3/application/listings/{listing_id}",
+      "method": "delete",
+      "operationId": "deleteListing"
+    },
+    {
+      "path": "/v3/application/listings/{listing_id}",
+      "method": "get",
+      "operationId": "getListing"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/listings/{listing_id}/files/{listing_file_id}",
+      "method": "delete",
+      "operationId": "deleteListingFile"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/listings/{listing_id}/files/{listing_file_id}",
+      "method": "get",
+      "operationId": "getListingFile"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/listings/{listing_id}/files",
+      "method": "get",
+      "operationId": "getAllListingFiles"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/listings/{listing_id}/files",
+      "method": "post",
+      "operationId": "uploadListingFile"
+    },
+    {
+      "path": "/v3/application/listings/active",
+      "method": "get",
+      "operationId": "findAllListingsActive"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/listings/{listing_id}/images/{listing_image_id}",
+      "method": "delete",
+      "operationId": "deleteListingImage"
+    },
+    {
+      "path": "/v3/application/listings/{listing_id}/images/{listing_image_id}",
+      "method": "get",
+      "operationId": "getListingImage"
+    },
+    {
+      "path": "/v3/application/listings/{listing_id}/images",
+      "method": "get",
+      "operationId": "getListingImages"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/listings/{listing_id}/images",
+      "method": "post",
+      "operationId": "uploadListingImage"
+    },
+    {
+      "path": "/v3/application/listings/{listing_id}/inventory",
+      "method": "put",
+      "operationId": "updateListingInventory"
+    },
+    {
+      "path": "/v3/application/listings/batch/inventory",
+      "method": "get",
+      "operationId": "getListingsInventoryByListingIds"
+    },
+    {
+      "path": "/v3/application/listings/{listing_id}/inventory/products/{product_id}",
+      "method": "get",
+      "operationId": "getListingProduct"
+    },
+    {
+      "path": "/v3/application/listings/{listing_id}/products/{product_id}/offerings/{product_offering_id}",
+      "method": "get",
+      "operationId": "getListingOffering"
+    },
+    {
+      "path": "/v3/application/listings/batch",
+      "method": "get",
+      "operationId": "getListingsByListingIds"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/listings/featured",
+      "method": "get",
+      "operationId": "getFeaturedListingsByShop"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/listings/{listing_id}/personalization",
+      "method": "delete",
+      "operationId": "deleteListingPersonalization"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/listings/{listing_id}/personalization",
+      "method": "post",
+      "operationId": "updateListingPersonalization"
+    },
+    {
+      "path": "/v3/application/listings/{listing_id}/personalization",
+      "method": "get",
+      "operationId": "getListingPersonalization"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/listings/{listing_id}/properties/{property_id}",
+      "method": "delete",
+      "operationId": "deleteListingProperty"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/listings/{listing_id}/properties/{property_id}",
+      "method": "put",
+      "operationId": "updateListingProperty"
+    },
+    {
+      "path": "/v3/application/listings/{listing_id}/properties/{property_id}",
+      "method": "get",
+      "operationId": "getListingProperty"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/listings/{listing_id}/properties",
+      "method": "get",
+      "operationId": "getListingProperties"
+    },
+    {
+      "path": "/v3/application/listings/batch/shipping",
+      "method": "get",
+      "operationId": "getListingsShippingByListingIds"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/listings/{listing_id}/transactions",
+      "method": "get",
+      "operationId": "getShopReceiptTransactionsByListing"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/listings/{listing_id}/translations/{language}",
+      "method": "post",
+      "operationId": "createListingTranslation"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/listings/{listing_id}/translations/{language}",
+      "method": "get",
+      "operationId": "getListingTranslation"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/listings/{listing_id}/translations/{language}",
+      "method": "put",
+      "operationId": "updateListingTranslation"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/listings/{listing_id}/variation-images",
+      "method": "get",
+      "operationId": "getListingVariationImages"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/listings/{listing_id}/variation-images",
+      "method": "post",
+      "operationId": "updateVariationImages"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/listings/{listing_id}/videos/{video_id}",
+      "method": "delete",
+      "operationId": "deleteListingVideo"
+    },
+    {
+      "path": "/v3/application/listings/{listing_id}/videos/{video_id}",
+      "method": "get",
+      "operationId": "getListingVideo"
+    },
+    {
+      "path": "/v3/application/listings/{listing_id}/videos",
+      "method": "get",
+      "operationId": "getListingVideos"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/listings/{listing_id}/videos",
+      "method": "post",
+      "operationId": "uploadListingVideo"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/payment-account/ledger-entries/{ledger_entry_id}",
+      "method": "get",
+      "operationId": "getShopPaymentAccountLedgerEntry"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/payment-account/ledger-entries",
+      "method": "get",
+      "operationId": "getShopPaymentAccountLedgerEntries"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/payment-account/ledger-entries/payments",
+      "method": "get",
+      "operationId": "getPaymentAccountLedgerEntryPayments"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/receipts/{receipt_id}/payments",
+      "method": "get",
+      "operationId": "getShopPaymentByReceiptId"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/payments",
+      "method": "get",
+      "operationId": "getPayments"
+    },
+    {
+      "path": "/v3/application/openapi-ping",
+      "method": "get",
+      "operationId": "ping"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/receipts/{receipt_id}",
+      "method": "get",
+      "operationId": "getShopReceipt"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/receipts/{receipt_id}",
+      "method": "put",
+      "operationId": "updateShopReceipt"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/receipts",
+      "method": "get",
+      "operationId": "getShopReceipts"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/receipts/{receipt_id}/listings",
+      "method": "get",
+      "operationId": "getListingsByShopReceipt"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/receipts/{receipt_id}/tracking",
+      "method": "post",
+      "operationId": "createReceiptShipment"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/receipts/{receipt_id}/transactions",
+      "method": "get",
+      "operationId": "getShopReceiptTransactionsByReceipt"
+    },
+    {
+      "path": "/v3/application/listings/{listing_id}/reviews",
+      "method": "get",
+      "operationId": "getReviewsByListing"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/reviews",
+      "method": "get",
+      "operationId": "getReviewsByShop"
+    },
+    {
+      "path": "/v3/application/seller-taxonomy/nodes",
+      "method": "get",
+      "operationId": "getSellerTaxonomyNodes"
+    },
+    {
+      "path": "/v3/application/seller-taxonomy/nodes/{taxonomy_id}/properties",
+      "method": "get",
+      "operationId": "getPropertiesByTaxonomyId"
+    },
+    {
+      "path": "/v3/application/shipping-carriers",
+      "method": "get",
+      "operationId": "getShippingCarriers"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}",
+      "method": "put",
+      "operationId": "updateShop"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/holiday-preferences",
+      "method": "get",
+      "operationId": "getHolidayPreferences"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/holiday-preferences/{holiday_id}",
+      "method": "put",
+      "operationId": "updateHolidayPreferences"
+    },
+    {
+      "path": "/v3/application/shops",
+      "method": "get",
+      "operationId": "findShops"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/policies/return/consolidate",
+      "method": "post",
+      "operationId": "consolidateShopReturnPolicies"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/policies/return",
+      "method": "post",
+      "operationId": "createShopReturnPolicy"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/policies/return",
+      "method": "get",
+      "operationId": "getShopReturnPolicies"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/policies/return/{return_policy_id}",
+      "method": "delete",
+      "operationId": "deleteShopReturnPolicy"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/policies/return/{return_policy_id}",
+      "method": "get",
+      "operationId": "getShopReturnPolicy"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/policies/return/{return_policy_id}",
+      "method": "put",
+      "operationId": "updateShopReturnPolicy"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/policies/return/{return_policy_id}/listings",
+      "method": "get",
+      "operationId": "getListingsByShopReturnPolicy"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/production-partners",
+      "method": "get",
+      "operationId": "getShopProductionPartners"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/readiness-state-definitions",
+      "method": "post",
+      "operationId": "createShopReadinessStateDefinition"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/readiness-state-definitions",
+      "method": "get",
+      "operationId": "getShopReadinessStateDefinitions"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/readiness-state-definitions/{readiness_state_definition_id}",
+      "method": "delete",
+      "operationId": "deleteShopReadinessStateDefinition"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/readiness-state-definitions/{readiness_state_definition_id}",
+      "method": "get",
+      "operationId": "getShopReadinessStateDefinition"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/readiness-state-definitions/{readiness_state_definition_id}",
+      "method": "put",
+      "operationId": "updateShopReadinessStateDefinition"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/sections",
+      "method": "post",
+      "operationId": "createShopSection"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/sections",
+      "method": "get",
+      "operationId": "getShopSections"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/sections/{shop_section_id}",
+      "method": "delete",
+      "operationId": "deleteShopSection"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/sections/{shop_section_id}",
+      "method": "get",
+      "operationId": "getShopSection"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/sections/{shop_section_id}",
+      "method": "put",
+      "operationId": "updateShopSection"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/shop-sections/listings",
+      "method": "get",
+      "operationId": "getListingsByShopSectionId"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/shipping-profiles",
+      "method": "post",
+      "operationId": "createShopShippingProfile"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/shipping-profiles",
+      "method": "get",
+      "operationId": "getShopShippingProfiles"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/shipping-profiles/{shipping_profile_id}",
+      "method": "delete",
+      "operationId": "deleteShopShippingProfile"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/shipping-profiles/{shipping_profile_id}",
+      "method": "get",
+      "operationId": "getShopShippingProfile"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/shipping-profiles/{shipping_profile_id}",
+      "method": "put",
+      "operationId": "updateShopShippingProfile"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/shipping-profiles/{shipping_profile_id}/destinations",
+      "method": "post",
+      "operationId": "createShopShippingProfileDestination"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/shipping-profiles/{shipping_profile_id}/destinations",
+      "method": "get",
+      "operationId": "getShopShippingProfileDestinationsByShippingProfile"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/shipping-profiles/{shipping_profile_id}/destinations/{shipping_profile_destination_id}",
+      "method": "delete",
+      "operationId": "deleteShopShippingProfileDestination"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/shipping-profiles/{shipping_profile_id}/destinations/{shipping_profile_destination_id}",
+      "method": "put",
+      "operationId": "updateShopShippingProfileDestination"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/shipping-profiles/{shipping_profile_id}/upgrades",
+      "method": "post",
+      "operationId": "createShopShippingProfileUpgrade"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/shipping-profiles/{shipping_profile_id}/upgrades",
+      "method": "get",
+      "operationId": "getShopShippingProfileUpgrades"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/shipping-profiles/{shipping_profile_id}/upgrades/{upgrade_id}",
+      "method": "delete",
+      "operationId": "deleteShopShippingProfileUpgrade"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/shipping-profiles/{shipping_profile_id}/upgrades/{upgrade_id}",
+      "method": "put",
+      "operationId": "updateShopShippingProfileUpgrade"
+    },
+    {
+      "path": "/v3/application/scopes",
+      "method": "post",
+      "operationId": "tokenScopes"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/transactions/{transaction_id}",
+      "method": "get",
+      "operationId": "getShopReceiptTransaction"
+    },
+    {
+      "path": "/v3/application/shops/{shop_id}/transactions",
+      "method": "get",
+      "operationId": "getShopReceiptTransactionsByShop"
+    },
+    {
+      "path": "/v3/application/user/addresses/{user_address_id}",
+      "method": "delete",
+      "operationId": "deleteUserAddress"
+    },
+    {
+      "path": "/v3/application/user/addresses/{user_address_id}",
+      "method": "get",
+      "operationId": "getUserAddress"
+    },
+    {
+      "path": "/v3/application/user/addresses",
+      "method": "get",
+      "operationId": "getUserAddresses"
+    },
+    {
+      "path": "/v3/application/users/{user_id}",
+      "method": "get",
+      "operationId": "getUser"
+    }
+  ]
+}
