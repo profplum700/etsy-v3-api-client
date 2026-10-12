@@ -24,6 +24,7 @@ This repository is a TypeScript/JavaScript client library for the Etsy Open API 
 
 - Direct default-branch commits (above) stay the norm. When a change does go through a PR (for example Dependabot, or a PR opened on request), the rule below applies on top of the merge gate and any explicit owner scope. Draft PRs, including the `automation/etsy-openapi` ones, are not merged until marked ready for review.
 - Merge (squash) without asking once **all CI checks pass** and **every review comment and review thread has been answered**, including ones that arrive after later pushes. Answer each comment (fix it, or reply why not) before merging. Never merge red or conflicted PRs.
+- CodeRabbit is on the free open-source plan, which does not review this repo automatically (fewer than 10 stars). Request a review yourself by posting a PR comment containing exactly `@coderabbitai review` right after opening a PR, and again after each later push that changes code. Do this before merging any PR you open or handle, Dependabot ones included. Wait for CodeRabbit's review to post, then answer its comments like any other review before merging.
 
 ## Common Commands
 
