@@ -2318,6 +2318,16 @@
                             "description": "This parameter determines whether a third variation can be added to or updated for a listing. It accepts values of 2 or 3, where 3 enables third-variation support.",
                             "enum": ["2", "3"]
                         }
+                    },
+                    {
+                        "name": "enable_scale_validation",
+                        "in": "query",
+                        "description": "This temporary parameter indicates whether scale validation should be enabled for the request. It will be removed in the near future, at which point scale validation will be mandatory for all requests.",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "description": "This temporary parameter indicates whether scale validation should be enabled for the request. It will be removed in the near future, at which point scale validation will be mandatory for all requests."
+                        }
                     }
                 ],
                 "requestBody": {
@@ -4583,12 +4593,6 @@
                                             "1700s",
                                             "before_1700"
                                         ]
-                                    },
-                                    "featured_rank": {
-                                        "type": "integer",
-                                        "description": "The positive non-zero numeric position in the featured listings of the shop, with rank 1 listings appearing in the left-most position in featured listing on a shop's home page.",
-                                        "format": "int64",
-                                        "nullable": true
                                     },
                                     "state": {
                                         "type": "string",
