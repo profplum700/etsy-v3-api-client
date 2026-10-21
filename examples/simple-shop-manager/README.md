@@ -52,7 +52,7 @@ This example demonstrates:
 - Token storage with `FileTokenStorage` and automatic refresh via `refreshSaveAsync`
 - Basic CRUD operations on listings
 - Error handling with EtsyApiError
-- Pagination basics
+- Limiting results with the `limit` parameter
 - Shop statistics gathering
 
 ## Next Steps

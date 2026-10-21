@@ -285,7 +285,5 @@ class SimpleShopManager {
 }
 
 // Run the application
-if (require.main === module) {
-  const manager = new SimpleShopManager();
-  manager.run();
-}
+const manager = new SimpleShopManager();
+manager.run();
