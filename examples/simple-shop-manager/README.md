@@ -4,12 +4,12 @@ A basic CLI application demonstrating core Etsy API functionality.
 
 ## Features
 
-- Authentication flow
+- OAuth 2.0 PKCE authentication (`AuthHelper`)
 - View shop statistics
 - List active listings
 - List recent orders
 - Create new listings
-- Update listing prices
+- Update listing titles
 - Deactivate listings
 
 ## Setup
@@ -23,6 +23,7 @@ npm install
 ```bash
 # Create .env file
 ETSY_API_KEY=your_api_key_here
+ETSY_SHARED_SECRET=your_shared_secret_here
 ```
 
 3. Run the application:
@@ -32,23 +33,23 @@ npm start
 
 ## Usage
 
-1. On first run, you'll be prompted to authenticate
-2. Visit the authorization URL in your browser
-3. Copy the authorization code from the redirect URL
-4. Paste it into the CLI
+1. On first run, the app prints an authorization URL
+2. Visit it in your browser and approve access
+3. Etsy redirects to `http://localhost:3000/callback?code=...&state=...` (the page will not load, which is expected)
+4. Paste the full redirect URL into the CLI
 5. Navigate the menu to perform various shop operations
 
 ## Code Structure
 
 - `index.ts` - Main application logic
 - Interactive CLI menu
-- Token storage in `./tokens.json`
+- Tokens saved to `./tokens.json` and refreshed automatically (do not commit it)
 
 ## Learning Points
 
 This example demonstrates:
-- OAuth 2.0 authentication flow
-- Token storage and reuse
+- OAuth 2.0 PKCE flow with `AuthHelper`
+- Token storage with `FileTokenStorage` and automatic refresh via `refreshSaveAsync`
 - Basic CRUD operations on listings
 - Error handling with EtsyApiError
 - Pagination basics

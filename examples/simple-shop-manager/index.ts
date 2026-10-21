@@ -9,57 +9,81 @@
  */
 
 import {
+  AuthHelper,
   EtsyClient,
-  FileTokenStorage,
-  EtsyApiError
+  EtsyApiError,
+  FileTokenStorage
 } from '@profplum700/etsy-v3-api-client';
+import 'dotenv/config';
 import readline from 'readline';
 
+const REDIRECT_URI = 'http://localhost:3000/callback';
+const SCOPES = ['listings_r', 'listings_w', 'shops_r', 'transactions_r'];
+
 class SimpleShopManager {
-  private client: EtsyClient;
-  private shopId: string | null = null;
-
-  constructor() {
-    const storage = new FileTokenStorage('./tokens.json');
-
-    this.client = new EtsyClient(
-      {
-        apiKey: process.env.ETSY_API_KEY!,
-        redirectUri: 'http://localhost:3000/callback',
-        scopes: [
-          'listings_r',
-          'listings_w',
-          'shops_r',
-          'transactions_r'
-        ]
-      },
-      storage
-    );
-  }
+  private client!: EtsyClient;
+  private shopId = '';
+  private readonly storage = new FileTokenStorage('./tokens.json');
+  private readonly keystring = process.env.ETSY_API_KEY ?? '';
+  private readonly sharedSecret = process.env.ETSY_SHARED_SECRET ?? '';
 
   async authenticate(): Promise<void> {
-    const isAuth = await this.client.isAuthenticated();
-
-    if (!isAuth) {
-      console.log('\n=== Authentication Required ===');
-      const authUrl = await this.client.getAuthorizationUrl();
-
-      console.log('\n1. Visit this URL in your browser:');
-      console.log(authUrl);
-      console.log('\n2. After authorizing, you will be redirected to:');
-      console.log('   http://localhost:3000/callback?code=...');
-      console.log('\n3. Copy the "code" parameter from the URL');
-
-      const code = await this.prompt('\nEnter the authorization code: ');
-
-      await this.client.exchangeAuthorizationCode(code.trim());
-      console.log('✓ Authentication successful!\n');
+    if (!this.keystring || !this.sharedSecret) {
+      throw new Error('Set ETSY_API_KEY and ETSY_SHARED_SECRET (see README).');
     }
 
-    // Get shop ID
-    const shop = await this.client.getShopByOwnerUserId();
-    this.shopId = shop.shop_id.toString();
-    console.log(`✓ Connected to shop: ${shop.shop_name} (ID: ${this.shopId})\n`);
+    const stored = await this.storage.load();
+
+    if (stored) {
+      this.client = this.createClient(stored.access_token, stored.refresh_token, stored.expires_at);
+    } else {
+      console.log('\n=== Authentication Required ===');
+      const authHelper = new AuthHelper({
+        keystring: this.keystring,
+        redirectUri: REDIRECT_URI,
+        scopes: SCOPES
+      });
+
+      console.log('\n1. Visit this URL in your browser:');
+      console.log(await authHelper.getAuthUrl());
+      console.log(`\n2. After authorizing, you will be redirected to ${REDIRECT_URI}?code=...&state=...`);
+
+      const redirected = await this.prompt('\n3. Paste the full redirect URL: ');
+      const params = new URL(redirected.trim()).searchParams;
+      await authHelper.setAuthorizationCode(params.get('code') ?? '', params.get('state') ?? '');
+
+      const tokens = await authHelper.getAccessToken();
+      await this.storage.save(tokens);
+      this.client = this.createClient(tokens.access_token, tokens.refresh_token, tokens.expires_at);
+      console.log('Authentication successful!\n');
+    }
+
+    const user = await this.client.getUser();
+    if (!user.shop_id) {
+      throw new Error('This Etsy account does not own a shop.');
+    }
+    this.shopId = user.shop_id.toString();
+
+    const shop = await this.client.getShop(this.shopId);
+    console.log(`Connected to shop: ${shop.shop_name} (ID: ${this.shopId})\n`);
+  }
+
+  private createClient(accessToken: string, refreshToken: string, expiresAt: Date): EtsyClient {
+    return new EtsyClient({
+      keystring: this.keystring,
+      sharedSecret: this.sharedSecret,
+      accessToken,
+      refreshToken,
+      expiresAt,
+      refreshSaveAsync: (access, refresh, expires) =>
+        this.storage.save({
+          access_token: access,
+          refresh_token: refresh,
+          expires_at: expires,
+          token_type: 'Bearer',
+          scope: SCOPES.join(' ')
+        })
+    });
   }
 
   async showMenu(): Promise<void> {
@@ -68,7 +92,7 @@ class SimpleShopManager {
     console.log('2. List active listings');
     console.log('3. List recent orders');
     console.log('4. Create a new listing');
-    console.log('5. Update listing price');
+    console.log('5. Update listing title');
     console.log('6. Deactivate a listing');
     console.log('7. Exit\n');
 
@@ -88,7 +112,7 @@ class SimpleShopManager {
         await this.createListing();
         break;
       case '5':
-        await this.updateListingPrice();
+        await this.updateListingTitle();
         break;
       case '6':
         await this.deactivateListing();
@@ -104,28 +128,24 @@ class SimpleShopManager {
   }
 
   private async showShopStats(): Promise<void> {
-    if (!this.shopId) return;
-
-    console.log('\n=== Shop Statistics ===\n');
+    console.log('\n=== Shop Statistics (up to 100 each) ===\n');
 
     try {
       const [active, draft, receipts] = await Promise.all([
-        this.client.getListingsByShop(this.shopId, { state: 'active', limit: 1 }),
-        this.client.getListingsByShop(this.shopId, { state: 'draft', limit: 1 }),
-        this.client.getShopReceipts(this.shopId, { was_paid: true, limit: 1 })
+        this.client.getListingsByShop(this.shopId, { state: 'active', limit: 100 }),
+        this.client.getListingsByShop(this.shopId, { state: 'draft', limit: 100 }),
+        this.client.getShopReceipts(this.shopId, { was_paid: true, limit: 100 })
       ]);
 
-      console.log(`Active Listings: ${active.count}`);
-      console.log(`Draft Listings: ${draft.count}`);
-      console.log(`Total Orders: ${receipts.count}\n`);
+      console.log(`Active Listings: ${active.length}`);
+      console.log(`Draft Listings: ${draft.length}`);
+      console.log(`Paid Orders: ${receipts.length}\n`);
     } catch (error) {
       console.error('Error fetching stats:', error instanceof EtsyApiError ? error.message : error);
     }
   }
 
   private async listActiveListings(): Promise<void> {
-    if (!this.shopId) return;
-
     console.log('\n=== Active Listings ===\n');
 
     try {
@@ -134,25 +154,23 @@ class SimpleShopManager {
         limit: 10
       });
 
-      if (listings.results.length === 0) {
+      if (listings.length === 0) {
         console.log('No active listings found.\n');
         return;
       }
 
-      listings.results.forEach((listing, index) => {
+      listings.forEach((listing, index) => {
         console.log(`${index + 1}. [${listing.listing_id}] ${listing.title}`);
-        console.log(`   Price: $${listing.price.amount} | Quantity: ${listing.quantity}`);
+        console.log(`   Price: ${listing.price.amount / listing.price.divisor} ${listing.price.currency_code}`);
       });
 
-      console.log(`\nShowing ${listings.results.length} of ${listings.count} listings\n`);
+      console.log(`\nShowing ${listings.length} listings\n`);
     } catch (error) {
       console.error('Error fetching listings:', error instanceof EtsyApiError ? error.message : error);
     }
   }
 
   private async listRecentOrders(): Promise<void> {
-    if (!this.shopId) return;
-
     console.log('\n=== Recent Orders ===\n');
 
     try {
@@ -161,27 +179,25 @@ class SimpleShopManager {
         limit: 10
       });
 
-      if (receipts.results.length === 0) {
+      if (receipts.length === 0) {
         console.log('No orders found.\n');
         return;
       }
 
-      receipts.results.forEach((receipt, index) => {
+      receipts.forEach((receipt, index) => {
         console.log(`${index + 1}. Order #${receipt.receipt_id}`);
         console.log(`   Customer: ${receipt.name}`);
-        console.log(`   Total: $${receipt.grandtotal.amount}`);
-        console.log(`   Paid: ${receipt.was_paid ? 'Yes' : 'No'} | Shipped: ${receipt.was_shipped ? 'Yes' : 'No'}`);
+        console.log(`   Total: ${receipt.grandtotal.amount / receipt.grandtotal.divisor} ${receipt.grandtotal.currency_code}`);
+        console.log(`   Status: ${receipt.status} | Shipped: ${receipt.is_shipped ? 'Yes' : 'No'}`);
       });
 
-      console.log(`\nShowing ${receipts.results.length} of ${receipts.count} orders\n`);
+      console.log(`\nShowing ${receipts.length} orders\n`);
     } catch (error) {
       console.error('Error fetching orders:', error instanceof EtsyApiError ? error.message : error);
     }
   }
 
   private async createListing(): Promise<void> {
-    if (!this.shopId) return;
-
     console.log('\n=== Create New Listing ===\n');
 
     try {
@@ -210,28 +226,24 @@ class SimpleShopManager {
     }
   }
 
-  private async updateListingPrice(): Promise<void> {
-    if (!this.shopId) return;
-
-    console.log('\n=== Update Listing Price ===\n');
+  private async updateListingTitle(): Promise<void> {
+    console.log('\n=== Update Listing Title ===\n');
 
     try {
       const listingId = await this.prompt('Listing ID: ');
-      const newPrice = parseFloat(await this.prompt('New Price: $'));
+      const title = await this.prompt('New title: ');
 
       await this.client.updateListing(this.shopId, listingId, {
-        price: newPrice
+        title
       });
 
-      console.log(`\n✓ Price updated successfully!\n`);
+      console.log(`\n✓ Title updated successfully!\n`);
     } catch (error) {
-      console.error('Error updating price:', error instanceof EtsyApiError ? error.message : error);
+      console.error('Error updating title:', error instanceof EtsyApiError ? error.message : error);
     }
   }
 
   private async deactivateListing(): Promise<void> {
-    if (!this.shopId) return;
-
     console.log('\n=== Deactivate Listing ===\n');
 
     try {
