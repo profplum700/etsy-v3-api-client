@@ -923,14 +923,26 @@ export class EtsyClient {
    * Update listing inventory
    * Endpoint: PUT /v3/application/listings/{listing_id}/inventory
    * Scopes: listings_w
+   *
+   * `enableScaleValidation` sends Etsy's temporary `enable_scale_validation`
+   * query parameter. When true, Etsy rejects (400) payloads whose scaled
+   * properties lack a `scale_id`, use an invalid one, or use different ones
+   * across products. Etsy makes this validation mandatory on 1 January 2027.
    */
   public async updateListingInventory(
     listingId: string,
     params: UpdateListingInventoryParams,
-    options?: { legacy?: boolean }
+    options?: { legacy?: boolean; enableScaleValidation?: boolean }
   ): Promise<EtsyListingInventory> {
-    const legacy = options?.legacy;
-    const query = legacy !== undefined ? `?legacy=${legacy}` : '';
+    const searchParams = new URLSearchParams();
+    if (options?.legacy !== undefined) {
+      searchParams.set('legacy', options.legacy.toString());
+    }
+    if (options?.enableScaleValidation !== undefined) {
+      searchParams.set('enable_scale_validation', options.enableScaleValidation.toString());
+    }
+    const queryString = searchParams.toString();
+    const query = queryString ? `?${queryString}` : '';
     // Build the wire body from Etsy's documented request fields. Callers can
     // pass structurally wider objects (for example, a GET inventory response);
     // serializing those objects directly can leak response-only fields into
