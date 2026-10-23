@@ -289,7 +289,7 @@ export class SecureTokenStorage implements TokenStorage {
    */
   private async generateIntegrity(
     encrypted: ArrayBuffer,
-    iv: ArrayBuffer
+    iv: ArrayBuffer | Uint8Array<ArrayBuffer>
   ): Promise<ArrayBuffer> {
     // Combine encrypted data and IV for integrity check
     const combined = new Uint8Array(encrypted.byteLength + iv.byteLength);
@@ -329,14 +329,14 @@ export class SecureTokenStorage implements TokenStorage {
   /**
    * Convert string to ArrayBuffer
    */
-  private stringToArrayBuffer(str: string): ArrayBuffer {
+  private stringToArrayBuffer(str: string): Uint8Array<ArrayBuffer> {
     return new TextEncoder().encode(str);
   }
 
   /**
    * Convert ArrayBuffer to base64
    */
-  private arrayBufferToBase64(buffer: ArrayBuffer): string {
+  private arrayBufferToBase64(buffer: ArrayBuffer | Uint8Array<ArrayBuffer>): string {
     const bytes = new Uint8Array(buffer);
     let binary = '';
     for (let i = 0; i < bytes.byteLength; i++) {
