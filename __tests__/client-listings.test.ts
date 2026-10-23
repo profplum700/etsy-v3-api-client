@@ -427,6 +427,32 @@ describe('EtsyClient Listings', () => {
       });
     });
 
+    it.each([
+      [{ enableScaleValidation: true }, '?enable_scale_validation=true'],
+      [{ enableScaleValidation: false }, '?enable_scale_validation=false'],
+      [{ legacy: true, enableScaleValidation: true }, '?legacy=true&enable_scale_validation=true'],
+      [{ legacy: false }, '?legacy=false'],
+    ])('should send inventory query options %o as %s', async (options, query) => {
+      ctx.mockFetch.mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ products: [] })
+      });
+
+      await ctx.client.updateListingInventory('789', {
+        products: [{
+          property_values: [{ property_id: 47626759834, scale_id: 5, value_ids: [], values: ['30'] }],
+          offerings: [{ price: 8, quantity: 1, is_enabled: true, readiness_state_id: null }],
+        }],
+      }, options);
+
+      expect(ctx.mockFetch).toHaveBeenCalledWith(
+        `https://api.etsy.com/v3/application/listings/789/inventory${query}`,
+        expect.objectContaining({ method: 'PUT' })
+      );
+      const requestBody = JSON.parse(ctx.mockFetch.mock.calls[0]![1].body as string);
+      expect(requestBody.products[0].property_values[0].scale_id).toBe(5);
+    });
+
     it('should preserve an explicit empty property_values array for a product with no variations', async () => {
       ctx.mockFetch.mockResolvedValue({
         ok: true,
