@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.1.0
+
+### Minor Changes
+
+- f285f3f: Add an `enableScaleValidation` option to `updateListingInventory`, sent as Etsy's temporary `enable_scale_validation` query parameter. Etsy makes scale validation mandatory on 1 January 2027; opting in now surfaces payloads whose scaled properties lack a valid, consistent `scale_id`.
+
 ## 4.0.0
 
 ### Major Changes
