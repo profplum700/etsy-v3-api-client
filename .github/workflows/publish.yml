@@ -43,7 +43,7 @@ jobs:
         run: node scripts/resolve-release-tag.mjs "$RELEASE_TAG"
 
       - name: Require successful CI on this master commit
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const runs = await github.rest.actions.listWorkflowRunsForRepo({
@@ -96,7 +96,7 @@ jobs:
           echo "path=${archives[0]}" >> "$GITHUB_OUTPUT"
 
       - name: Upload the exact release tarball
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: package-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ steps.tarball.outputs.path }}
@@ -129,7 +129,7 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
 
       - name: Download the exact release tarball
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: package-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/etsy-release
