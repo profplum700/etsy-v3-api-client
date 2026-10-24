@@ -5,6 +5,8 @@ import { Entry, type EntryOptions } from "@napi-rs/keyring";
 import { z } from "zod";
 import { REQUIRED_SCOPES } from "./constants.js";
 import { acquireCredentialLock, CredentialLockError } from "./credential-lock.js";
+import { CredentialStoreError } from "./errors.js";
+export { CredentialStoreError } from "./errors.js";
 
 const SERVICE_NAME = "com.profplum700.etsy-mcp-server";
 const ACCOUNT_NAME = "default";
@@ -60,13 +62,6 @@ export interface SecretEntry {
 
 export type EntryFactory = (service: string, account: string) => SecretEntry;
 
-export class CredentialStoreError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "CredentialStoreError";
-  }
-}
-
 function createPlatformEntry(service: string, account: string): SecretEntry {
   const options: EntryOptions | undefined = process.platform === "linux"
     ? { linux: { store: "secret-service" } }
@@ -91,7 +86,7 @@ function parseCredentials(value: unknown): EtsyCredentials {
   }
 
   const grantedScopes = parsed.data.scope.split(/\s+/).filter(Boolean);
-  if (grantedScopes.length !== scopeSet.size || grantedScopes.some((scope) => !scopeSet.has(scope))) {
+  if (grantedScopes.length !== scopeSet.size || new Set(grantedScopes).size !== scopeSet.size || grantedScopes.some((scope) => !scopeSet.has(scope))) {
     throw new CredentialStoreError("The saved Etsy connection does not have exactly the required read-only scopes. Run setup and approve only shops_r and listings_r.");
   }
 
