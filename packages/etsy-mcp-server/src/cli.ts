@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { readFileSync, realpathSync } from "node:fs";
 import { createInterface } from "node:readline/promises";
 import { stdin, stdout } from "node:process";
 import { resolve } from "node:path";
@@ -323,6 +323,6 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(resolve(process.argv[1]))).href) {
   await main();
 }

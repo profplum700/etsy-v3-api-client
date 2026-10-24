@@ -109,12 +109,12 @@ try {
   const filename = manifest.name.replace(/^@/, "").replace("/", "-") + "-" + manifest.version + ".tgz";
   const tarball = join(temporaryDirectory, filename);
   await copyFile(join(packageDirectory, filename), tarball);
-  const files = execFileSync(tar, ["-tf", tarball], { encoding: "utf8" }).trim().split(/\r?\n/);
+  const files = execFileSync(tar, ["-tf", filename], { cwd: temporaryDirectory, encoding: "utf8" }).trim().split(/\r?\n/);
   for (const file of files) {
     assert.match(file, /^package\/(?:package\.json|README\.md|LICENSE(?:\.md)?|dist\/[\w.-]+\.(?:js|d\.ts)(?:\.map)?)$/, "Unexpected file in npm archive");
   }
   assert.ok(files.includes("package/dist/cli.js"));
-  const packedManifest = JSON.parse(execFileSync(tar, ["-xOf", tarball, "package/package.json"], { encoding: "utf8" }));
+  const packedManifest = JSON.parse(execFileSync(tar, ["-xOf", filename, "package/package.json"], { cwd: temporaryDirectory, encoding: "utf8" }));
   assert.equal(packedManifest.name, manifest.name);
   assert.equal(packedManifest.version, manifest.version);
   assert.equal(packedManifest.bin["etsy-mcp-server"], "./dist/cli.js");
