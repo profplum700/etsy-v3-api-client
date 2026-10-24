@@ -4527,6 +4527,8 @@ export interface operations {
     updateListingInventory: {
         parameters: {
             query?: {
+                /** @description This temporary parameter indicates whether scale validation should be enabled for the request. It will be removed in the near future, at which point scale validation will be mandatory for all requests. */
+                enable_scale_validation?: boolean;
                 /** @description This parameter determines whether a third variation can be added to or updated for a listing. It accepts values of 2 or 3, where 3 enables third-variation support. */
                 max_variations_supported?: "2" | "3";
             };
@@ -6119,11 +6121,6 @@ export interface operations {
                     ecgt_other_commercial_guarantee_details?: string | null;
                     /** @description Details of software update availability and the duration of such updates, as required under EU ECGT regulations for digital content. Maximum 255 characters. Silently ignored for physical listings and for sellers who are not eligible EU traders. */
                     ecgt_software_update_details?: string | null;
-                    /**
-                     * Format: int64
-                     * @description The positive non-zero numeric position in the featured listings of the shop, with rank 1 listings appearing in the left-most position in featured listing on a shop's home page.
-                     */
-                    featured_rank?: number | null;
                     /** @description An array of numeric image IDs of the images in a listing, which can include up to 20 images. */
                     image_ids?: number[];
                     /** @description When true, tags the listing as a supply product, else indicates that it's a finished product. Helps buyers locate the listing under the Supplies heading. Requires 'who_made' and 'when_made'. */
