@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { diagnose, formatDoctorReport } from "../src/doctor.js";
 import { main } from "../src/cli.js";
-import { CredentialStoreError } from "../src/credentials.js";
+import { CredentialStore, CredentialStoreError } from "../src/credentials.js";
 import { createMemoryStore, validCredentials } from "./fixtures.js";
 
 describe("offline doctor", () => {
@@ -96,5 +96,56 @@ describe("offline doctor", () => {
     await main(["doctor", ...args]);
     expect(process.exitCode).toBe(1);
     expect(error).toHaveBeenCalledExactlyOnceWith("Usage: etsy-mcp-server doctor [--json]");
+  });
+
+  describe.each([false, true])("CLI output with JSON=%s", (json) => {
+    it.each([
+      { name: "ready", credentials: validCredentials, code: "TOKEN_UNEXPIRED", status: "pass", exitCode: 0 },
+      { name: "expired", credentials: { ...validCredentials, expiresAt: "2000-01-01T00:00:00.000Z" }, code: "TOKEN_EXPIRED", status: "warn", exitCode: 0 },
+      { name: "disconnected", credentials: null, code: "NOT_CONNECTED", status: "fail", exitCode: 1 },
+    ])("reports $name readiness and exit status", async ({ credentials, code, status, exitCode }) => {
+      vi.spyOn(CredentialStore.prototype, "read").mockResolvedValue(credentials);
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-10-24T00:00:00.000Z"));
+      const output = vi.spyOn(console, "log").mockImplementation(() => undefined);
+      const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+      try {
+        await main(json ? ["doctor", "--json"] : ["doctor"]);
+        expect(process.exitCode).toBe(exitCode);
+        expect(error).not.toHaveBeenCalled();
+        expect(output).toHaveBeenCalledTimes(1);
+        const text = String(output.mock.calls[0]?.[0]);
+        if (json) {
+          expect(JSON.parse(text)).toMatchObject({
+            schema_version: 1,
+            ok: exitCode === 0,
+            checks: expect.arrayContaining([expect.objectContaining({ code, status })]),
+          });
+        } else {
+          expect(text).toContain("Etsy MCP local diagnostics");
+          expect(text).toContain(`${status.toUpperCase()} ${code}:`);
+        }
+        for (const secret of [validCredentials.accessToken, validCredentials.refreshToken, validCredentials.sharedSecret]) {
+          expect(text).not.toContain(secret);
+        }
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("reports credential-store failure without printing the provider error", async () => {
+      vi.spyOn(CredentialStore.prototype, "read").mockRejectedValue(new Error("secret-token /private/keyring/path"));
+      const output = vi.spyOn(console, "log").mockImplementation(() => undefined);
+      const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+      await main(json ? ["doctor", "--json"] : ["doctor"]);
+      expect(process.exitCode).toBe(1);
+      expect(error).not.toHaveBeenCalled();
+      expect(output).toHaveBeenCalledTimes(1);
+      const text = String(output.mock.calls[0]?.[0]);
+      expect(text).toContain("STORE_READ_FAILED");
+      expect(text).not.toContain("secret-token");
+      expect(text).not.toContain("/private/keyring/path");
+      if (json) expect(JSON.parse(text).ok).toBe(false);
+    });
   });
 });
