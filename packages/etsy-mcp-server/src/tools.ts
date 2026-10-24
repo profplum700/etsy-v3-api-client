@@ -67,11 +67,11 @@ function safeError(error: unknown): string {
   return "Etsy read request failed. Check the local connection with `etsy-mcp-server status` and retry.";
 }
 
-function jsonResult(value: unknown): TextToolResult {
+function jsonResult(value: unknown, oversizedMessage = "This Etsy result exceeds the 25,000 character response limit. Use a smaller page; listing inventory supports limit/offset pagination."): TextToolResult {
   const text = JSON.stringify(value, null, 2) ?? "null";
   if (text.length > MAX_TOOL_RESPONSE_CHARACTERS) {
     return {
-      content: [{ type: "text", text: "This Etsy result exceeds the 25,000 character response limit. Use a smaller page; listing inventory supports limit/offset pagination." }],
+      content: [{ type: "text", text: oversizedMessage }],
       isError: true,
     };
   }
@@ -285,7 +285,7 @@ export async function createEtsyMcpServer(dependencies: ToolDependencies = {}): 
   const createClient = dependencies.createClient ?? createCachedClientFactory();
   const server = new McpServer(
     { name: SERVER_NAME, version: packageManifest.version },
-    { instructions: "This server is read-only and is bound to the Etsy shop that was active when this server process started. All tool calls in this process stay on that shop. After selecting a different shop with the local CLI, restart this MCP client to switch. Use etsy_list_active_listings with pagination for active listings; use etsy_get_listing_inventory only for a listing from this shop." },
+    { instructions: "This server is read-only and is bound to the Etsy shop that was active when this server process started. All tool calls in this process stay on that shop. After selecting a different shop with the local CLI, restart this MCP client to switch. Use etsy_list_active_listings with pagination for active listings; use etsy_get_listing for listing descriptions, tags, and materials; use etsy_get_listing_inventory for variation prices and stock. Both listing tools accept only listings from this shop." },
   );
 
   const annotations = {
@@ -362,10 +362,7 @@ export async function createEtsyMcpServer(dependencies: ToolDependencies = {}): 
           url: listing.url,
           price: priceInMajorUnits(listing.price),
         };
-        if (JSON.stringify(details, null, 2).length > MAX_TOOL_RESPONSE_CHARACTERS) {
-          return { content: [{ type: "text" as const, text: "Listing details exceed the 25,000 character response limit. View the listing in Etsy; details were not truncated." }], isError: true };
-        }
-        return jsonResult(details);
+        return jsonResult(details, "Listing details exceed the 25,000 character response limit. View the listing in Etsy; details were not truncated.");
       });
     } catch (error) {
       return errorResult(error);

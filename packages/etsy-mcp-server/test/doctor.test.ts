@@ -18,7 +18,7 @@ describe("offline doctor", () => {
     const setActive = vi.spyOn(store, "setActive");
     const refresh = vi.spyOn(store, "saveRefreshedTokensIfCurrent");
     const network = vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("Doctor must stay offline"));
-    const report = await diagnose({ loadStore: async () => store, now: 0 });
+    const report = await diagnose({ nodeVersion: "24.0.0", loadStore: async () => store, now: 0 });
     expect(report.ok).toBe(true);
     expect(report.checks.map((check) => check.code)).toContain("READ_ONLY_SCOPES");
     expect([...entries]).toEqual(before);
@@ -37,17 +37,17 @@ describe("offline doctor", () => {
   it.each(["shops_r listings_r", "listings_r shops_r", " shops_r\tlistings_r "])("accepts exactly both read scopes in any ordering %s", async (scope) => {
     const { store } = createMemoryStore();
     await store.save({ ...validCredentials, scope });
-    const report = await diagnose({ loadStore: async () => store, now: 0 });
+    const report = await diagnose({ nodeVersion: "24.0.0", loadStore: async () => store, now: 0 });
     expect(report.ok).toBe(true);
   });
 
   it("explains missing connection and expired access token separately", async () => {
     const { store } = createMemoryStore();
-    const missing = await diagnose({ loadStore: async () => store });
+    const missing = await diagnose({ nodeVersion: "24.0.0", loadStore: async () => store });
     expect(missing.ok).toBe(false);
     expect(missing.checks.at(-1)?.code).toBe("NOT_CONNECTED");
     await store.save({ ...validCredentials, expiresAt: "2000-01-01T00:00:00.000Z" });
-    const expired = await diagnose({ loadStore: async () => store });
+    const expired = await diagnose({ nodeVersion: "24.0.0", loadStore: async () => store });
     expect(expired.ok).toBe(true);
     expect(expired.checks).toContainEqual(expect.objectContaining({ code: "TOKEN_EXPIRED", status: "warn" }));
   });
@@ -56,14 +56,14 @@ describe("offline doctor", () => {
     const { store, entries } = createMemoryStore();
     entries.set("com.profplum700.etsy-mcp-server:default", JSON.stringify({ ...validCredentials, scope }));
     await expect(store.read()).rejects.toThrow("exactly the required read-only scopes");
-    const report = await diagnose({ loadStore: async () => store });
+    const report = await diagnose({ nodeVersion: "24.0.0", loadStore: async () => store });
     expect(report.ok).toBe(false);
     expect(report.checks.at(-2)?.code).toBe("STORE_READ_FAILED");
     expect(JSON.stringify(report)).not.toContain(validCredentials.accessToken);
   });
 
   it.each([new Error("secret-sentinel /private/path"), new CredentialStoreError("secret-sentinel /private/path")])("does not echo provider or lock errors", async (error) => {
-    const report = await diagnose({ loadStore: async () => ({ read: async () => { throw error; } }), platform: "linux" });
+    const report = await diagnose({ nodeVersion: "24.0.0", loadStore: async () => ({ read: async () => { throw error; } }), platform: "linux" });
     expect(report.ok).toBe(false);
     expect(formatDoctorReport(report)).toContain("Secret Service");
     expect(JSON.stringify(report)).not.toContain("secret-sentinel");
@@ -71,7 +71,7 @@ describe("offline doctor", () => {
   });
 
   it("handles native loader failure without echoing its message", async () => {
-    const report = await diagnose({ loadStore: async () => { throw new Error("native-private-path"); } });
+    const report = await diagnose({ nodeVersion: "24.0.0", loadStore: async () => { throw new Error("native-private-path"); } });
     expect(report.ok).toBe(false);
     expect(report.checks.at(-1)?.code).toBe("NATIVE_LOAD_FAILED");
     expect(JSON.stringify(report)).not.toContain("native-private-path");
@@ -79,14 +79,14 @@ describe("offline doctor", () => {
 
   it.each([{ nodeVersion: "22.1.0" }, { platform: "freebsd" }])("stops before loading unsupported runtime %j", async (options) => {
     const loadStore = vi.fn();
-    expect((await diagnose({ ...options, loadStore })).ok).toBe(false);
+    expect((await diagnose({ nodeVersion: "24.0.0", ...options, loadStore })).ok).toBe(false);
     expect(loadStore).not.toHaveBeenCalled();
   });
 
   it("rejects malformed saved records without exposing their contents", async () => {
     const { store, entries } = createMemoryStore();
     entries.set("com.profplum700.etsy-mcp-server:default", "private-corrupt-record");
-    const report = await diagnose({ loadStore: async () => store });
+    const report = await diagnose({ nodeVersion: "24.0.0", loadStore: async () => store });
     expect(report.ok).toBe(false);
     expect(JSON.stringify(report)).not.toContain("private-corrupt-record");
   });

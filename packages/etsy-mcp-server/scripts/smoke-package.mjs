@@ -4,7 +4,7 @@ import { createHash } from "node:crypto";
 import { copyFile, mkdtemp, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const packageDirectory = fileURLToPath(new URL("..", import.meta.url));
 const manifest = JSON.parse(await readFile(join(packageDirectory, "package.json"), "utf8"));
@@ -80,6 +80,7 @@ async function checkStdio(cli) {
     assert.equal(initialized.serverInfo.version, manifest.version);
     assert.equal(typeof initialized.protocolVersion, "string");
     assert.ok(initialized.capabilities.tools);
+    assert.match(initialized.instructions, /etsy_get_listing\b/);
     send({ method: "notifications/initialized" });
     const { tools, nextCursor } = await request("tools/list");
     assert.equal(nextCursor, undefined);
@@ -109,6 +110,7 @@ try {
   const filename = manifest.name.replace(/^@/, "").replace("/", "-") + "-" + manifest.version + ".tgz";
   const tarball = join(temporaryDirectory, filename);
   await copyFile(join(packageDirectory, filename), tarball);
+  await rm(join(packageDirectory, filename));
   const files = execFileSync(tar, ["-tf", filename], { cwd: temporaryDirectory, encoding: "utf8" }).trim().split(/\r?\n/);
   for (const file of files) {
     assert.match(file, /^package\/(?:package\.json|README\.md|LICENSE(?:\.md)?|dist\/[\w.-]+\.(?:js|d\.ts)(?:\.map)?)$/, "Unexpected file in npm archive");
@@ -142,6 +144,14 @@ try {
   assert.match(help, /etsy-mcp-server serve/);
   console.log(`PASS clean npm production install and installed executable on ${process.platform}/${process.arch}, Node ${process.version}.`);
   const installedCli = join(installedDirectory, "dist", "cli.js");
+  for (const invokedPath of ["-", join(temporaryDirectory, "missing-wrapper.js")]) {
+    const imported = spawnSync(process.execPath, ["--input-type=module", "-e",
+      `process.argv[1] = ${JSON.stringify(invokedPath)}; await import(${JSON.stringify(pathToFileURL(installedCli).href)}); console.log("imported");`,
+    ], { cwd: temporaryDirectory, encoding: "utf8", timeout: 20_000, windowsHide: true });
+    assert.equal(imported.status, 0, imported.stderr);
+    assert.equal(imported.stdout.trim(), "imported");
+  }
+  console.log("PASS installed CLI import with stdin and missing-wrapper entry paths.");
   await checkStdio(installedCli);
   const diagnostic = spawnSync(process.execPath, [installedCli, "doctor", "--json"], {
     cwd: temporaryDirectory, encoding: "utf8", timeout: 20_000, windowsHide: true,

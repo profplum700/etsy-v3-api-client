@@ -323,6 +323,15 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(resolve(process.argv[1]))).href) {
+function isEntrypoint(): boolean {
+  if (!process.argv[1]) return false;
+  try {
+    return import.meta.url === pathToFileURL(realpathSync(resolve(process.argv[1]))).href;
+  } catch {
+    return false;
+  }
+}
+
+if (isEntrypoint()) {
   await main();
 }
