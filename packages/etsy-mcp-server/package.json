@@ -48,7 +48,7 @@
     "@napi-rs/keyring": "^2.1.0",
     "@profplum700/etsy-v3-api-client": "workspace:^4.1.0",
     "open": "^11.0.4",
-    "zod": "^4.6.5"
+    "zod": "^4.6.6"
   },
   "publishConfig": {
     "access": "public"
