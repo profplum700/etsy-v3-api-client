@@ -130,7 +130,7 @@ importers:
   packages/etsy-cli:
     dependencies:
       '@profplum700/etsy-v3-api-client':
-        specifier: workspace:^4.0.0
+        specifier: workspace:^4.1.0
         version: link:../..
       chalk:
         specifier: ^6.0.1
@@ -188,7 +188,7 @@ importers:
         specifier: ^2.1.0
         version: 2.1.0
       '@profplum700/etsy-v3-api-client':
-        specifier: workspace:^4.0.0
+        specifier: workspace:^4.1.0
         version: link:../..
       open:
         specifier: ^11.0.4
