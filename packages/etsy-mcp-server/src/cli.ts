@@ -5,11 +5,10 @@ import { createInterface } from "node:readline/promises";
 import { stdin, stdout } from "node:process";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { serveStdio } from "@modelcontextprotocol/server/stdio";
 import { CODEX_SERVER_NAME, OAUTH_REDIRECT_URI, REQUIRED_SCOPES } from "./constants.js";
-import { CredentialStore, CredentialStoreError } from "./credentials.js";
-import { connectShop, SetupError } from "./oauth.js";
-import { createEtsyMcpServer } from "./tools.js";
+import type { CredentialStore } from "./credentials.js";
+import { CredentialStoreError, SetupError } from "./errors.js";
+import { diagnose, formatDoctorReport } from "./doctor.js";
 
 interface HiddenInput {
   isTTY?: boolean;
@@ -147,6 +146,7 @@ function parseSetupOptions(args: string[]): SetupOptions {
 }
 
 async function runSetup(store: CredentialStore, options: SetupOptions): Promise<void> {
+  const { connectShop } = await import("./oauth.js");
   store.probe();
   console.log("Connect your Etsy shop using your own Etsy developer app.");
   console.log("Register this exact callback in your Etsy app if required: " + OAUTH_REDIRECT_URI);
@@ -255,6 +255,7 @@ function printHelp(): void {
   console.log("                                           Add or reconnect a shop; reuse the saved app if requested");
   console.log("  etsy-mcp-server serve                     Run the MCP stdio server");
   console.log("  etsy-mcp-server status                    List connected shops and the active shop");
+  console.log("  etsy-mcp-server doctor [--json]           Check local readiness without changing credentials");
   console.log("  etsy-mcp-server use <shop name or ID>      Select the shop used by the MCP server");
   console.log("  etsy-mcp-server disconnect                Disconnect the active shop only");
   console.log("  etsy-mcp-server disconnect --shop <name>  Disconnect one saved shop");
@@ -269,17 +270,34 @@ export function safeCliError(error: unknown): string {
 
 export async function main(argv: string[] = process.argv.slice(2)): Promise<void> {
   const [command, ...args] = argv;
-  const store = new CredentialStore();
   try {
+    if (command === "doctor") {
+      if (args.length > 1 || (args.length === 1 && args[0] !== "--json")) {
+        throw new SetupError("Usage: etsy-mcp-server doctor [--json]");
+      }
+      const report = await diagnose();
+      console.log(args[0] === "--json" ? JSON.stringify(report) : formatDoctorReport(report));
+      process.exitCode = report.ok ? 0 : 1;
+      return;
+    }
+    if (command === undefined || ["--help", "-h", "help"].includes(command)) {
+      printHelp();
+      return;
+    }
+    const { CredentialStore } = await import("./credentials.js");
+    const store = new CredentialStore();
     switch (command) {
       case "setup":
         await runSetup(store, parseSetupOptions(args));
         return;
-      case "serve":
+      case "serve": {
         if (args.length > 0) throw new SetupError("Usage: etsy-mcp-server serve");
+        const { serveStdio } = await import("@modelcontextprotocol/server/stdio");
+        const { createEtsyMcpServer } = await import("./tools.js");
         console.error("Etsy MCP server running on stdio.");
         await serveStdio(() => createEtsyMcpServer({ store }));
         return;
+      }
       case "status":
         if (args.length > 0) throw new SetupError("Usage: etsy-mcp-server status");
         await runStatus(store);
@@ -295,12 +313,6 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
         if (args.length > 0) throw new SetupError("Usage: etsy-mcp-server remove-codex");
         removeFromCodex();
         console.log("Removed the Etsy MCP server from your Codex user configuration.");
-        return;
-      case "--help":
-      case "-h":
-      case "help":
-      case undefined:
-        printHelp();
         return;
       default:
         throw new SetupError("Unknown command. Use `etsy-mcp-server --help` to see available commands.");

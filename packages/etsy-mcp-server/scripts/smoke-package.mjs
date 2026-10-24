@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
-import { execFileSync, execSync, spawn } from "node:child_process";
+import { execFileSync, execSync, spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { copyFile, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { copyFile, mkdtemp, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -141,7 +141,31 @@ try {
   assert.match(help, /Etsy MCP server \(local stdio, read-only\)/);
   assert.match(help, /etsy-mcp-server serve/);
   console.log(`PASS clean npm production install and installed executable on ${process.platform}/${process.arch}, Node ${process.version}.`);
-  await checkStdio(join(installedDirectory, "dist", "cli.js"));
+  const installedCli = join(installedDirectory, "dist", "cli.js");
+  await checkStdio(installedCli);
+  const diagnostic = spawnSync(process.execPath, [installedCli, "doctor", "--json"], {
+    cwd: temporaryDirectory, encoding: "utf8", timeout: 20_000, windowsHide: true,
+  });
+  assert.equal(diagnostic.error, undefined);
+  assert.equal(diagnostic.stderr, "");
+  const report = JSON.parse(diagnostic.stdout);
+  assert.equal(report.schema_version, 1);
+  assert.equal(diagnostic.status, report.ok ? 0 : 1);
+  assert.ok(report.checks.some((check) => check.code === "STORE_READABLE"));
+  console.log("PASS installed doctor JSON and exit status (offline only).");
+  await rename(join(temporaryDirectory, "node_modules", "@napi-rs", "keyring"), join(temporaryDirectory, "removed-keyring"));
+  const broken = spawnSync(process.execPath, [installedCli, "doctor", "--json"], {
+    cwd: temporaryDirectory, encoding: "utf8", timeout: 20_000, windowsHide: true,
+  });
+  assert.equal(broken.error, undefined);
+  assert.equal(broken.status, 1);
+  assert.equal(broken.stderr, "");
+  const brokenReport = JSON.parse(broken.stdout);
+  assert.equal(brokenReport.ok, false);
+  assert.equal(brokenReport.checks.at(-1).code, "NATIVE_LOAD_FAILED");
+  assert.ok(!broken.stdout.includes(temporaryDirectory));
+  assert.match(execFileSync(process.execPath, [installedCli, "--help"], { encoding: "utf8", timeout: 20_000 }), /doctor/);
+  console.log("PASS installed doctor and help with missing native dependency; no raw loader error escaped.");
 } finally {
   await rm(temporaryDirectory, { recursive: true, force: true });
 }

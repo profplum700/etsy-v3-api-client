@@ -94,7 +94,7 @@ describe("read-only Etsy MCP tools", () => {
     expect(await store.read()).toEqual(newerCredentials);
   });
 
-  it("registers exactly the three read-only tools", async () => {
+  it("registers exactly the four read-only tools", async () => {
     const connected = await connectServer({ store: credentialStore(null) });
     activeClients.push(connected);
     const { tools } = await connected.client.listTools();
@@ -102,6 +102,72 @@ describe("read-only Etsy MCP tools", () => {
     expect(tools.map((tool) => tool.name)).toEqual([...ETSY_TOOL_NAMES]);
     expect(tools.every((tool) => tool.annotations?.readOnlyHint === true)).toBe(true);
     expect(tools.every((tool) => tool.annotations?.destructiveHint === false)).toBe(true);
+  });
+
+  it("returns only selected listing details for the startup shop after active selection changes", async () => {
+    const { store } = createMemoryStore();
+    await store.save(validCredentials);
+    const getListing = vi.fn(async () => ({
+      listing_id: 444, shop_id: 12345, title: "Print", description: "Artist description",
+      tags: ["art"], materials: ["paper"], language: "en", state: "active",
+      url: "https://www.etsy.com/listing/444", price: { amount: 4250, divisor: 100, currency_code: "USD" },
+      private_field: "never-return-this",
+    }));
+    const createClient = vi.fn(clientFactory({ getListing }));
+    const connected = await connectServer({ store, createClient });
+    activeClients.push(connected);
+    await store.save({ ...validCredentials, shopId: "67890", shopName: "Another Shop" });
+    const result = await connected.client.callTool({ name: "etsy_get_listing", arguments: { listing_id: 444 } });
+    expect(result.isError).not.toBe(true);
+    expect(getListing).toHaveBeenCalledExactlyOnceWith("444");
+    expect(createClient.mock.calls[0]?.[0].shopId).toBe("12345");
+    expect(JSON.parse(resultText(result))).toEqual({
+      shop_id: "12345", listing_id: 444, title: "Print", description: "Artist description",
+      tags: ["art"], materials: ["paper"], language: "en", state: "active",
+      url: "https://www.etsy.com/listing/444", price: { amount: 42.5, currency_code: "USD" },
+    });
+    await store.clear("12345");
+    const disconnected = await connected.client.callTool({ name: "etsy_get_listing", arguments: { listing_id: 444 } });
+    expect(disconnected.isError).toBe(true);
+    expect(getListing).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([99999, undefined])("refuses foreign or missing listing ownership %s before returning content", async (shopId) => {
+    const connected = await connectServer({
+      store: credentialStore(validCredentials),
+      createClient: clientFactory({ getListing: vi.fn(async () => ({ shop_id: shopId, description: "foreign-private-content" })) }),
+    });
+    activeClients.push(connected);
+    const result = await connected.client.callTool({ name: "etsy_get_listing", arguments: { listing_id: "444" } });
+    expect(result.isError).toBe(true);
+    expect(resultText(result)).toContain("does not belong");
+    expect(resultText(result)).not.toContain("foreign-private-content");
+  });
+
+  it("refuses oversized details and sanitizes API errors", async () => {
+    const getListing = vi.fn()
+      .mockResolvedValueOnce({ shop_id: 12345, description: "x".repeat(25001), price: { amount: 1, divisor: 1, currency_code: "GBP" } })
+      .mockRejectedValueOnce(new Error("token-secret-sentinel"));
+    const connected = await connectServer({ store: credentialStore(validCredentials), createClient: clientFactory({ getListing }) });
+    activeClients.push(connected);
+    const large = await connected.client.callTool({ name: "etsy_get_listing", arguments: { listing_id: "444" } });
+    expect(large.isError).toBe(true);
+    expect(resultText(large)).toContain("were not truncated");
+    expect(resultText(large).length).toBeLessThan(25000);
+    const failed = await connected.client.callTool({ name: "etsy_get_listing", arguments: { listing_id: "444" } });
+    expect(failed.isError).toBe(true);
+    expect(resultText(failed)).not.toContain("token-secret-sentinel");
+  });
+
+  it("rejects invalid listing inputs and write scopes before requesting Etsy", async () => {
+    const getListing = vi.fn();
+    const connected = await connectServer({ store: credentialStore({ ...validCredentials, scope: "shops_r listings_r listings_w" }), createClient: clientFactory({ getListing }) });
+    activeClients.push(connected);
+    for (const args of [{ listing_id: "../secret" }, { listing_id: 444, shop_id: "other" }, { listing_id: 444 }]) {
+      const result = await connected.client.callTool({ name: "etsy_get_listing", arguments: args });
+      expect(result.isError).toBe(true);
+    }
+    expect(getListing).not.toHaveBeenCalled();
   });
 
   it("lists active listings with major-unit prices and pagination metadata", async () => {
