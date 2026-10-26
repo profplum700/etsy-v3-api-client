@@ -2,6 +2,8 @@
  * Tests for Webhook Support (Phase 1)
  */
 
+import * as nodeCrypto from 'crypto';
+
 import { EtsyWebhookHandler, createWebhookHandler } from '../src/webhooks';
 
 // Mock crypto module for Node.js
@@ -437,5 +439,63 @@ describe('EtsyWebhookHandler', () => {
       expect(handlers.paid).toHaveBeenCalled();
       expect(handlers.canceled).toHaveBeenCalled();
     });
+  });
+});
+
+describe('Etsy deliveries (Standard Webhooks)', () => {
+  // Published Standard Webhooks test vector
+  const secret = 'whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw';
+  const rawBody = '{"test": 2432232314}';
+  const headers = {
+    'webhook-id': 'msg_p5jXN8AQM9LWM0D4loKWxJek',
+    'webhook-timestamp': '1614265330',
+    'webhook-signature': 'v1,g0hM9SsE+OTPJTGt/tmIKtSyZlE3uFJELVlNIOLJ1OE=',
+  };
+  const now = 1614265330;
+
+  const realHandler = () => {
+    const handler = new EtsyWebhookHandler({ secret });
+    (handler as any).crypto = nodeCrypto;
+    return handler;
+  };
+
+  it('accepts a correctly signed delivery', () => {
+    expect(realHandler().verifyRequest(rawBody, headers, { now })).toBe(true);
+  });
+
+  it('accepts a match among several signatures', () => {
+    const rotating = { ...headers, 'webhook-signature': `v1,c3RhbGU= ${headers['webhook-signature']}` };
+    expect(realHandler().verifyRequest(rawBody, rotating, { now })).toBe(true);
+  });
+
+  it('rejects a tampered body', () => {
+    expect(realHandler().verifyRequest('{"test": 1}', headers, { now })).toBe(false);
+  });
+
+  it('rejects a stale timestamp', () => {
+    expect(realHandler().verifyRequest(rawBody, headers, { now: now + 301 })).toBe(false);
+  });
+
+  it('rejects a delivery without signature headers', () => {
+    expect(realHandler().verifyRequest(rawBody, {}, { now })).toBe(false);
+  });
+
+  it('parses an inventory event and passes the payload to handlers', () => {
+    const handler = realHandler();
+    const outOfStock = vi.fn();
+    handler.on('inventory.out_of_stock', outOfStock);
+    const payload = {
+      event_type: 'inventory.out_of_stock',
+      resource_url: 'https://api.etsy.com/v3/application/shops/1/listings/2/products/3',
+      shop_id: '1',
+      listing_id: '2',
+      product_id: '3',
+    };
+
+    const event = handler.parseEvent(JSON.stringify(payload));
+
+    expect(event.type).toBe('inventory.out_of_stock');
+    expect(event.shop_id).toBe(1);
+    expect(outOfStock).toHaveBeenCalledWith(payload);
   });
 });
