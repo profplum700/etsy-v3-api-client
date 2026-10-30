@@ -3,6 +3,8 @@ import { AuthHelper, EtsyClient, type EtsyTokens } from "@profplum700/etsy-v3-ap
 import open from "open";
 import { CredentialStore, type EtsyCredentials } from "./credentials.js";
 import { OAUTH_REDIRECT_URI, REQUIRED_SCOPES } from "./constants.js";
+import { SetupError } from "./errors.js";
+export { SetupError } from "./errors.js";
 
 const CALLBACK_TIMEOUT_MS = 5 * 60 * 1000;
 const CALLBACK_URI_ERROR = "The Etsy OAuth callback must use loopback HTTP with an explicit port from 1 to 65535.";
@@ -41,13 +43,6 @@ function parseLocalCallbackAddress(redirectUri: string): LocalCallbackAddress {
     port,
     pathname: callbackUrl.pathname,
   };
-}
-
-export class SetupError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "SetupError";
-  }
 }
 
 function safeScope(scope: string): string {

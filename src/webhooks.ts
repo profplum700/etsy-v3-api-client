@@ -29,19 +29,62 @@ export interface WebhookConfig {
 }
 
 /**
- * Supported Etsy webhook event types
+ * Supported Etsy webhook event types.
+ *
+ * Etsy sends the order, listing and inventory events
+ * (https://developers.etsy.com/documentation/essentials/webhooks#available-events).
+ * `receipt.*`, `listing.deactivated` and `shop.updated` are kept for existing
+ * handlers; Etsy does not send them.
  */
 export type EtsyWebhookEventType =
-  | 'receipt.updated'
-  | 'receipt.created'
-  | 'listing.updated'
-  | 'listing.created'
-  | 'listing.deactivated'
-  | 'shop.updated'
+  | 'order.paid'
+  | 'order.canceled'
   | 'order.shipped'
   | 'order.delivered'
-  | 'order.paid'
-  | 'order.canceled';
+  | 'listing.created'
+  | 'listing.updated'
+  | 'listing.deleted'
+  | 'inventory.created'
+  | 'inventory.updated'
+  | 'inventory.deleted'
+  | 'inventory.out_of_stock'
+  | 'receipt.updated'
+  | 'receipt.created'
+  | 'listing.deactivated'
+  | 'shop.updated';
+
+/**
+ * Body of a webhook delivery as Etsy sends it. Fetch `resource_url` with an
+ * authenticated GET for the changed receipt, listing or product.
+ */
+export interface EtsyWebhookPayload {
+  event_type: EtsyWebhookEventType;
+  resource_url: string;
+  shop_id: number | string;
+  /** Listing and inventory events */
+  listing_id?: number | string;
+  /** Inventory events */
+  product_id?: number | string;
+}
+
+/**
+ * Headers Etsy signs each delivery with (Standard Webhooks)
+ */
+export interface EtsyWebhookHeaders {
+  'webhook-id': string;
+  'webhook-timestamp': string;
+  'webhook-signature': string;
+}
+
+/**
+ * Options for {@link EtsyWebhookHandler.verifyRequest}
+ */
+export interface VerifyRequestOptions {
+  /** Largest accepted clock difference in seconds (default: 300) */
+  toleranceSeconds?: number;
+  /** Current time in unix seconds, for tests */
+  now?: number;
+}
 
 /**
  * Webhook event data
@@ -58,9 +101,10 @@ export interface EtsyWebhookEvent {
   timestamp: number;
 
   /**
-   * Event data payload
+   * Event data payload. For deliveries from Etsy this is the
+   * {@link EtsyWebhookPayload} itself.
    */
-  data: EtsyShopReceipt | EtsyListing | unknown;
+  data: EtsyWebhookPayload | EtsyShopReceipt | EtsyListing | unknown;
 
   /**
    * Shop ID associated with the event
@@ -87,23 +131,19 @@ export type WebhookEventHandler<T = unknown> = (data: T) => void | Promise<void>
  *   secret: process.env.WEBHOOK_SECRET
  * });
  *
- * webhooks.on('receipt.updated', async (receipt) => {
- *   console.log('Receipt updated:', receipt.receipt_id);
+ * webhooks.on<EtsyWebhookPayload>('order.paid', async (payload) => {
+ *   const receipt = await client.request(payload.resource_url);
  *   await fulfillOrder(receipt);
  * });
  *
- * // In your Express endpoint:
+ * // In your Express endpoint, with the raw body (express.raw()):
  * app.post('/webhooks/etsy', (req, res) => {
- *   const signature = req.headers['x-etsy-signature'];
- *   const payload = JSON.stringify(req.body);
- *
- *   if (webhooks.verifySignature(payload, signature)) {
- *     const event = webhooks.parseEvent(payload);
- *     // Handler will be called automatically
- *     res.sendStatus(200);
- *   } else {
- *     res.sendStatus(401);
+ *   const rawBody = req.body.toString('utf8');
+ *   if (!webhooks.verifyRequest(rawBody, req.headers)) {
+ *     return res.sendStatus(401);
  *   }
+ *   webhooks.parseEvent(rawBody); // calls the handlers
+ *   res.sendStatus(200);
  * });
  * ```
  */
@@ -132,9 +172,64 @@ export class EtsyWebhookHandler {
   }
 
   /**
-   * Verify webhook signature
+   * Verify a delivery from Etsy: HMAC-SHA256 over `id.timestamp.body` with the
+   * `whsec_` signing secret, checked against every entry of `webhook-signature`,
+   * and a timestamp within the tolerance.
+   * See https://developers.etsy.com/documentation/essentials/webhooks#verifying-webhook-signatures
+   * @param rawBody Request body exactly as received, before JSON parsing
+   * @param headers Request headers (names in lower case, as Node gives them)
+   * @returns true if the delivery is authentic and fresh
+   */
+  verifyRequest(
+    rawBody: string,
+    headers: Partial<EtsyWebhookHeaders> | Record<string, string | string[] | undefined>,
+    options: VerifyRequestOptions = {}
+  ): boolean {
+    if (!this.config.verifySignatures) {
+      return true;
+    }
+
+    if (!this.crypto) {
+      throw new Error('Signature verification requires Node.js crypto module');
+    }
+
+    const header = (name: keyof EtsyWebhookHeaders): string | undefined => {
+      const value = (headers as Record<string, string | string[] | undefined>)[name];
+      return Array.isArray(value) ? value[0] : value;
+    };
+    const id = header('webhook-id');
+    const timestamp = header('webhook-timestamp');
+    const signatures = header('webhook-signature');
+    if (!id || !timestamp || !signatures) {
+      return false;
+    }
+
+    const sentAt = Number(timestamp);
+    const now = options.now ?? Math.floor(Date.now() / 1000);
+    if (!Number.isFinite(sentAt) || Math.abs(now - sentAt) > (options.toleranceSeconds ?? 300)) {
+      return false;
+    }
+
+    const secret = this.config.secret.startsWith('whsec_')
+      ? Buffer.from(this.config.secret.slice('whsec_'.length), 'base64')
+      : Buffer.from(this.config.secret, 'utf8');
+    const expected = this.crypto
+      .createHmac('sha256', secret)
+      .update(`${id}.${timestamp}.${rawBody}`)
+      .digest('base64');
+
+    // Entries look like "v1,<base64>", space-separated when the secret is rotating.
+    return signatures
+      .split(' ')
+      .map((entry) => entry.slice(entry.indexOf(',') + 1))
+      .some((signature) => this.timingSafeEqual(expected, signature));
+  }
+
+  /**
+   * Verify a hex HMAC of the payload.
+   * @deprecated Etsy signs deliveries with Standard Webhooks headers; use {@link verifyRequest}.
    * @param payload Raw webhook payload as string
-   * @param signature Signature from X-Etsy-Signature header
+   * @param signature Hex HMAC of the payload
    * @returns true if signature is valid
    */
   verifySignature(payload: string, signature: string): boolean {
@@ -179,8 +274,20 @@ export class EtsyWebhookHandler {
       data = payload;
     }
 
+    // Etsy's delivery body: { event_type, resource_url, shop_id, ... }
+    if (typeof data?.event_type === 'string' && typeof data.resource_url === 'string') {
+      const event: EtsyWebhookEvent = {
+        type: data.event_type,
+        timestamp: Date.now(),
+        data: data as EtsyWebhookPayload,
+        shop_id: Number(data.shop_id)
+      };
+      this.triggerHandlers(event);
+      return event;
+    }
+
     // Validate event structure
-    if (!data.type || !data.data) {
+    if (!data?.type || !data.data) {
       throw new Error('Invalid webhook event format');
     }
 

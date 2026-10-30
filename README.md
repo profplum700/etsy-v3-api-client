@@ -873,3 +873,5 @@ If you have questions or need help:
 ## 🏷️ Changelog
 
 See [CHANGELOG.md](CHANGELOG.md) for version history and release notes.
+
+[![Etsy MCP server](https://mcprush.com/badge/profplum700-etsy-mcp/card.svg)](https://mcprush.com/to/profplum700-etsy-mcp?ref=badge)

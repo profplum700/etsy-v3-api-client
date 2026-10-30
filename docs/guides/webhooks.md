@@ -23,235 +23,72 @@ Instead of polling the API for changes, webhooks push notifications to your serv
 
 ## Setting Up Webhooks
 
-### 1. Configure Endpoint in Etsy
+1. In the [Etsy Developer Portal](https://developers.etsy.com), open **Manage your apps**, then **Go to Webhook portal** for your app.
+2. Choose **+Add Endpoint**, enter your HTTPS callback URL and pick the events.
+3. Copy the endpoint's signing secret (it starts with `whsec_`) into your server's environment.
 
-1. Go to [Etsy Developer Portal](https://www.etsy.com/developers)
-2. Select your app
-3. Navigate to "Webhooks" section
-4. Add your webhook URL: `https://yourdomain.com/webhooks/etsy`
-
-**Important**: The endpoint must use HTTPS in production.
-
-### 2. Subscribe to Events
-
-Currently, webhook subscriptions are managed through the Etsy Developer Portal, not the API.
-
-Select which events you want to receive:
-- Shop events (receipt.created, receipt.updated, etc.)
-- Listing events (listing.created, listing.updated, etc.)
-- Transaction events
+Subscriptions are managed in the portal, not through the API. The portal also shows delivery history and has a **Testing** tab that sends test events.
 
 ## Webhook Events
 
-### Common Event Types
+| Event | Sent when |
+|-------|-----------|
+| `order.paid` | An order receives payment |
+| `order.canceled` | The seller cancels an order |
+| `order.shipped` | Shipping information is added to a receipt |
+| `order.delivered` | An order is marked delivered |
+| `listing.created` | A listing is created |
+| `listing.updated` | A listing's title, description, personalization, taxonomy, images, attributes or state changes |
+| `listing.deleted` | A listing is deleted |
+| `inventory.created` | A product (variant) is created |
+| `inventory.updated` | A product's price, readiness state, SKU or state changes |
+| `inventory.deleted` | A product is deleted |
+| `inventory.out_of_stock` | A product's quantity reaches 0 |
 
-| Event | Description |
-|-------|-------------|
-| `receipt.created` | New order placed |
-| `receipt.updated` | Order details changed |
-| `listing.created` | New listing created |
-| `listing.updated` | Listing details changed |
-| `listing.deactivated` | Listing deactivated |
-| `shop.updated` | Shop details changed |
-| `order.shipped` | Order has been shipped |
-| `order.delivered` | Order has been delivered |
-| `order.paid` | Order payment received |
-| `order.canceled` | Order has been canceled |
+The type `EtsyWebhookEventType` also keeps `receipt.created`, `receipt.updated`, `listing.deactivated` and `shop.updated` for existing code. Etsy does not send them.
 
-### Event Payload Structure
+### Payload
+
+A delivery carries no record data. It names the event and gives a `resource_url` to fetch:
 
 ```typescript
-interface EtsyWebhookEvent {
-  event_type: string;
-  shop_id: number;
-  listing_id?: number;
-  receipt_id?: number;
-  transaction_id?: number;
-  user_id?: number;
-  timestamp: number;
-  data: any; // Event-specific data
+interface EtsyWebhookPayload {
+  event_type: EtsyWebhookEventType;
+  resource_url: string;            // getShopReceipt, getListing or getListingProduct URL
+  shop_id: number | string;
+  listing_id?: number | string;    // listing and inventory events
+  product_id?: number | string;    // inventory events
 }
 ```
 
 ## Handling Webhooks
 
-### Express Server Example
+`EtsyWebhookHandler` verifies the signature and calls your handlers with the payload:
 
 ```typescript
 import express from 'express';
-import crypto from 'crypto';
-import { EtsyClient } from '@profplum700/etsy-v3-api-client';
+import { EtsyWebhookHandler, type EtsyWebhookPayload } from '@profplum700/etsy-v3-api-client';
+
+const webhooks = new EtsyWebhookHandler({ secret: process.env.ETSY_WEBHOOK_SECRET! });
+
+webhooks.on<EtsyWebhookPayload>('order.paid', async ({ resource_url }) => {
+  // Fetch the receipt from resource_url with an authenticated request, then fulfil it
+});
+
+webhooks.on<EtsyWebhookPayload>('inventory.out_of_stock', async ({ listing_id, product_id }) => {
+  // Mark the product sold out elsewhere
+});
 
 const app = express();
 
-// Important: Use raw body for signature verification
-app.use('/webhooks/etsy', express.raw({ type: 'application/json' }));
-
-const client = new EtsyClient({
-  apiKey: process.env.ETSY_API_KEY!,
-  redirectUri: process.env.REDIRECT_URI!,
-  scopes: ['transactions_r', 'listings_r']
-});
-
-app.post('/webhooks/etsy', async (req, res) => {
-  try {
-    // 1. Verify signature
-    const signature = req.headers['x-etsy-signature'] as string;
-    const isValid = verifyWebhookSignature(
-      req.body,
-      signature,
-      process.env.WEBHOOK_SECRET!
-    );
-
-    if (!isValid) {
-      console.error('Invalid webhook signature');
-      return res.status(401).send('Unauthorized');
-    }
-
-    // 2. Parse event
-    const event = JSON.parse(req.body.toString());
-
-    console.log(`Received event: ${event.event_type}`);
-
-    // 3. Acknowledge receipt immediately
-    res.status(200).send('OK');
-
-    // 4. Process event asynchronously
-    processWebhookEvent(event).catch(console.error);
-  } catch (error) {
-    console.error('Webhook error:', error);
-    res.status(500).send('Error');
+// The signature covers the exact bytes, so read the raw body
+app.post('/webhooks/etsy', express.raw({ type: 'application/json' }), (req, res) => {
+  const rawBody = req.body.toString('utf8');
+  if (!webhooks.verifyRequest(rawBody, req.headers)) {
+    return res.status(401).send('Unauthorized');
   }
-});
-
-function verifyWebhookSignature(
-  payload: Buffer,
-  signature: string,
-  secret: string
-): boolean {
-  const expectedSignature = crypto
-    .createHmac('sha256', secret)
-    .update(payload)
-    .digest('hex');
-
-  return crypto.timingSafeEqual(
-    Buffer.from(signature),
-    Buffer.from(expectedSignature)
-  );
-}
-
-async function processWebhookEvent(event: any) {
-  switch (event.event_type) {
-    case 'receipt.created':
-      await handleNewOrder(event);
-      break;
-
-    case 'receipt.paid':
-      await handleOrderPaid(event);
-      break;
-
-    case 'listing.updated':
-      await handleListingUpdated(event);
-      break;
-
-    default:
-      console.log(`Unhandled event type: ${event.event_type}`);
-  }
-}
-
-async function handleNewOrder(event: any) {
-  const { shop_id, receipt_id } = event;
-
-  console.log(`New order #${receipt_id} in shop ${shop_id}`);
-
-  // Fetch full order details
-  const receipt = await client.getShopReceipt(
-    shop_id.toString(),
-    receipt_id.toString()
-  );
-
-  // Process order (send notification, update database, etc.)
-  console.log(`Order from: ${receipt.buyer_email}`);
-  console.log(`Total: $${receipt.grandtotal.amount}`);
-
-  // Send to fulfillment system
-  await sendToFulfillment(receipt);
-}
-
-async function handleOrderPaid(event: any) {
-  const { shop_id, receipt_id } = event;
-
-  console.log(`Order #${receipt_id} paid`);
-
-  // Trigger fulfillment process
-  await startFulfillment(shop_id, receipt_id);
-}
-
-async function handleListingUpdated(event: any) {
-  const { listing_id } = event;
-
-  console.log(`Listing ${listing_id} updated`);
-
-  // Sync with your database
-  const listing = await client.getListing(listing_id.toString());
-  await updateLocalDatabase(listing);
-}
-
-app.listen(3000, () => {
-  console.log('Webhook server running on port 3000');
-});
-```
-
-### Event Handler Pattern
-
-```typescript
-class WebhookHandler {
-  private handlers: Map<string, Function[]> = new Map();
-
-  on(eventType: string, handler: Function) {
-    if (!this.handlers.has(eventType)) {
-      this.handlers.set(eventType, []);
-    }
-    this.handlers.get(eventType)!.push(handler);
-  }
-
-  async handle(event: any) {
-    const handlers = this.handlers.get(event.event_type) || [];
-
-    for (const handler of handlers) {
-      try {
-        await handler(event);
-      } catch (error) {
-        console.error(`Handler error for ${event.event_type}:`, error);
-      }
-    }
-  }
-}
-
-// Usage
-const webhooks = new WebhookHandler();
-
-webhooks.on('receipt.created', async (event) => {
-  console.log('New order:', event.receipt_id);
-  // Handle new order
-});
-
-webhooks.on('receipt.paid', async (event) => {
-  console.log('Order paid:', event.receipt_id);
-  // Start fulfillment
-});
-
-webhooks.on('listing.updated', async (event) => {
-  console.log('Listing updated:', event.listing_id);
-  // Sync inventory
-});
-
-// In your endpoint
-app.post('/webhooks/etsy', async (req, res) => {
-  const event = JSON.parse(req.body.toString());
-  res.status(200).send('OK');
-
-  await webhooks.handle(event);
+  res.status(200).send('OK');   // acknowledge first; Etsy retries failures
+  webhooks.parseEvent(rawBody); // runs the handlers for event_type
 });
 ```
 
@@ -259,24 +96,13 @@ app.post('/webhooks/etsy', async (req, res) => {
 
 ### 1. Verify Webhook Signatures
 
-**Always** verify webhook signatures to ensure requests come from Etsy:
+Etsy signs deliveries with [Standard Webhooks](https://www.standardwebhooks.com/) headers: `webhook-id`, `webhook-timestamp` and `webhook-signature`. `verifyRequest(rawBody, headers)` does the whole check:
 
-```typescript
-function verifyWebhookSignature(
-  payload: Buffer,
-  signature: string,
-  secret: string
-): boolean {
-  const hmac = crypto.createHmac('sha256', secret);
-  const expectedSignature = hmac.update(payload).digest('hex');
+1. It computes HMAC-SHA256 over `` `${webhook-id}.${webhook-timestamp}.${rawBody}` ``, keyed with the base64-decoded part of the secret after `whsec_`.
+2. It base64-encodes the result and compares it, in constant time, against every `v1,<signature>` entry in `webhook-signature`. There can be several entries while the secret is rotating.
+3. It rejects timestamps more than 300 seconds from now. Change this with `{ toleranceSeconds }`.
 
-  // Use timing-safe comparison
-  return crypto.timingSafeEqual(
-    Buffer.from(signature),
-    Buffer.from(expectedSignature)
-  );
-}
-```
+`verifySignature(payload, signature)`, the older hex HMAC of the body, is deprecated. Etsy never sends that format.
 
 ### 2. Use HTTPS
 
@@ -338,9 +164,8 @@ if (!secret) {
 ```typescript
 app.post('/webhooks/etsy', async (req, res) => {
   // Verify and acknowledge IMMEDIATELY
-  const signature = req.headers['x-etsy-signature'] as string;
-
-  if (!verifyWebhookSignature(req.body, signature, secret)) {
+  const rawBody = req.body.toString('utf8');
+  if (!webhooks.verifyRequest(rawBody, req.headers)) {
     return res.status(401).send('Unauthorized');
   }
 
@@ -348,23 +173,20 @@ app.post('/webhooks/etsy', async (req, res) => {
   res.status(200).send('OK');
 
   // Process in background
-  const event = JSON.parse(req.body.toString());
-  setImmediate(() => {
-    processWebhookEvent(event).catch(console.error);
-  });
+  setImmediate(() => webhooks.parseEvent(rawBody));
 });
 ```
 
 ### 2. Handle Retries Idempotently
 
-Etsy may send the same webhook multiple times. Make your handlers idempotent:
+Etsy retries failed deliveries with the same `webhook-id` header, so key idempotency on it:
 
 ```typescript
 const processedEvents = new Set<string>();
 
-async function processWebhookEvent(event: any) {
-  // Create unique ID for this event
-  const eventId = `${event.event_type}-${event.receipt_id}-${event.timestamp}`;
+async function processWebhookEvent(event: EtsyWebhookPayload, webhookId: string) {
+  // webhook-id stays the same across retries of one delivery
+  const eventId = webhookId;
 
   // Skip if already processed
   if (processedEvents.has(eventId)) {
@@ -432,9 +254,9 @@ async function logWebhookEvent(event: any) {
   await db.webhooks.insert({
     event_type: event.event_type,
     shop_id: event.shop_id,
-    receipt_id: event.receipt_id,
+    resource_url: event.resource_url,
     listing_id: event.listing_id,
-    timestamp: event.timestamp,
+    product_id: event.product_id,
     payload: event,
     processed_at: new Date()
   });
@@ -502,113 +324,7 @@ app.get('/webhooks/health', (req, res) => {
 
 ## Complete Example
 
-```typescript
-import express from 'express';
-import crypto from 'crypto';
-import { EtsyClient } from '@profplum700/etsy-v3-api-client';
-
-class EtsyWebhookServer {
-  private app: express.Application;
-  private client: EtsyClient;
-  private secret: string;
-  private handlers: Map<string, Function[]>;
-
-  constructor(client: EtsyClient, secret: string) {
-    this.app = express();
-    this.client = client;
-    this.secret = secret;
-    this.handlers = new Map();
-
-    this.setupRoutes();
-  }
-
-  private setupRoutes() {
-    this.app.use('/webhooks', express.raw({ type: 'application/json' }));
-
-    this.app.post('/webhooks/etsy', async (req, res) => {
-      try {
-        // Verify signature
-        const signature = req.headers['x-etsy-signature'] as string;
-        if (!this.verifySignature(req.body, signature)) {
-          return res.status(401).send('Unauthorized');
-        }
-
-        // Parse and validate
-        const event = JSON.parse(req.body.toString());
-        if (!this.validateEvent(event)) {
-          return res.status(400).send('Invalid event');
-        }
-
-        // Acknowledge
-        res.status(200).send('OK');
-
-        // Process asynchronously
-        setImmediate(() => {
-          this.processEvent(event).catch(console.error);
-        });
-      } catch (error) {
-        console.error('Webhook error:', error);
-        res.status(500).send('Error');
-      }
-    });
-  }
-
-  private verifySignature(payload: Buffer, signature: string): boolean {
-    const expected = crypto
-      .createHmac('sha256', this.secret)
-      .update(payload)
-      .digest('hex');
-
-    return crypto.timingSafeEqual(
-      Buffer.from(signature),
-      Buffer.from(expected)
-    );
-  }
-
-  private validateEvent(event: any): boolean {
-    return !!(event.event_type && event.shop_id && event.timestamp);
-  }
-
-  private async processEvent(event: any) {
-    const handlers = this.handlers.get(event.event_type) || [];
-
-    for (const handler of handlers) {
-      try {
-        await handler(event);
-      } catch (error) {
-        console.error(`Handler error:`, error);
-      }
-    }
-  }
-
-  on(eventType: string, handler: Function) {
-    if (!this.handlers.has(eventType)) {
-      this.handlers.set(eventType, []);
-    }
-    this.handlers.get(eventType)!.push(handler);
-    return this;
-  }
-
-  listen(port: number) {
-    this.app.listen(port, () => {
-      console.log(`Webhook server listening on port ${port}`);
-    });
-  }
-}
-
-// Usage
-const client = new EtsyClient(config);
-const server = new EtsyWebhookServer(client, process.env.WEBHOOK_SECRET!);
-
-server
-  .on('receipt.created', async (event) => {
-    console.log('New order:', event.receipt_id);
-  })
-  .on('receipt.paid', async (event) => {
-    console.log('Order paid:', event.receipt_id);
-  })
-  .listen(3000);
-```
+See [Handling Webhooks](#handling-webhooks). Register one handler per event with `webhooks.on`, verify with `verifyRequest`, and dispatch with `parseEvent`.
 
 ## Next Steps
 

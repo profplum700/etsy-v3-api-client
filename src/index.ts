@@ -70,6 +70,9 @@ export {
   type WebhookConfig,
   type EtsyWebhookEventType,
   type EtsyWebhookEvent,
+  type EtsyWebhookPayload,
+  type EtsyWebhookHeaders,
+  type VerifyRequestOptions,
   type WebhookEventHandler
 } from './webhooks';
 

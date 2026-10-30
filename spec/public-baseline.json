@@ -10,7 +10,8 @@
   "mcpTools": [
     "etsy_get_my_shop",
     "etsy_list_active_listings",
-    "etsy_get_listing_inventory"
+    "etsy_get_listing_inventory",
+    "etsy_get_listing"
   ],
   "runtimeDependencies": {
     "@eslint/js": "^9.39.5"

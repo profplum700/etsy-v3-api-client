@@ -1,0 +1,10 @@
+ts	phase	decision	why	evidence	result
+2026-10-24T13:46:00Z	frame	Use an isolated feature branch and preserve the existing read-only package	The user explicitly requested a PR and no release	74a2e52320fdac156b8524a3d9a7309bd60452be	baseline inspected
+2026-10-24T13:49:00Z	design	Reuse the transaction-locked credential read without a write probe	Coherent reads preserve profiles while doctor stays offline	packages/etsy-mcp-server/src/credentials.ts	implemented
+2026-10-24T13:50:00Z	design	Move native-dependent imports behind command dispatch	Doctor must catch native loader failures before raw paths or errors reach output	packages/etsy-mcp-server/src/cli.ts	installed missing-native check passed
+2026-10-24T13:51:00Z	security	Reject duplicated scope pairs in credential parsing	Two copies of one required scope are not the exact approved pair	packages/etsy-mcp-server/test/doctor.test.ts	regressions passed
+2026-10-24T13:53:00Z	tools	Add only connected-shop listing details	Existing summaries cannot support description and tag review	docs/mcp-seller-use-cases.md	unit and representative live read passed
+2026-10-24T13:54:00Z	packaging	Extend the existing native OS matrix with an isolated npm installation	Workspace builds cannot prove consumer packaging	packages/etsy-mcp-server/scripts/smoke-package.mjs	Windows passed; hosted matrix required
+2026-10-24T13:55:00Z	extension	Defer a distributable MCPB	Native runtime and clean-host onboarding remain unverified	docs/mcpb-feasibility.md	precise blockers documented
+2026-10-24T13:56:00Z	review	Accept offline semantics and central scope validation from independent design review	Diagnostics must not imply live authorization and need not reimplement the parser	https://chatgpt.com/c/6adcb7ab-0774-83ed-af44-46aa390553b8	changes applied
+2026-10-24T14:10:00Z	ci	Resolve npm executable symlinks and inspect archives using relative filenames	Hosted macOS/Linux exited without running main; Windows GNU tar treated C: as a host	CI run 40100708165	fixes require fresh hosted matrix
