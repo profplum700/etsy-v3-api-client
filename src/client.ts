@@ -2712,6 +2712,10 @@ export class EtsyClient {
   /**
    * Delete a user address
    * Endpoint: DELETE /v3/application/user/addresses/{user_address_id}
+   *
+   * @deprecated Etsy removed this endpoint from the Open API v3 specification
+   * (pinned spec update, October 2026). It may stop working at any time and will
+   * be removed in the next major version.
    */
   public async deleteUserAddress(userAddressId: string): Promise<void> {
     await this.makeRequest<void>(
