@@ -518,6 +518,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v3/application/shops/{shop_id}/economic-operators": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description <div class="wt-display-flex-xs wt-align-items-center wt-mt-xs-2 wt-mb-xs-3"><span class="wt-badge wt-badge--notificationPrimary wt-bg-slime-tint wt-mr-xs-2">General Release</span><a class="wt-text-link" href="https://github.com/etsy/open-api/discussions" target="_blank" rel="noopener noreferrer">Report bug</a></div><div class="wt-display-flex-xs wt-align-items-center wt-mt-xs-2 wt-mb-xs-3"><p class="wt-text-body-01 banner-text">This endpoint is ready for production use.</p></div>
+         *
+         *     Retrieves all economic operators (manufacturer and EU responsible person records) of a specific shop, used for GPSR compliance on listings. Deleted operators are not included. Use the `economic_operator_id` of an entry as `gpsr_manufacturer_id` or `gpsr_responsible_person_id` on a [listing](/documentation/reference#tag/ShopListing). See the [GPSR Economic Operators Tutorial](/documentation/tutorials/gpsr-economic-operators) for the full guide.
+         */
+        get: operations["getShopEconomicOperators"];
+        put?: never;
+        /**
+         * @description <div class="wt-display-flex-xs wt-align-items-center wt-mt-xs-2 wt-mb-xs-3"><span class="wt-badge wt-badge--notificationPrimary wt-bg-slime-tint wt-mr-xs-2">General Release</span><a class="wt-text-link" href="https://github.com/etsy/open-api/discussions" target="_blank" rel="noopener noreferrer">Report bug</a></div><div class="wt-display-flex-xs wt-align-items-center wt-mt-xs-2 wt-mb-xs-3"><p class="wt-text-body-01 banner-text">This endpoint is ready for production use.</p></div>
+         *
+         *     Creates a new economic operator (a manufacturer or EU responsible person record) for a specific shop, used for GPSR compliance on listings. `operator_name`, `email`, `first_line`, `city`, `zip`, `country_iso`, and `phone` are required and cannot be blank; `trademark_name`, `second_line`, and `phone_country_iso` are optional. `state` is required if the `country_iso` requires a state (for example `US`, `CA`, `AU`, `IN`, `BR`, `MX`, `ES`, `IT`); it is optional for every other country. See the [full list of countries](/documentation/tutorials/gpsr-economic-operators#countries-requiring-a-state). The response contains the `economic_operator_id` to pass as `gpsr_manufacturer_id` or `gpsr_responsible_person_id` when creating or updating a [listing](/documentation/reference#tag/ShopListing). A manufacturer can be located anywhere, but an operator used as an EU responsible person must have an address in the European Union; this is checked when a listing references the operator. There is no delete endpoint: use [updateShopEconomicOperator](/documentation/reference#operation/updateShopEconomicOperator) to correct a record. See the [GPSR Economic Operators Tutorial](/documentation/tutorials/gpsr-economic-operators) for the full guide, including eligibility and the enforcement timeline.
+         */
+        post: operations["createShopEconomicOperator"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v3/application/shops/{shop_id}/economic-operators/{economic_operator_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description <div class="wt-display-flex-xs wt-align-items-center wt-mt-xs-2 wt-mb-xs-3"><span class="wt-badge wt-badge--notificationPrimary wt-bg-slime-tint wt-mr-xs-2">General Release</span><a class="wt-text-link" href="https://github.com/etsy/open-api/discussions" target="_blank" rel="noopener noreferrer">Report bug</a></div><div class="wt-display-flex-xs wt-align-items-center wt-mt-xs-2 wt-mb-xs-3"><p class="wt-text-body-01 banner-text">This endpoint is ready for production use.</p></div>
+         *
+         *     Retrieves a single economic operator, referenced by economic operator ID and shop ID. Returns `404` if the operator does not exist in the shop or has been deleted. See the [GPSR Economic Operators Tutorial](/documentation/tutorials/gpsr-economic-operators) for the full guide.
+         */
+        get: operations["getShopEconomicOperator"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * @description <div class="wt-display-flex-xs wt-align-items-center wt-mt-xs-2 wt-mb-xs-3"><span class="wt-badge wt-badge--notificationPrimary wt-bg-slime-tint wt-mr-xs-2">General Release</span><a class="wt-text-link" href="https://github.com/etsy/open-api/discussions" target="_blank" rel="noopener noreferrer">Report bug</a></div><div class="wt-display-flex-xs wt-align-items-center wt-mt-xs-2 wt-mb-xs-3"><p class="wt-text-body-01 banner-text">This endpoint is ready for production use.</p></div>
+         *
+         *     Updates an existing economic operator for a specific shop. Every field is optional and only the fields you send are changed. Send `null` for `trademark_name`, `second_line`, `state`, or `phone_country_iso` to clear it. `operator_name` can be at most 50 characters. `state` is required for [some countries](/documentation/tutorials/gpsr-economic-operators#countries-requiring-a-state). The change applies to every [listing](/documentation/reference#tag/ShopListing) that references this operator. Returns `404` if the economic operator does not exist in the shop. See the [GPSR Economic Operators Tutorial](/documentation/tutorials/gpsr-economic-operators) for the full guide.
+         */
+        patch: operations["updateShopEconomicOperator"];
+        trace?: never;
+    };
     "/v3/application/shops/{shop_id}/holiday-preferences": {
         parameters: {
             query?: never;
@@ -864,7 +916,7 @@ export interface paths {
         /**
          * @description <div class="wt-display-flex-xs wt-align-items-center wt-mt-xs-2 wt-mb-xs-3"><span class="wt-badge wt-badge--notificationPrimary wt-bg-slime-tint wt-mr-xs-2">General Release</span><a class="wt-text-link" href="https://github.com/etsy/open-api/discussions" target="_blank" rel="noopener noreferrer">Report bug</a></div><div class="wt-display-flex-xs wt-align-items-center wt-mt-xs-2 wt-mb-xs-3"><p class="wt-text-body-01 banner-text">This endpoint is ready for production use.</p></div>
          *
-         *     Uploads a new video for a listing, or associates an existing video with a specific listing. You must either provide the `video_id` of an existing video, or the name and binary file data for a video to upload. If providing a `video_id`, the video must already be associated with the same shop as the listing, but it does not need to be currently associated with the listing. By default, the endpoint handles single video uploads, but setting `is_multi_video` to true enables to link up to 2 videos to the same listing.
+         *     Uploads a new video for a listing, or associates an existing video with a specific listing. You must either provide the `video_id` of an existing video, or the name and binary file data for a video to upload. If providing a `video_id`, the video must already be associated with the same shop as the listing, but it does not need to be currently associated with the listing. It's important to consider there is a rate limiting to perform 10 uploads per listing per day.
          */
         post: operations["uploadListingVideo"];
         delete?: never;
@@ -1666,12 +1718,7 @@ export interface paths {
         get: operations["getUserAddress"];
         put?: never;
         post?: never;
-        /**
-         * @description <div class="wt-display-flex-xs wt-align-items-center wt-mt-xs-2 wt-mb-xs-3"><span class="wt-badge wt-badge--notificationPrimary wt-bg-slime-tint wt-mr-xs-2">General Release</span><a class="wt-text-link" href="https://github.com/etsy/open-api/discussions" target="_blank" rel="noopener noreferrer">Report bug</a></div><div class="wt-display-flex-xs wt-align-items-center wt-mt-xs-2 wt-mb-xs-3"><p class="wt-text-body-01 banner-text">This endpoint is ready for production use.</p></div>
-         *
-         *     Open API V3 endpoint to delete a UserAddress for a User.
-         */
-        delete: operations["deleteUserAddress"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -2763,6 +2810,63 @@ export interface components {
             /** @description The shop's message string displayed when `is_vacation` is true. */
             vacation_message?: string | null;
         };
+        /** @description Represents an economic operator (manufacturer or EU responsible person) associated with a shop, used for GPSR compliance on listings. */
+        ShopEconomicOperator: {
+            /** @description The city or town of the economic operator's postal address. Required, cannot be blank. Maximum 50 characters (95 in a few countries, such as India, Brazil, and Japan). */
+            city?: string | null;
+            /**
+             * Format: ISO 3166-1 alpha-2
+             * @description The ISO 3166-1 alpha-2 code of the country of the economic operator's postal address, for example `DE` or `FR`. Not case-sensitive on input; always returned in upper case. Required.
+             */
+            country_iso?: string | null;
+            /**
+             * Format: int64
+             * @description The Unix timestamp of when the economic operator was created.
+             */
+            create_date?: number;
+            /**
+             * Format: int64
+             * @description The unique numeric ID of an economic operator (a manufacturer or EU responsible person record) belonging to a shop, used for GPSR compliance.
+             */
+            economic_operator_id?: number;
+            /** @description The contact email address of the economic operator, where buyers and authorities can reach it about product safety. Required and must be a valid email address. Maximum 255 characters. */
+            email?: string;
+            /** @description The first line of the economic operator's postal address (street and number). Required, cannot be blank. Maximum 50 characters (95 in a few countries, such as India, Brazil, and Japan). */
+            first_line?: string | null;
+            /** @description The legal or trading name of the business or individual acting as economic operator, as it should be shown to buyers and market surveillance authorities. Required, cannot be blank. Maximum 50 characters. */
+            operator_name?: string;
+            /** @description The contact phone number of the economic operator. Required, cannot be blank. May contain digits, spaces, and the characters ( ) . - + #. Phone number must be valid. */
+            phone?: string | null;
+            /**
+             * Format: ISO 3166-1 alpha-2
+             * @description The ISO 3166-1 alpha-2 country code that `phone` belongs to, for example `DE`. Optional. Not case-sensitive on input; always returned in upper case.
+             */
+            phone_country_iso?: string | null;
+            /** @description The second line of the economic operator's postal address (apartment, suite, building). Optional. Maximum 50 characters (95 in a few countries, such as India, Brazil, and Japan). Send `null` on update to clear it. Returned as `null` when not set. */
+            second_line?: string | null;
+            /**
+             * Format: int64
+             * @description The unique positive non-zero numeric ID for an Etsy Shop.
+             */
+            shop_id?: number;
+            /** @description The state, province, or region of the economic operator's postal address. Required if the `country_iso` requires a state; optional otherwise. Maximum 50 characters (95 in a few countries, such as India, Brazil, and Japan). See the [list of countries](/documentation/tutorials/gpsr-economic-operators#countries-requiring-a-state). On update, send `null` to clear it (not allowed for those countries). Returned as `null` when not set. */
+            state?: string | null;
+            /** @description The brand or trademark the economic operator trades under, when it differs from `operator_name`. Optional. Maximum 255 characters. Send `null` on update to clear it. Returned as `null` when not set. */
+            trademark_name?: string | null;
+            /**
+             * Format: int64
+             * @description The Unix timestamp of when the economic operator was last updated.
+             */
+            update_date?: number;
+            /** @description The postal code of the economic operator's postal address. Required, cannot be blank. */
+            zip?: string | null;
+        };
+        /** @description Represents several economic operators associated with a shop. */
+        ShopEconomicOperators: {
+            /** Format: int64 */
+            count?: number;
+            results?: components["schemas"]["ShopEconomicOperator"][];
+        };
         /** @description Represents a shop's holiday preference */
         ShopHolidayPreference: {
             /**
@@ -2833,6 +2937,30 @@ export interface components {
             featured_rank?: number;
             /** @description A string describing the files attached to a digital listing. */
             file_data?: string | null;
+            /**
+             * Format: int64
+             * @description The `economic_operator_id` of the manufacturer, from the [Shop Economic Operators](/documentation/reference#tag/Shop-Economic-Operators) endpoints. Required when `gpsr_manufacturer_type` is `economic_operator`, and rejected when the type is anything else. The operator must belong to this shop and not be deleted. The manufacturer may be located anywhere in the world. If you change `gpsr_manufacturer_type` to `seller` without sending this field, the stored id is cleared for you.
+             */
+            gpsr_manufacturer_id?: number | null;
+            /**
+             * @description Who the manufacturer of this product is, for GPSR (EU General Product Safety Regulation) purposes. Either `seller` (your shop is the manufacturer) or `economic_operator` (a manufacturer record from the [Shop Economic Operators](/documentation/reference#tag/Shop-Economic-Operators) endpoints, identified by `gpsr_manufacturer_id`). `seller` is rejected when `who_made` is `someone_else`; use `economic_operator` for items made by a third party. Send `null` to clear. Optional for now; it becomes required for listings from eligible traders that sell into the EU 60 days after these fields were announced. See the [GPSR Economic Operators Tutorial](/documentation/tutorials/gpsr-economic-operators) for eligibility and the full flow.
+             * @enum {string|null}
+             */
+            gpsr_manufacturer_type?: "seller" | "economic_operator" | null;
+            /**
+             * Format: int64
+             * @description The `economic_operator_id` of the EU responsible person, from the [Shop Economic Operators](/documentation/reference#tag/Shop-Economic-Operators) endpoints. Required when `gpsr_responsible_person_type` is `economic_operator`, and rejected when the type is anything else. The operator must belong to this shop and not be deleted, and its address must be in the European Union. If you change `gpsr_responsible_person_type` to `seller` without sending this field, the stored id is cleared for you.
+             */
+            gpsr_responsible_person_id?: number | null;
+            /**
+             * @description Who the EU responsible person for this product is, for GPSR purposes. Either `seller` (your shop; only valid when the shop's legal address, or the address on file, is in the European Union) or `economic_operator` (a record from the [Shop Economic Operators](/documentation/reference#tag/Shop-Economic-Operators) endpoints, identified by `gpsr_responsible_person_id`, which must have an address in the European Union). Send `null` to clear. Optional for now; it becomes required for listings from eligible traders that sell into the EU 60 days after these fields were announced. See the [GPSR Economic Operators Tutorial](/documentation/tutorials/gpsr-economic-operators) for eligibility and the full flow.
+             * @enum {string|null}
+             */
+            gpsr_responsible_person_type?: "seller" | "economic_operator" | null;
+            /** @description Optional free-text safety warnings and safety information for the product regarding GPSR purposes, shown to buyers as product safety information on the listing page (for example age restrictions, choking hazards, or care and handling instructions). Maximum 102,400 characters. Send `null` to clear. */
+            gpsr_safety_warnings?: string | null;
+            /** @description An optional serial number, batch number, or lot identifier that lets the product be traced for GPSR purposes. Maximum 255 characters. Send `null` to clear. */
+            gpsr_serial_number?: string | null;
             /** @description When true, the listing has variations. */
             has_variations?: boolean;
             /** @description When true, a buyer may contact the seller for a customized order. The default value is true when a shop accepts custom orders. Does not apply to shops that do not accept custom orders. */
@@ -3114,6 +3242,30 @@ export interface components {
             featured_rank?: number;
             /** @description A string describing the files attached to a digital listing. */
             file_data?: string | null;
+            /**
+             * Format: int64
+             * @description The `economic_operator_id` of the manufacturer, from the [Shop Economic Operators](/documentation/reference#tag/Shop-Economic-Operators) endpoints. Required when `gpsr_manufacturer_type` is `economic_operator`, and rejected when the type is anything else. The operator must belong to this shop and not be deleted. The manufacturer may be located anywhere in the world. If you change `gpsr_manufacturer_type` to `seller` without sending this field, the stored id is cleared for you.
+             */
+            gpsr_manufacturer_id?: number | null;
+            /**
+             * @description Who the manufacturer of this product is, for GPSR (EU General Product Safety Regulation) purposes. Either `seller` (your shop is the manufacturer) or `economic_operator` (a manufacturer record from the [Shop Economic Operators](/documentation/reference#tag/Shop-Economic-Operators) endpoints, identified by `gpsr_manufacturer_id`). `seller` is rejected when `who_made` is `someone_else`; use `economic_operator` for items made by a third party. Send `null` to clear. Optional for now; it becomes required for listings from eligible traders that sell into the EU 60 days after these fields were announced. See the [GPSR Economic Operators Tutorial](/documentation/tutorials/gpsr-economic-operators) for eligibility and the full flow.
+             * @enum {string|null}
+             */
+            gpsr_manufacturer_type?: "seller" | "economic_operator" | null;
+            /**
+             * Format: int64
+             * @description The `economic_operator_id` of the EU responsible person, from the [Shop Economic Operators](/documentation/reference#tag/Shop-Economic-Operators) endpoints. Required when `gpsr_responsible_person_type` is `economic_operator`, and rejected when the type is anything else. The operator must belong to this shop and not be deleted, and its address must be in the European Union. If you change `gpsr_responsible_person_type` to `seller` without sending this field, the stored id is cleared for you.
+             */
+            gpsr_responsible_person_id?: number | null;
+            /**
+             * @description Who the EU responsible person for this product is, for GPSR purposes. Either `seller` (your shop; only valid when the shop's legal address, or the address on file, is in the European Union) or `economic_operator` (a record from the [Shop Economic Operators](/documentation/reference#tag/Shop-Economic-Operators) endpoints, identified by `gpsr_responsible_person_id`, which must have an address in the European Union). Send `null` to clear. Optional for now; it becomes required for listings from eligible traders that sell into the EU 60 days after these fields were announced. See the [GPSR Economic Operators Tutorial](/documentation/tutorials/gpsr-economic-operators) for eligibility and the full flow.
+             * @enum {string|null}
+             */
+            gpsr_responsible_person_type?: "seller" | "economic_operator" | null;
+            /** @description Optional free-text safety warnings and safety information for the product regarding GPSR purposes, shown to buyers as product safety information on the listing page (for example age restrictions, choking hazards, or care and handling instructions). Maximum 102,400 characters. Send `null` to clear. */
+            gpsr_safety_warnings?: string | null;
+            /** @description An optional serial number, batch number, or lot identifier that lets the product be traced for GPSR purposes. Maximum 255 characters. Send `null` to clear. */
+            gpsr_serial_number?: string | null;
             /** @description When true, the listing has variations. */
             has_variations?: boolean;
             /** @description Represents a list of listing image resources, each of which contains the reference URLs and metadata for an image */
@@ -4527,6 +4679,8 @@ export interface operations {
     updateListingInventory: {
         parameters: {
             query?: {
+                /** @description This temporary parameter indicates whether scale validation should be enabled for the request. It will be removed in the near future, at which point scale validation will be mandatory for all requests. */
+                enable_scale_validation?: boolean;
                 /** @description This parameter determines whether a third variation can be added to or updated for a listing. It accepts values of 2 or 3, where 3 enables third-variation support. */
                 max_variations_supported?: "2" | "3";
             };
@@ -4698,6 +4852,15 @@ export interface operations {
             };
             /** @description The request lacks valid authentication credentials. See the error message for details. */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorSchema"];
+                };
+            };
+            /** @description The request attempted to perform an operation it is not allowed to. See the error message for details. */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5702,6 +5865,345 @@ export interface operations {
             };
         };
     };
+    getShopEconomicOperators: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The unique positive non-zero numeric ID for an Etsy Shop. */
+                shop_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A list of economic operators associated with the shop. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShopEconomicOperators"];
+                };
+            };
+            /** @description There was a problem with the request data. See the error message for details. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorSchema"];
+                };
+            };
+            /** @description The request lacks valid authentication credentials. See the error message for details. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorSchema"];
+                };
+            };
+            /** @description The request attempted to perform an operation it is not allowed to. See the error message for details. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorSchema"];
+                };
+            };
+            /** @description A resource could not be found. See the error message for details. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorSchema"];
+                };
+            };
+            /** @description The server encountered an internal error. See the error message for details. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorSchema"];
+                };
+            };
+        };
+    };
+    createShopEconomicOperator: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The unique positive non-zero numeric ID for an Etsy Shop. */
+                shop_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/x-www-form-urlencoded": {
+                    /** @description The city or town of the economic operator's postal address. Required, cannot be blank. Maximum 50 characters (95 in a few countries, such as India, Brazil, and Japan). */
+                    city: string;
+                    /**
+                     * Format: ISO 3166-1 alpha-2
+                     * @description The ISO 3166-1 alpha-2 code of the country of the economic operator's postal address, for example `DE` or `FR`. Not case-sensitive on input; always returned in upper case. Required.
+                     */
+                    country_iso: string;
+                    /**
+                     * Format: email
+                     * @description The contact email address of the economic operator, where buyers and authorities can reach it about product safety. Required and must be a valid email address. Maximum 255 characters.
+                     */
+                    email: string;
+                    /** @description The first line of the economic operator's postal address (street and number). Required, cannot be blank. Maximum 50 characters (95 in a few countries, such as India, Brazil, and Japan). */
+                    first_line: string;
+                    /** @description The legal or trading name of the business or individual acting as economic operator, as it should be shown to buyers and market surveillance authorities. Required, cannot be blank. Maximum 50 characters. */
+                    operator_name: string;
+                    /** @description The contact phone number of the economic operator. Required, cannot be blank. May contain digits, spaces, and the characters ( ) . - + #. Phone number must be valid. */
+                    phone: string;
+                    /**
+                     * Format: ISO 3166-1 alpha-2
+                     * @description The ISO 3166-1 alpha-2 country code that `phone` belongs to, for example `DE`. Optional. Not case-sensitive on input; always returned in upper case.
+                     */
+                    phone_country_iso?: string | null;
+                    /** @description The second line of the economic operator's postal address (apartment, suite, building). Optional. Maximum 50 characters (95 in a few countries, such as India, Brazil, and Japan). Send `null` on update to clear it. Returned as `null` when not set. */
+                    second_line?: string;
+                    /** @description The state, province, or region of the economic operator's postal address. Required if the `country_iso` requires a state; optional otherwise. Maximum 50 characters (95 in a few countries, such as India, Brazil, and Japan). See the [list of countries](/documentation/tutorials/gpsr-economic-operators#countries-requiring-a-state). On update, send `null` to clear it (not allowed for those countries). Returned as `null` when not set. */
+                    state?: string;
+                    /** @description The brand or trademark the economic operator trades under, when it differs from `operator_name`. Optional. Maximum 255 characters. Send `null` on update to clear it. Returned as `null` when not set. */
+                    trademark_name?: string;
+                    /** @description The postal code of the economic operator's postal address. Required, cannot be blank. */
+                    zip: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The newly-created economic operator. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShopEconomicOperator"];
+                };
+            };
+            /** @description There was a problem with the request data. See the error message for details. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorSchema"];
+                };
+            };
+            /** @description The request lacks valid authentication credentials. See the error message for details. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorSchema"];
+                };
+            };
+            /** @description The request attempted to perform an operation it is not allowed to. See the error message for details. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorSchema"];
+                };
+            };
+            /** @description The server encountered an internal error. See the error message for details. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorSchema"];
+                };
+            };
+        };
+    };
+    getShopEconomicOperator: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The unique numeric ID of an economic operator (a manufacturer or EU responsible person record) belonging to a shop, used for GPSR compliance. */
+                economic_operator_id: number;
+                /** @description The unique positive non-zero numeric ID for an Etsy Shop. */
+                shop_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A single economic operator. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShopEconomicOperator"];
+                };
+            };
+            /** @description There was a problem with the request data. See the error message for details. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorSchema"];
+                };
+            };
+            /** @description The request lacks valid authentication credentials. See the error message for details. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorSchema"];
+                };
+            };
+            /** @description The request attempted to perform an operation it is not allowed to. See the error message for details. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorSchema"];
+                };
+            };
+            /** @description A resource could not be found. See the error message for details. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorSchema"];
+                };
+            };
+            /** @description The server encountered an internal error. See the error message for details. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorSchema"];
+                };
+            };
+        };
+    };
+    updateShopEconomicOperator: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The unique numeric ID of an economic operator (a manufacturer or EU responsible person record) belonging to a shop, used for GPSR compliance. */
+                economic_operator_id: number;
+                /** @description The unique positive non-zero numeric ID for an Etsy Shop. */
+                shop_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/x-www-form-urlencoded": {
+                    /** @description The city or town of the economic operator's postal address. Required, cannot be blank. Maximum 50 characters (95 in a few countries, such as India, Brazil, and Japan). */
+                    city?: string;
+                    /**
+                     * Format: ISO 3166-1 alpha-2
+                     * @description The ISO 3166-1 alpha-2 code of the country of the economic operator's postal address, for example `DE` or `FR`. Not case-sensitive on input; always returned in upper case. Required.
+                     */
+                    country_iso?: string;
+                    /**
+                     * Format: email
+                     * @description The contact email address of the economic operator, where buyers and authorities can reach it about product safety. Required and must be a valid email address. Maximum 255 characters.
+                     */
+                    email?: string;
+                    /** @description The first line of the economic operator's postal address (street and number). Required, cannot be blank. Maximum 50 characters (95 in a few countries, such as India, Brazil, and Japan). */
+                    first_line?: string;
+                    /** @description The legal or trading name of the business or individual acting as economic operator, as it should be shown to buyers and market surveillance authorities. Required, cannot be blank. Maximum 50 characters. */
+                    operator_name?: string;
+                    /** @description The contact phone number of the economic operator. Required, cannot be blank. May contain digits, spaces, and the characters ( ) . - + #. Phone number must be valid. */
+                    phone?: string;
+                    /**
+                     * Format: ISO 3166-1 alpha-2
+                     * @description The ISO 3166-1 alpha-2 country code that `phone` belongs to, for example `DE`. Optional. Not case-sensitive on input; always returned in upper case.
+                     */
+                    phone_country_iso?: string | null;
+                    /** @description The second line of the economic operator's postal address (apartment, suite, building). Optional. Maximum 50 characters (95 in a few countries, such as India, Brazil, and Japan). Send `null` on update to clear it. Returned as `null` when not set. */
+                    second_line?: string | null;
+                    /** @description The state, province, or region of the economic operator's postal address. Required if the `country_iso` requires a state; optional otherwise. Maximum 50 characters (95 in a few countries, such as India, Brazil, and Japan). See the [list of countries](/documentation/tutorials/gpsr-economic-operators#countries-requiring-a-state). On update, send `null` to clear it (not allowed for those countries). Returned as `null` when not set. */
+                    state?: string | null;
+                    /** @description The brand or trademark the economic operator trades under, when it differs from `operator_name`. Optional. Maximum 255 characters. Send `null` on update to clear it. Returned as `null` when not set. */
+                    trademark_name?: string | null;
+                    /** @description The postal code of the economic operator's postal address. Required, cannot be blank. */
+                    zip?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The updated economic operator. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShopEconomicOperator"];
+                };
+            };
+            /** @description There was a problem with the request data. See the error message for details. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorSchema"];
+                };
+            };
+            /** @description The request lacks valid authentication credentials. See the error message for details. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorSchema"];
+                };
+            };
+            /** @description The request attempted to perform an operation it is not allowed to. See the error message for details. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorSchema"];
+                };
+            };
+            /** @description A resource could not be found. See the error message for details. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorSchema"];
+                };
+            };
+            /** @description The server encountered an internal error. See the error message for details. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorSchema"];
+                };
+            };
+        };
+    };
     getHolidayPreferences: {
         parameters: {
             query?: never;
@@ -5915,6 +6417,30 @@ export interface operations {
                     ecgt_other_commercial_guarantee_details?: string | null;
                     /** @description Details of software update availability and the duration of such updates, as required under EU ECGT regulations for digital content. Maximum 255 characters. Silently ignored for physical listings and for sellers who are not eligible EU traders. */
                     ecgt_software_update_details?: string | null;
+                    /**
+                     * Format: int64
+                     * @description The `economic_operator_id` of the manufacturer, from the [Shop Economic Operators](/documentation/reference#tag/Shop-Economic-Operators) endpoints. Required when `gpsr_manufacturer_type` is `economic_operator`, and rejected when the type is anything else. The operator must belong to this shop and not be deleted. The manufacturer may be located anywhere in the world. If you change `gpsr_manufacturer_type` to `seller` without sending this field, the stored id is cleared for you.
+                     */
+                    gpsr_manufacturer_id?: number | null;
+                    /**
+                     * @description Who the manufacturer of this product is, for GPSR (EU General Product Safety Regulation) purposes. Either `seller` (your shop is the manufacturer) or `economic_operator` (a manufacturer record from the [Shop Economic Operators](/documentation/reference#tag/Shop-Economic-Operators) endpoints, identified by `gpsr_manufacturer_id`). `seller` is rejected when `who_made` is `someone_else`; use `economic_operator` for items made by a third party. Send `null` to clear. Optional for now; it becomes required for listings from eligible traders that sell into the EU 60 days after these fields were announced. See the [GPSR Economic Operators Tutorial](/documentation/tutorials/gpsr-economic-operators) for eligibility and the full flow.
+                     * @enum {string|null}
+                     */
+                    gpsr_manufacturer_type?: "seller" | "economic_operator" | null;
+                    /**
+                     * Format: int64
+                     * @description The `economic_operator_id` of the EU responsible person, from the [Shop Economic Operators](/documentation/reference#tag/Shop-Economic-Operators) endpoints. Required when `gpsr_responsible_person_type` is `economic_operator`, and rejected when the type is anything else. The operator must belong to this shop and not be deleted, and its address must be in the European Union. If you change `gpsr_responsible_person_type` to `seller` without sending this field, the stored id is cleared for you.
+                     */
+                    gpsr_responsible_person_id?: number | null;
+                    /**
+                     * @description Who the EU responsible person for this product is, for GPSR purposes. Either `seller` (your shop; only valid when the shop's legal address, or the address on file, is in the European Union) or `economic_operator` (a record from the [Shop Economic Operators](/documentation/reference#tag/Shop-Economic-Operators) endpoints, identified by `gpsr_responsible_person_id`, which must have an address in the European Union). Send `null` to clear. Optional for now; it becomes required for listings from eligible traders that sell into the EU 60 days after these fields were announced. See the [GPSR Economic Operators Tutorial](/documentation/tutorials/gpsr-economic-operators) for eligibility and the full flow.
+                     * @enum {string|null}
+                     */
+                    gpsr_responsible_person_type?: "seller" | "economic_operator" | null;
+                    /** @description Optional free-text safety warnings and safety information for the product regarding GPSR purposes, shown to buyers as product safety information on the listing page (for example age restrictions, choking hazards, or care and handling instructions). Maximum 102,400 characters. Send `null` to clear. */
+                    gpsr_safety_warnings?: string | null;
+                    /** @description An optional serial number, batch number, or lot identifier that lets the product be traced for GPSR purposes. Maximum 255 characters. Send `null` to clear. */
+                    gpsr_serial_number?: string | null;
                     /** @description An array of numeric image IDs of the images in a listing, which can include up to 20 images. */
                     image_ids?: number[] | null;
                     /** @description When true, a buyer may contact the seller for a customized order. The default value is true when a shop accepts custom orders. Does not apply to shops that do not accept custom orders. */
@@ -6121,9 +6647,28 @@ export interface operations {
                     ecgt_software_update_details?: string | null;
                     /**
                      * Format: int64
-                     * @description The positive non-zero numeric position in the featured listings of the shop, with rank 1 listings appearing in the left-most position in featured listing on a shop's home page.
+                     * @description The `economic_operator_id` of the manufacturer, from the [Shop Economic Operators](/documentation/reference#tag/Shop-Economic-Operators) endpoints. Required when `gpsr_manufacturer_type` is `economic_operator`, and rejected when the type is anything else. The operator must belong to this shop and not be deleted. The manufacturer may be located anywhere in the world. If you change `gpsr_manufacturer_type` to `seller` without sending this field, the stored id is cleared for you.
                      */
-                    featured_rank?: number | null;
+                    gpsr_manufacturer_id?: number | null;
+                    /**
+                     * @description Who the manufacturer of this product is, for GPSR (EU General Product Safety Regulation) purposes. Either `seller` (your shop is the manufacturer) or `economic_operator` (a manufacturer record from the [Shop Economic Operators](/documentation/reference#tag/Shop-Economic-Operators) endpoints, identified by `gpsr_manufacturer_id`). `seller` is rejected when `who_made` is `someone_else`; use `economic_operator` for items made by a third party. Send `null` to clear. Optional for now; it becomes required for listings from eligible traders that sell into the EU 60 days after these fields were announced. See the [GPSR Economic Operators Tutorial](/documentation/tutorials/gpsr-economic-operators) for eligibility and the full flow.
+                     * @enum {string|null}
+                     */
+                    gpsr_manufacturer_type?: "seller" | "economic_operator" | null;
+                    /**
+                     * Format: int64
+                     * @description The `economic_operator_id` of the EU responsible person, from the [Shop Economic Operators](/documentation/reference#tag/Shop-Economic-Operators) endpoints. Required when `gpsr_responsible_person_type` is `economic_operator`, and rejected when the type is anything else. The operator must belong to this shop and not be deleted, and its address must be in the European Union. If you change `gpsr_responsible_person_type` to `seller` without sending this field, the stored id is cleared for you.
+                     */
+                    gpsr_responsible_person_id?: number | null;
+                    /**
+                     * @description Who the EU responsible person for this product is, for GPSR purposes. Either `seller` (your shop; only valid when the shop's legal address, or the address on file, is in the European Union) or `economic_operator` (a record from the [Shop Economic Operators](/documentation/reference#tag/Shop-Economic-Operators) endpoints, identified by `gpsr_responsible_person_id`, which must have an address in the European Union). Send `null` to clear. Optional for now; it becomes required for listings from eligible traders that sell into the EU 60 days after these fields were announced. See the [GPSR Economic Operators Tutorial](/documentation/tutorials/gpsr-economic-operators) for eligibility and the full flow.
+                     * @enum {string|null}
+                     */
+                    gpsr_responsible_person_type?: "seller" | "economic_operator" | null;
+                    /** @description Optional free-text safety warnings and safety information for the product regarding GPSR purposes, shown to buyers as product safety information on the listing page (for example age restrictions, choking hazards, or care and handling instructions). Maximum 102,400 characters. Send `null` to clear. */
+                    gpsr_safety_warnings?: string | null;
+                    /** @description An optional serial number, batch number, or lot identifier that lets the product be traced for GPSR purposes. Maximum 255 characters. Send `null` to clear. */
+                    gpsr_serial_number?: string | null;
                     /** @description An array of numeric image IDs of the images in a listing, which can include up to 20 images. */
                     image_ids?: number[];
                     /** @description When true, tags the listing as a supply product, else indicates that it's a finished product. Helps buyers locate the listing under the Supplies heading. Requires 'who_made' and 'when_made'. */
@@ -7628,10 +8173,7 @@ export interface operations {
     };
     uploadListingVideo: {
         parameters: {
-            query?: {
-                /** @description Indicates whether to handle multiple videos for the listing or maintain the former single video behavior. */
-                is_multi_video?: boolean;
-            };
+            query?: never;
             header?: never;
             path: {
                 /** @description The numeric ID for the [listing](/documentation/reference#tag/ShopListing) associated to this transaction. */
@@ -7707,6 +8249,15 @@ export interface operations {
             };
             /** @description There was a request conflict with the current state of the target resource. See the error message for details. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorSchema"];
+                };
+            };
+            /** @description The request exceeded the valid number of uploaded videos per listing per day. See the error message for details. */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -11607,54 +12158,6 @@ export interface operations {
             };
             /** @description A resource could not be found. See the error message for details. */
             404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorSchema"];
-                };
-            };
-            /** @description The server encountered an internal error. See the error message for details. */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorSchema"];
-                };
-            };
-        };
-    };
-    deleteUserAddress: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The numeric ID of the user's address. */
-                user_address_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The User Address resource was correctly deleted */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description There was a problem with the request data. See the error message for details. */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorSchema"];
-                };
-            };
-            /** @description The request lacks valid authentication credentials. See the error message for details. */
-            401: {
                 headers: {
                     [name: string]: unknown;
                 };
