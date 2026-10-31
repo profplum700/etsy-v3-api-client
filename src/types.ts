@@ -1546,6 +1546,11 @@ export interface UpdateListingParams {
   tags?: string[];
   who_made?: 'i_did' | 'someone_else' | 'collective';
   when_made?: typeof ETSY_WHEN_MADE_VALUES[number] | 'made_to_order';
+  /**
+   * @deprecated Etsy removed `featured_rank` from the updateListing request body in the
+   * Open API v3 specification (pinned spec update, October 2026). It is still sent if
+   * set, for compatibility, and will be removed in the next major version.
+   */
   featured_rank?: number;
   /** @deprecated Use dedicated personalization endpoints instead */
   is_personalizable?: boolean;
