@@ -175,6 +175,25 @@ describe('EtsyClient auth and rate-limit retries', () => {
     });
   });
 
+  describe('the single-send path', () => {
+    it('frees the slot and passes a network error through', async () => {
+      const networkError = new Error('socket hang up');
+      ctx.mockFetch.mockRejectedValue(networkError);
+
+      await expect(ctx.client.uploadListingImage('123', '789', blob())).rejects.toBe(networkError);
+      expect(ctx.mockRateLimiter.releaseRequestSlot).toHaveBeenCalledTimes(1);
+    });
+
+    it('passes a refresh failure after a 401 through unchanged', async () => {
+      const refused = new EtsyAuthError('Token refresh failed: 400 Bad Request', 'TOKEN_REFRESH_FAILED');
+      ctx.mockTokenManager.refreshToken.mockRejectedValueOnce(refused);
+      ctx.mockFetch.mockResolvedValue(errorResponse(401, 'Unauthorized'));
+
+      await expect(ctx.client.uploadListingImage('123', '789', blob())).rejects.toBe(refused);
+      expect(ctx.mockFetch).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('a 429 on a write', () => {
     it('throws EtsyRateLimitError with Retry-After and does not replay', async () => {
       ctx.mockRateLimiter.handleRateLimitResponse.mockResolvedValue({ shouldRetry: true, delayMs: 7000 });
@@ -194,6 +213,17 @@ describe('EtsyClient auth and rate-limit retries', () => {
       const error = await ctx.client.deleteListing('789').catch((e: unknown) => e);
 
       expect(error).toBeInstanceOf(EtsyRateLimitError);
+      expect((error as EtsyRateLimitError).retryAfter).toBe(2);
+    });
+
+    it('ignores a Retry-After that is not a number of seconds', async () => {
+      ctx.mockRateLimiter.handleRateLimitResponse.mockResolvedValue({ shouldRetry: true, delayMs: 2000 });
+      ctx.mockFetch.mockResolvedValue(
+        errorResponse(429, 'Too Many Requests', { 'retry-after': 'Wed, 21 Oct 2026 07:28:00 GMT' })
+      );
+
+      const error = await ctx.client.deleteListing('789').catch((e: unknown) => e);
+
       expect((error as EtsyRateLimitError).retryAfter).toBe(2);
     });
 
