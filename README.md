@@ -319,7 +319,7 @@ const remaining = client.getRemainingRequests();
 console.log(`${remaining} requests remaining in the rolling 24-hour window`);
 ```
 
-Every 429 throws `EtsyRateLimitError`. A read that gets a 429 is retried with backoff first. A write (POST, PUT, PATCH, DELETE) is never replayed: it throws at once, with `retryAfter` set to Etsy's `Retry-After` in seconds (or the client's own cooldown when Etsy sends none).
+Every 429 throws `EtsyRateLimitError`. A read that gets a 429 is retried with backoff first. A write (POST, PUT, PATCH, DELETE) is never replayed: it throws at once, with `retryAfter` set to Etsy's `Retry-After` in seconds (or the client's own cooldown when Etsy sends none). The exception is a used-up daily quota (`isRetryable()` is false): there `retryAfter` is set only when Etsy sends `Retry-After`.
 
 Each attempt reads the access token just before it is sent, so a request that waited for a rate-limit slot or a backoff never sends an expired token. When Etsy answers 401 and a refresh token is held, the client refreshes the token once and resends once; a second 401 is thrown as `EtsyApiError`.
 

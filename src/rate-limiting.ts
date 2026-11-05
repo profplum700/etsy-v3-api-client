@@ -443,8 +443,8 @@ export class EtsyRateLimiter {
       if (retryAttempt === undefined) this.currentRetryCount = 0; // Reset for next request
       throw new EtsyRateLimitError(
         `Max retries (${this.config.maxRetries}) exceeded for rate limit`,
-        // Without a Retry-After header, report the cooldown just recorded.
-        parsed.retryAfter ?? Math.ceil(delayMs / 1000),
+        // Without a Retry-After header, report the shared cooldown still left.
+        parsed.retryAfter ?? Math.ceil(Math.max(0, this.retryNotBefore - Date.now()) / 1000),
         'qps_exhausted'
       );
     }

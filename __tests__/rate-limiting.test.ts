@@ -845,6 +845,17 @@ describe('EtsyRateLimiter', () => {
       expect((error as EtsyRateLimitError).retryAfter).toBe(2);
     });
 
+    it('should report the remaining shared cooldown, not only this attempt\'s delay', async () => {
+      const rateLimiter = new EtsyRateLimiter({ maxRetries: 1, baseDelayMs: 1000, jitter: 0 });
+      await rateLimiter.handleRateLimitResponse({ 'x-remaining-today': '50000', 'retry-after': '10' }, undefined, 1);
+
+      const error = await rateLimiter
+        .handleRateLimitResponse({ 'x-remaining-today': '50000' }, undefined, 2)
+        .catch((e: unknown) => e);
+
+      expect((error as EtsyRateLimitError).retryAfter).toBe(10);
+    });
+
     it('should reset retry count on resetRetryCount()', async () => {
       const rateLimiter = new EtsyRateLimiter({ maxRetries: 2 });
       const headers = { 'x-remaining-today': '50000' };

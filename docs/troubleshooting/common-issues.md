@@ -86,23 +86,22 @@ app.get('/callback', async (req, res) => {
 
 **Solution**:
 ```typescript
-async function makeAuthenticatedRequest() {
-  // Check if authenticated
-  if (!(await client.isAuthenticated())) {
-    console.log('Not authenticated, redirecting to auth flow');
-    // Redirect to authentication
-    return;
-  }
+import { EtsyApiError, EtsyAuthError } from '@profplum700/etsy-v3-api-client';
 
+async function makeAuthenticatedRequest() {
   try {
-    return await client.getShopByOwnerUserId();
+    const user = await client.getUser();
+    return await client.getShopByOwnerUserId(String(user.user_id));
   } catch (error) {
-    // On a 401 the client has already refreshed the token and retried once.
-    // A 401 or EtsyAuthError here means the user must re-authenticate.
-    if (error.statusCode === 401 || error instanceof EtsyAuthError) {
-      console.log('Please re-authenticate');
-      await client.clearTokens();
-      // Redirect to auth flow
+    if (error instanceof EtsyApiError && error.statusCode === 401) {
+      // The client already refreshed the token and retried once, so Etsy
+      // still rejects these credentials: clear them in your own token
+      // storage and send the user through OAuth again.
+      await tokenStorage.clear();
+    } else if (error instanceof EtsyAuthError) {
+      // The token refresh itself failed. A network error or an Etsy 5xx is
+      // transient: keep the stored tokens and try again later.
+      console.warn('Token refresh failed:', error.code);
     }
     throw error;
   }
@@ -247,6 +246,8 @@ async function bulkUpdate(listings: any[]) {
     await new Promise(resolve => setTimeout(resolve, 100));
   }
 }
+
+import { EtsyRateLimitError } from '@profplum700/etsy-v3-api-client';
 
 // Handle 429 errors with retry. Every 429 throws EtsyRateLimitError; writes
 // are never replayed by the client, so reconcile before retrying a write.
@@ -574,7 +575,10 @@ async function robustApiCall<T>(
   try {
     return await fn();
   } catch (error) {
-    if (error instanceof EtsyApiError) {
+    if (error instanceof EtsyRateLimitError) {
+      // Every 429 from the client, read or write
+      console.error(`Rate limited - retry after ${error.retryAfter ?? 'a while'} s`);
+    } else if (error instanceof EtsyApiError) {
       switch (error.statusCode) {
         case 400:
           console.error('Bad request:', error.message);

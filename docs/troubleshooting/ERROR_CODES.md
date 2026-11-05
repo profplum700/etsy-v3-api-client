@@ -453,7 +453,8 @@ Every rate-limit failure throws `EtsyRateLimitError`. Reads are retried
 automatically first. Writes (POST, PUT, PATCH, DELETE) are never replayed by
 the client: a 429 on a write throws at once, and `retryAfter` holds Etsy's
 `Retry-After` value in seconds (or the client's own cooldown when Etsy sends
-none). Re-read the resource before you retry a write, so you do not send stale
+none). When the daily quota is used up (`isRetryable()` is false), `retryAfter`
+is only set if Etsy sent `Retry-After`. Re-read the resource before you retry a write, so you do not send stale
 data.
 
 ```typescript
@@ -472,7 +473,9 @@ try {
     console.log(`Rate limited! Retry after ${retryAfter} seconds`);
     await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
 
-    // Reconcile: rebuild the update from the listing as it is now, then retry
+    // Reconcile: rebuild the update from the listing as it is now, then retry.
+    // Clear the response cache first so the read reaches Etsy.
+    await client.clearCache();
     const current = await client.getListing(listingId);
     await client.updateListing(shopId, listingId, buildUpdates(current));
   }
