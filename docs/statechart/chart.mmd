@@ -1,0 +1,84 @@
+---
+title: "One EtsyClient API call, as the caller sees it"
+---
+stateDiagram-v2
+  state "Legend" as legend {
+    lg0: ok
+    lg1: error
+    lg2: auth
+    lg3: limit
+    lg4: call
+    lg5: Breaks RateLimitErrorsAreTyped
+    lg6: Breaks AuthErrorOnlyWhenReauthNeeded in some cases
+    lg7: Path to the AuthErrorOnlyWhenReauthNeeded or RateLimitErrorsAreTyped bug
+  }
+  class lg0 teal
+  class lg1 pink
+  class lg2 purple
+  class lg3 yellow
+  class lg4 blue
+  class lg5 breaks
+  class lg6 mayBreak
+  class lg7 bugPath
+  s0: You call a method
+  s1: Returns cached data
+  s2: Checking the access token
+  s3: Refreshing the token
+  s4: Saving the new tokens
+  s5: Waiting for a rate-limit slot
+  s6: Thrown: EtsyAuthError (refresh failed)
+  s7: Thrown: EtsyRateLimitError (daily quota)
+  s8: Thrown: EtsyAuthError (new tokens not saved)
+  s9: Request sent to Etsy
+  s10: Backing off after a 429
+  s11: Thrown: EtsyApiError 401
+  s12: Thrown: EtsyApiError 429
+  s13: Thrown: EtsyApiError (5xx, 4xx, network)
+  s14: Returns data
+  s15: Thrown: EtsyRateLimitError (retries used up)
+  [*] --> s0
+  s0 --> s1: a cached answer exists [reads only]
+  s0 --> s2: no cached answer
+  s2 --> s3: token expiring
+  s2 --> s5: token has over a minute left
+  s2 --> s4: token expiring [new tokens from an earlier call wait to be saved]
+  s3 --> s6: Etsy refuses the refresh, or the network fails
+  s3 --> s4: Etsy issues new tokens
+  s4 --> s5: storage and refreshSave succeed
+  s4 --> s8: storage or refreshSave throws
+  s5 --> s7: local 24-hour count is used up
+  s5 --> s9: pacing and cooldown pass
+  s9 --> s10: Etsy answers 429 [a read with retries left]
+  s9 --> s11: Etsy answers 401
+  s9 --> s13: Etsy answers 5xx or 4xx, or the network fails
+  s9 --> s7: Etsy answers 429 with no daily quota left
+  s9 --> s14: Etsy answers 2xx
+  s9 --> s12: Etsy answers 429 [a write]
+  s10 --> s5: the backoff delay passes
+  s9 --> s15: Etsy answers 429 [retries used up]
+  classDef breaks fill:#ffecee,stroke:#e72e3b,stroke-width:2.5px,color:#cd2834
+  classDef mayBreak fill:#fff3e6,stroke:#e8730c,stroke-width:2.5px,color:#b85a06
+  class s0 blue
+  class s0 bugPath
+  class s1 teal
+  class s2 purple
+  class s2 bugPath
+  class s3 purple
+  class s4 purple
+  class s5 yellow
+  class s5 bugPath
+  class s6 pink
+  class s7 pink
+  class s8 pink
+  class s9 blue
+  class s9 bugPath
+  class s10 yellow
+  class s11 pink
+  class s11 mayBreak
+  class s11 bugPath
+  class s12 pink
+  class s12 breaks
+  class s12 bugPath
+  class s13 pink
+  class s14 teal
+  class s15 pink
