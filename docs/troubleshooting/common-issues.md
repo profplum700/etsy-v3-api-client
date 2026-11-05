@@ -336,7 +336,7 @@ async function ensureAuthenticated() {
 
     return true;
   } catch (error) {
-    if (error.message.includes('refresh_token') || error.message.includes('expired')) {
+    if (error instanceof EtsyAuthError && error.code === 'REAUTH_REQUIRED') {
       console.log('Refresh token expired, need to re-authenticate');
       await client.clearTokens();
       // Redirect to auth flow
