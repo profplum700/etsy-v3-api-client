@@ -327,18 +327,20 @@ import { EtsyClient, EtsyAuthError, type TokenStorage } from '@profplum700/etsy-
 
 // `tokenStorage` is your app's durable TokenStorage (save/load/clear).
 declare const tokenStorage: TokenStorage;
-const saved = (await tokenStorage.load())!;
+const saved = await tokenStorage.load();
+if (!saved) console.log('No stored tokens: start the OAuth flow');
 
 // Persist every refreshed token pair, or a restart loads the old refresh
-// token. The client does not write to tokenStorage by itself.
-let client: EtsyClient | null = new EtsyClient({
+// token. The client does not write to tokenStorage by itself. The callback
+// gets no scope, so keep the stored one.
+let client: EtsyClient | null = saved && new EtsyClient({
   keystring: process.env.ETSY_API_KEY!,
   sharedSecret: process.env.ETSY_SHARED_SECRET!,
   accessToken: saved.access_token,
   refreshToken: saved.refresh_token,
   expiresAt: saved.expires_at,
   refreshSaveAsync: (accessToken, refreshToken, expiresAt) =>
-    tokenStorage.save({ access_token: accessToken, refresh_token: refreshToken, expires_at: expiresAt, token_type: 'Bearer', scope: '' }),
+    tokenStorage.save({ ...saved, access_token: accessToken, refresh_token: refreshToken, expires_at: expiresAt }),
   refreshClearAsync: () => tokenStorage.clear(),
 });
 
