@@ -834,6 +834,17 @@ describe('EtsyRateLimiter', () => {
         .rejects.toThrow('Max retries');
     });
 
+    it('should carry the recorded cooldown as retryAfter when Etsy sends no Retry-After', async () => {
+      const rateLimiter = new EtsyRateLimiter({ maxRetries: 0, baseDelayMs: 1500, jitter: 0 });
+
+      const error = await rateLimiter
+        .handleRateLimitResponse({ 'x-remaining-today': '50000' }, undefined, 1)
+        .catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(EtsyRateLimitError);
+      expect((error as EtsyRateLimitError).retryAfter).toBe(2);
+    });
+
     it('should reset retry count on resetRetryCount()', async () => {
       const rateLimiter = new EtsyRateLimiter({ maxRetries: 2 });
       const headers = { 'x-remaining-today': '50000' };

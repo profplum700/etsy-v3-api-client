@@ -472,9 +472,9 @@ try {
     console.log(`Rate limited! Retry after ${retryAfter} seconds`);
     await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
 
-    // Reconcile, then retry the write yourself
-    await client.getListing(listingId);
-    await client.updateListing(shopId, listingId, updates);
+    // Reconcile: rebuild the update from the listing as it is now, then retry
+    const current = await client.getListing(listingId);
+    await client.updateListing(shopId, listingId, buildUpdates(current));
   }
 }
 ```

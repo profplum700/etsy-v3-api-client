@@ -280,7 +280,9 @@ export class EtsyClient {
       if (response.status === 429) {
         // Record shared cooldown/quota state but leave mutation replay to the
         // caller, which must reconcile and rebuild its payload before retrying.
-        const { delayMs } = await this.rateLimiter.handleRateLimitResponse(response.headers, reservationId);
+        // Count this 429 as the call's own first attempt, not on the
+        // limiter's shared counter, which concurrent uploads would share.
+        const { delayMs } = await this.rateLimiter.handleRateLimitResponse(response.headers, reservationId, 1);
         this.rateLimiter.resetRetryCount();
         throw this.writeRateLimitError(response, options.method, delayMs);
       }
@@ -362,6 +364,11 @@ export class EtsyClient {
     );
   }
 
+  /**
+   * Make an authenticated JSON request to the Etsy API. A cached GET answer
+   * is returned without a request; otherwise the request goes through
+   * executeWithRetry, which adds the Authorization header per attempt.
+   */
   private async makeRequest<T>(
     endpoint: string,
     options: RequestInit = {},
@@ -408,7 +415,12 @@ export class EtsyClient {
   }
 
   /**
-   * Execute request with automatic retry for 429 responses
+   * Send a request and handle Etsy's answer. Each attempt reserves a
+   * rate-limit slot, then reads the access token. A read that gets a 429 is
+   * retried with backoff up to `maxRetries`; a write that gets a 429 throws
+   * EtsyRateLimitError without being replayed. The first 401 triggers one
+   * token refresh and one resend when a refresh token is held. Token read and
+   * refresh errors pass through unchanged; other failures become EtsyApiError.
    */
   private async executeWithRetry<T>(
     url: string,

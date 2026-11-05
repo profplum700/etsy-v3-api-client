@@ -216,6 +216,15 @@ describe('EtsyClient auth and rate-limit retries', () => {
       expect((error as EtsyRateLimitError).retryAfter).toBe(2);
     });
 
+    it('counts an upload 429 as this call\'s first attempt, not the shared counter', async () => {
+      ctx.mockRateLimiter.handleRateLimitResponse.mockResolvedValue({ shouldRetry: true, delayMs: 1000 });
+      ctx.mockFetch.mockResolvedValue(errorResponse(429, 'Too Many Requests'));
+
+      await ctx.client.uploadListingImage('123', '789', blob()).catch(() => undefined);
+
+      expect(ctx.mockRateLimiter.handleRateLimitResponse).toHaveBeenCalledWith(expect.anything(), 1, 1);
+    });
+
     it('ignores a Retry-After that is not a number of seconds', async () => {
       ctx.mockRateLimiter.handleRateLimitResponse.mockResolvedValue({ shouldRetry: true, delayMs: 2000 });
       ctx.mockFetch.mockResolvedValue(

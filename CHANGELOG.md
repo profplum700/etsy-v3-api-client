@@ -33,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - The access token is now read before each send attempt, after the rate-limit wait. A read retried after a 429 backoff no longer reuses an `Authorization` header that may have expired while it waited.
+- `EtsyRateLimitError` for "retries used up" now carries the recorded cooldown as `retryAfter` when Etsy sends no `Retry-After` header (it was `undefined`).
 - **@profplum700/etsy-nextjs**: Fixed "createContext is not a function" build error in Next.js API routes
   - **BREAKING**: Main entry point (`@profplum700/etsy-nextjs`) now exports only server-side code
   - Client-side exports (`EtsyNextClientProvider`, `useEtsyNextClient`) must be imported from `@profplum700/etsy-nextjs/client`
