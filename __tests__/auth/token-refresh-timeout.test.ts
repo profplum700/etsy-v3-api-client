@@ -6,6 +6,8 @@ import { TokenManager, MemoryTokenStorage } from '../../src/auth/token-manager';
 import { EtsyAuthError, EtsyClientConfig } from '../../src/types';
 import { vi, type Mock } from 'vitest';
 
+// setTimeout fires after 1 ms for any delay above this (2^31 - 1 ms).
+const MAX_TIMER_DELAY_MS = 2_147_483_647;
 const ORIGINAL_ACCESS = 'stored-access-token';
 const ORIGINAL_REFRESH = 'stored-refresh-token';
 
@@ -152,7 +154,11 @@ describe('TokenManager refresh timeout', () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
-  it.each([0, -1, Number.NaN, Number.POSITIVE_INFINITY])(
+  it('accepts the largest delay a timer can hold', () => {
+    expect(() => new TokenManager(config({ tokenRefreshTimeoutMs: MAX_TIMER_DELAY_MS }))).not.toThrow();
+  });
+
+  it.each([0, -1, Number.NaN, Number.POSITIVE_INFINITY, MAX_TIMER_DELAY_MS + 1])(
     'rejects tokenRefreshTimeoutMs = %s',
     (value) => {
       expect(() => new TokenManager(config({ tokenRefreshTimeoutMs: value }))).toThrow(RangeError);

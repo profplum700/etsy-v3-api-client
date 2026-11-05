@@ -18,6 +18,8 @@ import { isNode, hasLocalStorage, hasSessionStorage, assertFetchSupport } from '
 
 /** Default deadline for a request to Etsy's token endpoint. */
 export const DEFAULT_TOKEN_REFRESH_TIMEOUT_MS = 30_000;
+/** setTimeout fires after 1 ms for any delay above 2^31 - 1 ms. */
+const MAX_TIMER_DELAY_MS = 2_147_483_647;
 
 /**
  * In-memory token storage implementation
@@ -57,8 +59,8 @@ export class TokenManager {
 
   constructor(config: EtsyClientConfig, storage?: TokenStorage, rotationConfig?: TokenRotationConfig) {
     const refreshTimeoutMs = config.tokenRefreshTimeoutMs ?? DEFAULT_TOKEN_REFRESH_TIMEOUT_MS;
-    if (!Number.isFinite(refreshTimeoutMs) || refreshTimeoutMs <= 0) {
-      throw new RangeError('tokenRefreshTimeoutMs must be a positive, finite number of milliseconds');
+    if (!Number.isFinite(refreshTimeoutMs) || refreshTimeoutMs <= 0 || refreshTimeoutMs > MAX_TIMER_DELAY_MS) {
+      throw new RangeError(`tokenRefreshTimeoutMs must be more than 0 and at most ${MAX_TIMER_DELAY_MS} milliseconds`);
     }
     this.refreshTimeoutMs = refreshTimeoutMs;
     this.keystring = config.keystring;
