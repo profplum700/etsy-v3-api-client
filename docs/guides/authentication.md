@@ -275,6 +275,13 @@ async function makeApiCall() {
 
 ### Token Storage Options
 
+Pass a `TokenStorage` as the second `EtsyClient` argument. Every token set the
+client refreshes is saved to it before the new access token is used. The client
+still starts from the tokens in `config`, so load them from the storage yourself
+when resuming a session (see [Multi-User Applications](#multi-user-applications)).
+You can combine storage with the `refreshSave` / `refreshSaveAsync` callbacks;
+the storage is written first.
+
 #### File Storage
 
 ```typescript
@@ -464,16 +471,26 @@ class DatabaseTokenStorage implements TokenStorage {
   }
 }
 
-// Create client per user
-function getClientForUser(userId: string): EtsyClient {
+// Create client per user. The client starts from the tokens in its config
+// and saves every refreshed set back to `storage`.
+async function getClientForUser(userId: string): Promise<EtsyClient> {
   const storage = new DatabaseTokenStorage(userId, db);
-  return new EtsyClient(config, storage);
+  const tokens = await storage.load();
+  if (!tokens) throw new Error(`User ${userId} has not connected Etsy`);
+
+  return new EtsyClient({
+    keystring: process.env.ETSY_API_KEY!,
+    sharedSecret: process.env.ETSY_SHARED_SECRET!,
+    accessToken: tokens.access_token,
+    refreshToken: tokens.refresh_token,
+    expiresAt: new Date(tokens.expires_at),
+  }, storage);
 }
 
 // Usage in route handler
 app.get('/api/shop', async (req, res) => {
   const userId = req.user.id;
-  const client = getClientForUser(userId);
+  const client = await getClientForUser(userId);
 
   const shop = await client.getShopByOwnerUserId();
   res.json(shop);

@@ -278,9 +278,28 @@ const fileStorage = new FileTokenStorage('./tokens.json');
 // In-memory storage (not persistent)
 const memoryStorage = new MemoryTokenStorage();
 
-// Use with client
+// Use with client: every token set the client refreshes is saved to `storage`
 const client = new EtsyClient(config, storage);
 ```
+
+The storage is a write target, not a token source: the client still starts
+from the tokens in `config`. To resume a session, load them first:
+
+```typescript
+const saved = await storage.load();
+if (!saved) throw new Error('No stored tokens; run the OAuth flow first');
+
+const client = new EtsyClient({
+  keystring: process.env.ETSY_API_KEY!,
+  sharedSecret: process.env.ETSY_SHARED_SECRET!,
+  accessToken: saved.access_token,
+  refreshToken: saved.refresh_token,
+  expiresAt: new Date(saved.expires_at),
+}, storage);
+```
+
+Passing `storage` can be combined with the `refreshSave` / `refreshSaveAsync`
+(+ `refreshClearAsync`) callbacks; the storage is written first.
 
 ### Custom Storage
 
@@ -591,9 +610,13 @@ async function authenticateAndFetchData() {
 
   // Step 5: Create client with storage
   const storage = createDefaultTokenStorage();
+  await storage.save(tokens);
   const client = new EtsyClient({
     keystring: process.env.ETSY_API_KEY!,
-    ...tokens
+    sharedSecret: process.env.ETSY_SHARED_SECRET!,
+    accessToken: tokens.access_token,
+    refreshToken: tokens.refresh_token,
+    expiresAt: tokens.expires_at
   }, storage);
 
   // Step 6: Use the API

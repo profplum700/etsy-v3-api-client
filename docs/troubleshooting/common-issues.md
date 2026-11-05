@@ -306,15 +306,20 @@ if (!fs.existsSync(tokenDir)) {
 
 const tokenPath = path.join(tokenDir, 'tokens.json');
 
-try {
-  const storage = new FileTokenStorage(tokenPath);
-  const client = new EtsyClient(config, storage);
-} catch (error) {
-  console.error('Storage initialization failed:', error);
-  // Fall back to memory storage
-  const storage = new MemoryTokenStorage();
-  const client = new EtsyClient(config, storage);
-}
+const storage = new FileTokenStorage(tokenPath);
+
+// The constructor does not touch the disk. A bad path or permission only shows
+// up when the client saves refreshed tokens, and that request then rejects with
+// "Failed to save tokens to file". Probe once at startup to fail early:
+await storage.save({
+  access_token: config.accessToken,
+  refresh_token: config.refreshToken,
+  expires_at: config.expiresAt,
+  token_type: 'Bearer',
+  scope: '',
+});
+
+const client = new EtsyClient(config, storage);
 ```
 
 ### "Refresh token expired"

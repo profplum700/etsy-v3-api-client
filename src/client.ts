@@ -5,6 +5,7 @@
 
 import {
   EtsyClientConfig,
+  TokenStorage,
   EtsyApiResponse,
   EtsyUser,
   EtsyShop,
@@ -207,12 +208,20 @@ export class EtsyClient {
   private sharedSecret: string;
   private bulkOperationManager: BulkOperationManager;
 
-  constructor(config: EtsyClientConfig) {
+  /**
+   * @param config - Client configuration, including the starting tokens.
+   * @param storage - Optional token storage. Every token set the client
+   *   refreshes is saved to it before the new access token is used. It can be
+   *   combined with `refreshSave` / `refreshSaveAsync`. The starting tokens
+   *   still come from `config`: when resuming a session, load them from your
+   *   storage yourself and pass them in.
+   */
+  constructor(config: EtsyClientConfig, storage?: TokenStorage) {
     if (!config.sharedSecret) {
       throw new EtsyAuthError('sharedSecret is REQUIRED for Etsy API v3 application usage. See: https://github.com/profplum700/etsy-v3-api-client/issues/21');
     }
 
-    this.tokenManager = new TokenManager(config);
+    this.tokenManager = new TokenManager(config, storage);
     this.baseUrl = config.baseUrl || 'https://api.etsy.com/v3/application';
     this.logger = new DefaultLogger();
     this.keystring = config.keystring;

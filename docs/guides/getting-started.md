@@ -143,7 +143,10 @@ app.listen(3000, () => {
 
 ## Token Storage
 
-The library supports multiple storage backends:
+The library supports multiple storage backends. Pass one as the second
+`EtsyClient` argument and every token set the client refreshes is saved to it.
+The client still starts from the tokens in `config`; to resume a session, load
+them with `storage.load()` and pass them in.
 
 ### File Storage (Default)
 
