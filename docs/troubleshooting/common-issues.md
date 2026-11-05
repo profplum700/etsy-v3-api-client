@@ -325,21 +325,15 @@ try {
 ```typescript
 async function ensureAuthenticated() {
   try {
-    // Try to use existing tokens
-    const isAuth = await client.isAuthenticated();
-
-    if (!isAuth) {
-      console.log('Not authenticated');
-      // Redirect to auth flow
-      return false;
-    }
-
+    // Refreshing proves the refresh token still works
+    await client.refreshToken();
     return true;
   } catch (error) {
     if (error instanceof EtsyAuthError && error.code === 'REAUTH_REQUIRED') {
       console.log('Refresh token expired, need to re-authenticate');
-      await client.clearTokens();
-      // Redirect to auth flow
+      // Clear the stored tokens in your own token storage, then
+      // redirect to the auth flow
+      await tokenStorage.clear();
       return false;
     }
     throw error;

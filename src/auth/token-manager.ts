@@ -208,6 +208,8 @@ export class TokenManager {
     if (!this.currentTokens) {
       throw new EtsyAuthError('No tokens available', 'NO_TOKENS');
     }
+    // Captured before the first await, so it matches refreshToken()'s capture.
+    const generation = this.tokenMutationGeneration;
 
     const body = new URLSearchParams({
       grant_type: 'refresh_token',
@@ -230,6 +232,9 @@ export class TokenManager {
         // Etsy refused the refresh token itself (expired, revoked, or already
         // rotated): retrying cannot help, the user must authorise again.
         if (await this.isRefreshTokenRefused(response)) {
+          // The refused token is stale if updateTokens/clearTokens ran meanwhile;
+          // do not tell the caller to re-authorise over newer credentials.
+          this.throwIfSuperseded(generation);
           throw new EtsyAuthError(
             `Token refresh refused: ${response.status} invalid_grant. The user must authorise the app again.`,
             'REAUTH_REQUIRED'

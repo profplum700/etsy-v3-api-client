@@ -641,6 +641,28 @@ describe('TokenManager', () => {
       expect((error as Error).message).not.toContain('secret-value');
     });
 
+    it('should report TOKEN_REFRESH_SUPERSEDED, not REAUTH_REQUIRED, when new tokens arrive during a refused refresh', async () => {
+      let answer: ((value: unknown) => void) | undefined;
+      mockFetch.mockReturnValue(new Promise(resolve => { answer = resolve; }));
+
+      const tokenManager = new TokenManager(mockConfig);
+      const refresh = tokenManager.refreshToken();
+      await Promise.resolve();
+      tokenManager.updateTokens({
+        access_token: 'manual-access-token', refresh_token: 'manual-refresh-token',
+        expires_at: new Date(Date.now() + 3600000), token_type: 'Bearer', scope: ''
+      });
+      answer?.({
+        ok: false,
+        status: 400,
+        statusText: 'Bad Request',
+        text: vi.fn().mockResolvedValue(JSON.stringify({ error: 'invalid_grant' }))
+      });
+
+      await expect(refresh).rejects.toMatchObject({ code: 'TOKEN_REFRESH_SUPERSEDED' });
+      expect(tokenManager.getCurrentTokens()?.access_token).toBe('manual-access-token');
+    });
+
     it('should keep TOKEN_REFRESH_FAILED for a transient refresh failure', async () => {
       mockFetch.mockResolvedValue({
         ok: false,
