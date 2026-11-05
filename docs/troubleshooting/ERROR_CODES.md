@@ -691,6 +691,30 @@ try {
 }
 ```
 
+### TOKEN_SAVE_FAILED
+
+**Meaning:** Etsy issued new tokens, but saving them failed. The save goes
+through `TokenStorage.save()`, `refreshSave` or `refreshSaveAsync`. The client
+throws `EtsyAuthError` with code `TOKEN_SAVE_FAILED`, and `error.cause` holds
+the original storage or callback error.
+
+Etsy rotates the refresh token on every refresh, so the old one may no longer
+work. The new tokens are kept in memory only, and the next refresh (or the next
+call that needs one) retries the save without asking Etsy again. If the
+process exits before a save succeeds, the new refresh token is lost and the
+user may have to authorise the app again.
+
+```typescript
+try {
+  await client.getUser();
+} catch (error) {
+  if (error instanceof EtsyAuthError && error.code === 'TOKEN_SAVE_FAILED') {
+    console.error('Could not save refreshed tokens:', error.cause);
+    // Fix the storage, then retry soon; do not exit the process first
+  }
+}
+```
+
 ### access_denied
 
 **Meaning:** User denied authorization.

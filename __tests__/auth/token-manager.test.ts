@@ -311,7 +311,11 @@ describe('TokenManager', () => {
       });
 
       const tokenManager = new TokenManager(mockConfig, storage);
-      await expect(tokenManager.refreshToken()).rejects.toThrow('Credential store temporarily unavailable');
+      const saveError = await tokenManager.refreshToken().catch((e: unknown) => e);
+      expect(saveError).toBeInstanceOf(EtsyAuthError);
+      expect(saveError).toMatchObject({ code: 'TOKEN_SAVE_FAILED' });
+      expect((saveError as Error).cause).toBeInstanceOf(Error);
+      expect(((saveError as Error).cause as Error).message).toBe('Credential store temporarily unavailable');
       expect(tokenManager.getCurrentTokens()?.access_token).toBe(mockConfig.accessToken);
 
       await expect(tokenManager.refreshToken()).resolves.toMatchObject({
@@ -339,13 +343,65 @@ describe('TokenManager', () => {
       });
 
       const tokenManager = new TokenManager({ ...mockConfig, refreshSaveAsync: callback });
-      await expect(tokenManager.refreshToken()).rejects.toThrow('Credential callback temporarily unavailable');
+      const saveError = await tokenManager.refreshToken().catch((e: unknown) => e);
+      expect(saveError).toBeInstanceOf(EtsyAuthError);
+      expect(saveError).toMatchObject({ code: 'TOKEN_SAVE_FAILED' });
+      expect(((saveError as Error).cause as Error).message).toBe('Credential callback temporarily unavailable');
       expect(tokenManager.getCurrentTokens()?.access_token).toBe(mockConfig.accessToken);
 
       await expect(tokenManager.refreshToken()).resolves.toMatchObject({ access_token: 'rotated-access-token' });
       expect(mockFetch).toHaveBeenCalledTimes(1);
       expect(callback).toHaveBeenCalledTimes(2);
       expect(tokenManager.getCurrentTokens()?.access_token).toBe('rotated-access-token');
+    });
+
+    it('wraps a throwing synchronous refreshSave callback in TOKEN_SAVE_FAILED with the original as cause', async () => {
+      const original = new TypeError('database is read-only');
+      const refreshSave = vi.fn(() => { throw original; });
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          access_token: 'rotated-access-token',
+          refresh_token: 'rotated-refresh-token',
+          expires_in: 3600,
+          token_type: 'Bearer',
+          scope: ''
+        })
+      });
+
+      const tokenManager = new TokenManager({ ...mockConfig, refreshSave });
+      const error = await tokenManager.refreshToken().catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(EtsyAuthError);
+      expect((error as EtsyAuthError).code).toBe('TOKEN_SAVE_FAILED');
+      expect((error as Error).cause).toBe(original);
+      // The rotated tokens never reach the message.
+      expect((error as Error).message).not.toContain('rotated-');
+      expect(tokenManager.getCurrentTokens()?.access_token).toBe(mockConfig.accessToken);
+    });
+
+    it('reports TOKEN_SAVE_FAILED to getAccessToken callers when an expired token is refreshed', async () => {
+      const original = new Error('disk full');
+      const storage = new MemoryTokenStorage();
+      vi.spyOn(storage, 'save').mockRejectedValue(original);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          access_token: 'rotated-access-token',
+          refresh_token: 'rotated-refresh-token',
+          expires_in: 3600,
+          token_type: 'Bearer',
+          scope: ''
+        })
+      });
+
+      const tokenManager = new TokenManager({ ...mockConfig, expiresAt: new Date(Date.now() - 1000) }, storage);
+
+      await expect(tokenManager.getAccessToken()).rejects.toMatchObject({
+        name: 'EtsyAuthError',
+        code: 'TOKEN_SAVE_FAILED',
+        cause: original
+      });
     });
 
     it('waits for asynchronous refresh persistence before exposing rotated tokens', async () => {

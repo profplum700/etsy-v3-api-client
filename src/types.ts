@@ -935,8 +935,8 @@ export class EtsyApiError extends Error {
 }
 
 export class EtsyAuthError extends Error {
-  constructor(message: string, public _code?: string) {
-    super(message);
+  constructor(message: string, public _code?: string, options?: { cause?: unknown }) {
+    super(message, options);
     this.name = 'EtsyAuthError';
   }
 
