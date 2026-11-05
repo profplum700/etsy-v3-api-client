@@ -499,11 +499,11 @@ setInterval(async () => {
 ### Logout / Revoke Access
 
 ```typescript
-// Clear stored tokens
+// Clear the tokens and the response cache
 await client.clearTokens();
 
-// User will need to re-authenticate
-const isAuth = await client.isAuthenticated(); // false
+// Calls now throw EtsyAuthError NO_TOKENS instead of serving cached data;
+// the user will need to re-authenticate
 ```
 
 ## Troubleshooting

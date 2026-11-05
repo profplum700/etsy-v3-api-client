@@ -2919,6 +2919,19 @@ export class EtsyClient {
   }
 
   /**
+   * Clear the tokens (in memory, in token storage and through refreshClearAsync)
+   * and the response cache, so cached answers are not served after sign-out.
+   * The cache is cleared even if clearing the tokens throws.
+   */
+  public async clearTokens(): Promise<void> {
+    try {
+      await this.tokenManager.clearTokens();
+    } finally {
+      await this.clearCache();
+    }
+  }
+
+  /**
    * Refresh token manually
    */
   public async refreshToken(): Promise<EtsyTokens> {
