@@ -328,8 +328,8 @@ describe('EtsyClient Listings', () => {
       await expect(ctx.client.updateListingInventory('789', {
         products: [{ property_values: [], offerings: [{ price: 29.99, quantity: 10, is_enabled: true, readiness_state_id: null }] }],
       })).rejects.toMatchObject({
-        _statusCode: 429,
-        _response: 'rate limit reached',
+        name: 'EtsyRateLimitError',
+        retryAfter: 1,
       });
 
       expect(ctx.mockFetch).toHaveBeenCalledTimes(1);

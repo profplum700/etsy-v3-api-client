@@ -86,28 +86,25 @@ app.get('/callback', async (req, res) => {
 
 **Solution**:
 ```typescript
-async function makeAuthenticatedRequest() {
-  // Check if authenticated
-  if (!(await client.isAuthenticated())) {
-    console.log('Not authenticated, redirecting to auth flow');
-    // Redirect to authentication
-    return;
-  }
+import { EtsyApiError, EtsyAuthError } from '@profplum700/etsy-v3-api-client';
 
+async function makeAuthenticatedRequest() {
   try {
-    return await client.getShopByOwnerUserId();
+    const user = await client.getUser();
+    return await client.getShopByOwnerUserId(String(user.user_id));
   } catch (error) {
-    if (error.statusCode === 401) {
-      // Try refreshing token
-      try {
-        await client.refreshAccessToken();
-        return await client.getShopByOwnerUserId(); // Retry
-      } catch (refreshError) {
-        // Refresh failed, need to re-authenticate
-        console.log('Token refresh failed, please re-authenticate');
-        await client.clearTokens();
-        // Redirect to auth flow
-      }
+    if (
+      (error instanceof EtsyApiError && error.statusCode === 401) ||
+      (error instanceof EtsyAuthError && error.code === 'REAUTH_REQUIRED')
+    ) {
+      // Either Etsy still rejects the token after the client's one refresh
+      // and retry, or Etsy refused the refresh token itself: clear the tokens
+      // in your own token storage and send the user through OAuth again.
+      await tokenStorage.clear();
+    } else if (error instanceof EtsyAuthError) {
+      // The token refresh itself failed. A network error or an Etsy 5xx is
+      // transient: keep the stored tokens and try again later.
+      console.warn('Token refresh failed:', error.code);
     }
     throw error;
   }
@@ -253,7 +250,10 @@ async function bulkUpdate(listings: any[]) {
   }
 }
 
-// Handle 429 errors with retry
+import { EtsyRateLimitError } from '@profplum700/etsy-v3-api-client';
+
+// Handle 429 errors with retry. Every 429 throws EtsyRateLimitError; writes
+// are never replayed by the client, so reconcile before retrying a write.
 async function makeRequestWithRetry<T>(
   fn: () => Promise<T>,
   maxRetries = 3
@@ -262,9 +262,9 @@ async function makeRequestWithRetry<T>(
     try {
       return await fn();
     } catch (error) {
-      if (error.statusCode === 429 && i < maxRetries - 1) {
-        // Wait before retrying (exponential backoff)
-        const delay = Math.pow(2, i) * 1000;
+      if (error instanceof EtsyRateLimitError && error.isRetryable() && i < maxRetries - 1) {
+        // Wait at least as long as Etsy asks
+        const delay = Math.max((error.retryAfter ?? 0) * 1000, Math.pow(2, i) * 1000);
         console.log(`Rate limited, waiting ${delay}ms before retry ${i + 1}`);
         await new Promise(resolve => setTimeout(resolve, delay));
       } else {
@@ -602,7 +602,10 @@ async function robustApiCall<T>(
   try {
     return await fn();
   } catch (error) {
-    if (error instanceof EtsyApiError) {
+    if (error instanceof EtsyRateLimitError) {
+      // Every 429 from the client, read or write
+      console.error(`Rate limited - retry after ${error.retryAfter ?? 'a while'} s`);
+    } else if (error instanceof EtsyApiError) {
       switch (error.statusCode) {
         case 400:
           console.error('Bad request:', error.message);

@@ -6,6 +6,7 @@ const failed = {
   "storage error": "Thrown: the storage or refreshSave error, unchanged",
   "EtsyRateLimitError: daily quota": "Thrown: EtsyRateLimitError (daily quota)",
   "EtsyRateLimitError: retries used up": "Thrown: EtsyRateLimitError (retries used up)",
+  "EtsyRateLimitError: write not replayed": "Thrown: EtsyRateLimitError (write, with retryAfter)",
   "EtsyApiError 429": "Thrown: EtsyApiError 429",
   "EtsyApiError 401": "Thrown: EtsyApiError 401",
   "EtsyApiError other": "Thrown: EtsyApiError (5xx, 4xx, network)",
@@ -46,17 +47,21 @@ export const step = (action, from, to) => {
       : "token expiring";
     case "RefreshSucceeds": return "Etsy issues new tokens";
     case "RefreshFails": return "Etsy refuses the refresh, or the network fails";
-    case "SaveSucceeds": return "storage and refreshSave succeed";
+    case "SaveSucceeds": return to.phase === "slot"
+      ? "storage and refreshSave succeed [after a 401]"
+      : "storage and refreshSave succeed";
     case "SaveFails": return "storage or refreshSave throws";
     case "LocalDailyQuotaUsedUp": return "local 24-hour count is used up";
-    case "SlotGranted": return "pacing and cooldown pass";
+    case "SlotGranted": return "pacing and cooldown pass (the token may age meanwhile)";
     case "EtsyAnswersOk": return "Etsy answers 2xx";
-    case "EtsyRejectsToken": return "Etsy answers 401";
+    case "EtsyRejectsToken": return to.phase === "done"
+      ? "Etsy answers 401 [again, or no refresh token held]"
+      : "Etsy answers 401 [first time, refresh token held]";
     case "EtsyFailsOtherwise": return "Etsy answers 5xx or 4xx, or the network fails";
     case "EtsySaysDailyQuotaGone": return "Etsy answers 429 with no daily quota left";
     case "EtsySaysSlowDown":
       if (to.phase === "backoff") return "Etsy answers 429 [a read with retries left]";
-      if (to.outcome === "EtsyApiError 429") return "Etsy answers 429 [a write]";
+      if (to.outcome === "EtsyRateLimitError: write not replayed") return "Etsy answers 429 [a write]";
       return "Etsy answers 429 [retries used up]";
     case "BackoffEnds": return "the backoff delay passes";
     case "Finished": return null;

@@ -28,118 +28,97 @@ stateDiagram-v2
     lg2: auth
     lg3: limit
     lg4: call
-    lg5: Breaks RateLimitErrorsAreTyped
-    lg6: Breaks AuthErrorOnlyWhenReauthNeeded in some cases
-    lg7: Path to the AuthErrorOnlyWhenReauthNeeded or RateLimitErrorsAreTyped bug
   }
   class lg0 teal
   class lg1 pink
   class lg2 purple
   class lg3 yellow
   class lg4 blue
-  class lg5 breaks
-  class lg6 mayBreak
-  class lg7 bugPath
   s0: You call a method
   s1: Returns cached data
-  s2: Checking the access token
-  s3: Refreshing the token
-  s4: Saving the new tokens
-  s5: Waiting for a rate-limit slot
-  s6: Thrown: EtsyAuthError (refresh failed)
-  s7: Thrown: EtsyRateLimitError (daily quota)
-  s8: Thrown: the storage or refreshSave error, unchanged
-  s9: Request sent to Etsy
-  s10: Backing off after a 429
-  s11: Thrown: EtsyApiError 401
-  s12: Thrown: EtsyApiError 429
-  s13: Thrown: EtsyApiError (5xx, 4xx, network)
-  s14: Returns data
+  s2: Waiting for a rate-limit slot
+  s3: Thrown: EtsyRateLimitError (daily quota)
+  s4: Checking the access token
+  s5: Request sent to Etsy
+  s6: Refreshing the token
+  s7: Saving the new tokens
+  s8: Returns data
+  s9: Thrown: EtsyApiError 401
+  s10: Thrown: EtsyApiError (5xx, 4xx, network)
+  s11: Backing off after a 429
+  s12: Thrown: EtsyAuthError (refresh failed)
+  s13: Thrown: the storage or refreshSave error, unchanged
+  s14: Thrown: EtsyRateLimitError (write, with retryAfter)
   s15: Thrown: EtsyRateLimitError (retries used up)
   [*] --> s0
   s0 --> s1: a cached answer exists [reads only]
   s0 --> s2: no cached answer
-  s2 --> s3: token expiring
-  s2 --> s5: token has over a minute left
-  s2 --> s4: token expiring [new tokens from an earlier call wait to be saved]
-  s3 --> s6: Etsy refuses the refresh, or the network fails
-  s3 --> s4: Etsy issues new tokens
-  s4 --> s5: storage and refreshSave succeed
-  s4 --> s8: storage or refreshSave throws
-  s5 --> s7: local 24-hour count is used up
-  s5 --> s9: pacing and cooldown pass
-  s9 --> s10: Etsy answers 429 [a read with retries left]
-  s9 --> s11: Etsy answers 401
-  s9 --> s13: Etsy answers 5xx or 4xx, or the network fails
-  s9 --> s7: Etsy answers 429 with no daily quota left
-  s9 --> s14: Etsy answers 2xx
-  s9 --> s12: Etsy answers 429 [a write]
-  s10 --> s5: the backoff delay passes
-  s9 --> s15: Etsy answers 429 [retries used up]
-  classDef breaks fill:#ffecee,stroke:#e72e3b,stroke-width:2.5px,color:#cd2834
-  classDef mayBreak fill:#fff3e6,stroke:#e8730c,stroke-width:2.5px,color:#b85a06
+  s2 --> s3: local 24-hour count is used up
+  s2 --> s4: pacing and cooldown pass (the token may age meanwhile)
+  s4 --> s5: token has over a minute left
+  s4 --> s6: token expiring
+  s4 --> s7: token expiring [new tokens from an earlier call wait to be saved]
+  s5 --> s8: Etsy answers 2xx
+  s5 --> s9: Etsy answers 401 [again, or no refresh token held]
+  s5 --> s10: Etsy answers 5xx or 4xx, or the network fails
+  s5 --> s3: Etsy answers 429 with no daily quota left
+  s5 --> s11: Etsy answers 429 [a read with retries left]
+  s6 --> s12: Etsy refuses the refresh, or the network fails
+  s5 --> s6: Etsy answers 401 [first time, refresh token held]
+  s6 --> s7: Etsy issues new tokens
+  s7 --> s5: storage and refreshSave succeed
+  s7 --> s13: storage or refreshSave throws
+  s5 --> s14: Etsy answers 429 [a write]
+  s11 --> s2: the backoff delay passes
+  s7 --> s2: storage and refreshSave succeed [after a 401]
+  s5 --> s15: Etsy answers 429 [retries used up]
   class s0 blue
-  class s0 bugPath
   class s1 teal
-  class s2 purple
-  class s2 bugPath
-  class s3 purple
+  class s2 yellow
+  class s3 pink
   class s4 purple
-  class s5 yellow
-  class s5 bugPath
-  class s6 pink
-  class s7 pink
-  class s8 pink
-  class s9 blue
-  class s9 bugPath
-  class s10 yellow
-  class s11 pink
-  class s11 mayBreak
-  class s11 bugPath
+  class s5 blue
+  class s6 purple
+  class s7 purple
+  class s8 teal
+  class s9 pink
+  class s10 pink
+  class s11 yellow
   class s12 pink
-  class s12 breaks
-  class s12 bugPath
   class s13 pink
-  class s14 teal
+  class s14 pink
   class s15 pink
 ```
 
-A red box breaks a rule in every case. An orange box breaks it only in some
-cases. A blue border marks a state on the shortest path to a break.
+No rule breaks, so no state is marked.
 
 ## Rules
 
-Rules that hold: `NoExpiringTokenSent`, `NoUnsavedTokensUsed`,
-`WritesNotReplayed`, `RetriesBounded`, `TypeOK`, `NoDeadlock`.
+All rules hold: `NoExpiringTokenSent`, `NoUnsavedTokensUsed`,
+`WritesNotReplayed`, `RetriesBounded`, `RateLimitErrorsAreTyped`,
+`AuthErrorOnlyWhenReauthNeeded`, `TypeOK`, `NoDeadlock`.
 
-`NoExpiringTokenSent` means the token is fresh when the client fetches it
-(`getAccessToken`, before the rate-limit wait). It does not promise the token
-is still fresh when the request leaves: the model has no elapsed time (see
-below).
+- **`NoExpiringTokenSent`**: no request leaves with a token about to expire.
+  The client reads the token after each rate-limit wait (`sendAuthorized`),
+  and the model lets the token age while the call waits, so the wait and the
+  429 backoff are covered.
+- **`AuthErrorOnlyWhenReauthNeeded`**: "You only see a 401 when re-authorising
+  is the only fix." On the first 401, when a refresh token is held, the client
+  refreshes once and resends once (`recoverFromUnauthorized`). A second 401,
+  or a 401 with no refresh token, is thrown as `EtsyApiError 401`. A failed
+  refresh throws its `EtsyAuthError`.
+- **`RateLimitErrorsAreTyped`**: "Every rate-limit failure is an
+  `EtsyRateLimitError`." A 429 on a write is still not replayed, but it now
+  throws `EtsyRateLimitError` with `retryAfter` (`writeRateLimitError`).
+- **`WritesNotReplayed`**: a write reaches Etsy once, or twice when the first
+  send got a 401 (Etsy did not act on it). It is never replayed after a 429.
+- **`RetriesBounded`**: sends stop at `maxRetries + 1`, plus one resend after a
+  401.
 
 If saving rotated tokens fails, the caller gets the error that
 `storage.save` or `refreshSave` threw, unchanged. It is not wrapped in
-`EtsyAuthError`: `persistRefreshedTokens` has no catch, and `makeRequest`
-calls `getAccessToken` outside `executeWithRetry`'s error wrapping.
-
-Two proposed rules break. Each break was replayed against `src/client.ts`
-with a throwaway Vitest test that stubs `fetch`, and each one reproduces.
-
-- **`AuthErrorOnlyWhenReauthNeeded`**: "You only see a 401 when re-authorising
-  is the only fix." Path: you call a method → no cached answer → token has
-  over a minute left → pacing passes → Etsy answers 401 → `EtsyApiError 401`.
-  The client refreshes only on its own clock (`getAccessToken`, 60 s buffer).
-  A 401 from Etsy is thrown as is, without a refresh or a retry
-  (`executeWithRetry` in `src/client.ts`).
-- **`RateLimitErrorsAreTyped`**: "Every rate-limit failure is an
-  `EtsyRateLimitError`." Path: … → Etsy answers 429 [a write] →
-  `EtsyApiError 429`. On purpose, writes are not replayed after a 429. They are
-  thrown as `EtsyApiError` with no `retryAfter`, so `getRetryAfter()` returns
-  `null`.
-
-These two rules are proposals for the owner to accept or reject. If the
-current behaviour is what you want, delete the rule from the `.cfg` file, and
-fix the docs listed in the PR.
+`EtsyAuthError`: `persistRefreshedTokens` has no catch, and the request loop
+passes token errors through.
 
 ## What the model leaves out
 
@@ -149,22 +128,21 @@ fix the docs listed in the PR.
   headers, and the guarded single quota probe in `EtsyRateLimiter`.
 - The proactive rotation scheduler, `clearTokens`, `updateTokens` and manual
   `refreshToken()`.
-- Calls that use `fetchOnceWithRateLimit` (some upload and inventory methods)
-  instead of the retry loop.
+- Calls that use `fetchOnceWithRateLimit` (uploads and
+  `updateListingProperty`) instead of the retry loop. They follow the same
+  token, 401 and write-429 rules as a write, and are covered by unit tests.
 - `rateLimiting.enabled = false`. In that mode slots are not reserved, but
   GET 429s are still retried.
 - Exact delays, jitter and `Retry-After` arithmetic. Time is reduced to
   "token fresh / token expiring" and "backoff passes".
-- Time passing during the quota wait and the 429 backoff. `getAccessToken`
-  checks expiry once, before `executeWithRetry` waits for a slot, and GET
-  retries reuse the same `Authorization` header after backing off. A token
-  fresh at fetch time can expire before a later send.
+- Exact elapsed time. Time passing is reduced to "the token may start
+  expiring while the call waits for a slot".
+- Concurrent calls that hit a 401 together. The client refreshes only if the
+  rejected token is still current; otherwise it resends with the new token.
 - The model assumes that a refresh token Etsy has just issued works.
 
 ## Open questions
 
-- Should the client re-check token expiry before each send (after the
-  rate-limit wait and after each 429 backoff), rather than once per call?
 - Should a failure to save rotated tokens be wrapped in `EtsyAuthError`, or is
   passing the storage error through unchanged the intended contract?
 

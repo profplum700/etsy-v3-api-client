@@ -28,9 +28,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **BREAKING**: A 429 on a write (POST, PUT, PATCH, DELETE, including image, file and video uploads and `updateListingProperty`) now throws `EtsyRateLimitError` with `retryAfter` set, like reads. It used to throw `EtsyApiError` with status 429 and no `retryAfter`. Writes are still never replayed. Code that checks `error instanceof EtsyApiError && error.statusCode === 429` must check `error instanceof EtsyRateLimitError` instead.
+- A 401 from Etsy now triggers one token refresh and one resend when a refresh token is held. A second 401 is thrown as `EtsyApiError` as before. If the refresh fails, its `EtsyAuthError` (or storage error) is thrown.
 - **BREAKING**: When Etsy refuses a refresh token with `invalid_grant` (expired, revoked or already used), `EtsyAuthError.code` is now `REAUTH_REQUIRED`. It used to be `TOKEN_REFRESH_FAILED`, which now means only a refresh that may succeed later (another error from Etsy, such as a 5xx). Code that sends users to re-authorise on `TOKEN_REFRESH_FAILED` should check `REAUTH_REQUIRED`.
 
 ### Fixed
+- The access token is now read before each send attempt, after the rate-limit wait. A read retried after a 429 backoff no longer reuses an `Authorization` header that may have expired while it waited.
+- `EtsyRateLimitError` for "retries used up" now carries the recorded cooldown as `retryAfter` when Etsy sends no `Retry-After` header (it was `undefined`).
 - **@profplum700/etsy-nextjs**: Fixed "createContext is not a function" build error in Next.js API routes
   - **BREAKING**: Main entry point (`@profplum700/etsy-nextjs`) now exports only server-side code
   - Client-side exports (`EtsyNextClientProvider`, `useEtsyNextClient`) must be imported from `@profplum700/etsy-nextjs/client`
