@@ -182,6 +182,19 @@ class MemoryCache implements CacheStorage {
 /**
  * Main Etsy API v3 Client
  */
+/**
+ * Wraps an error from reading or refreshing the access token, so the request
+ * loop can pass it through unchanged instead of wrapping it in EtsyApiError.
+ */
+class TokenFailure {
+  constructor(public readonly cause: unknown) {}
+}
+
+interface AuthorizedSend {
+  response: Response;
+  accessToken: string;
+}
+
 export class EtsyClient {
   private tokenManager: TokenManager;
   private rateLimiter: EtsyRateLimiter;
@@ -246,27 +259,107 @@ export class EtsyClient {
       : undefined;
   }
 
-  /** Send a single request from methods that do not use the standard retry loop. */
+  /**
+   * Send a single request from methods that do not use the standard retry loop.
+   * The access token is read per attempt and added as the Authorization header.
+   * A 401 triggers at most one token refresh and one resend. A 429 is never
+   * replayed: it throws EtsyRateLimitError carrying `retryAfter`.
+   */
   private async fetchOnceWithRateLimit(url: string, options: RequestInit): Promise<Response> {
-    const reservationId = await this.acquireRateLimitSlot();
-    let response: Response;
+    let authRetried = false;
+    while (true) {
+      const reservationId = await this.acquireRateLimitSlot();
+      let sent: AuthorizedSend;
+      try {
+        sent = await this.sendAuthorized(url, options, reservationId);
+      } catch (error) {
+        throw error instanceof TokenFailure ? error.cause : error;
+      }
+      const { response, accessToken } = sent;
+
+      if (response.status === 429) {
+        // Record shared cooldown/quota state but leave mutation replay to the
+        // caller, which must reconcile and rebuild its payload before retrying.
+        const { delayMs } = await this.rateLimiter.handleRateLimitResponse(response.headers, reservationId);
+        this.rateLimiter.resetRetryCount();
+        throw this.writeRateLimitError(response, options.method, delayMs);
+      }
+
+      this.rateLimiter.updateFromHeaders(response.headers, reservationId);
+      if (response.ok) this.rateLimiter.resetRetryCount();
+
+      if (response.status === 401 && !authRetried) {
+        try {
+          authRetried = await this.recoverFromUnauthorized(accessToken);
+        } catch (error) {
+          throw error instanceof TokenFailure ? error.cause : error;
+        }
+        if (authRetried) continue;
+      }
+      return response;
+    }
+  }
+
+  /**
+   * Read the access token now, just before sending, and send once. Releases the
+   * reserved slot if nothing is sent. Token errors are wrapped in TokenFailure
+   * so callers can pass them through unchanged.
+   */
+  private async sendAuthorized(
+    url: string,
+    options: RequestInit,
+    reservationId: number | undefined
+  ): Promise<AuthorizedSend> {
+    let accessToken: string;
     try {
-      response = await this.fetch(url, options);
+      accessToken = await this.tokenManager.getAccessToken();
+    } catch (error) {
+      if (reservationId !== undefined) this.rateLimiter.releaseRequestSlot(reservationId);
+      throw new TokenFailure(error);
+    }
+    try {
+      const response = await this.fetch(url, {
+        ...options,
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          ...(options.headers as Record<string, string> | undefined)
+        }
+      });
+      return { response, accessToken };
     } catch (error) {
       if (reservationId !== undefined) this.rateLimiter.releaseRequestSlot(reservationId);
       throw error;
     }
+  }
 
-    if (response.status === 429) {
-      // Record shared cooldown/quota state but leave mutation replay to the
-      // caller, which must reconcile and rebuild its payload before retrying.
-      await this.rateLimiter.handleRateLimitResponse(response.headers, reservationId);
-      this.rateLimiter.resetRetryCount();
-    } else {
-      this.rateLimiter.updateFromHeaders(response.headers, reservationId);
-      if (response.ok) this.rateLimiter.resetRetryCount();
+  /**
+   * After Etsy answers 401, decide whether one resend can help. Returns false
+   * when no refresh token is held. Refreshes only if the rejected token is still
+   * the current one; another call may already have replaced it.
+   */
+  private async recoverFromUnauthorized(rejectedToken: string): Promise<boolean> {
+    const current = this.tokenManager.getCurrentTokens();
+    if (!current?.refresh_token) return false;
+    if (current.access_token === rejectedToken) {
+      try {
+        await this.tokenManager.refreshToken();
+      } catch (error) {
+        throw new TokenFailure(error);
+      }
     }
-    return response;
+    return true;
+  }
+
+  /** The error for a 429 on a request the client must not replay. */
+  private writeRateLimitError(response: Response, method: string | undefined, delayMs: number): EtsyRateLimitError {
+    const header = response.headers?.get?.('retry-after');
+    const parsed = header === null || header === undefined ? NaN : Number(header);
+    const retryAfter = Number.isFinite(parsed) && parsed >= 0 ? parsed : Math.ceil(delayMs / 1000);
+    return new EtsyRateLimitError(
+      `Etsy API error: 429 ${response.statusText}; automatic retry skipped for ${(method ?? 'GET').toUpperCase()} requests`,
+      retryAfter,
+      'qps_exhausted'
+    );
   }
 
   private async makeRequest<T>(
@@ -300,12 +393,10 @@ export class EtsyClient {
       }
     }
 
-    // Get access token
-    const accessToken = await this.tokenManager.getAccessToken();
-
-    // Prepare request
+    // Prepare request. The Authorization header is added per attempt, after
+    // the rate-limit wait, so a retry never sends a token that expired while
+    // it waited.
     const headers = {
-      'Authorization': `Bearer ${accessToken}`,
       'x-api-key': this.getApiKey(),
       'Content-Type': 'application/json',
       'Accept': 'application/json',
@@ -326,16 +417,11 @@ export class EtsyClient {
     useCache: boolean
   ): Promise<T> {
     let retryAttempt = 0;
+    let authRetried = false;
     while (true) {
       try {
         const reservationId = await this.acquireRateLimitSlot();
-        let response: Response;
-        try {
-          response = await this.fetch(url, options);
-        } catch (error) {
-          if (reservationId !== undefined) this.rateLimiter.releaseRequestSlot(reservationId);
-          throw error;
-        }
+        const { response, accessToken } = await this.sendAuthorized(url, options, reservationId);
 
         // Handle 429 Rate Limited
         if (response.status === 429) {
@@ -352,12 +438,7 @@ export class EtsyClient {
               // Let the caller reconcile and rebuild it instead of replaying
               // stale request data after a rate-limit delay.
               this.rateLimiter.resetRetryCount();
-              const errorText = await response.text();
-              throw new EtsyApiError(
-                `Etsy API error: 429 ${response.statusText}; automatic retry skipped for ${method} requests`,
-                429,
-                errorText
-              );
+              throw this.writeRateLimitError(response, method, delayMs);
             }
             this.logger.warn(`Rate limited. Retrying in ${delayMs}ms...`);
             await this.sleep(delayMs);
@@ -368,6 +449,12 @@ export class EtsyClient {
 
         // Reconcile all non-429 responses too; they still consume a quota slot.
         this.rateLimiter.updateFromHeaders(response.headers, reservationId);
+
+        // A 401 gets one token refresh and one resend. A second 401 is thrown.
+        if (response.status === 401 && !authRetried) {
+          authRetried = await this.recoverFromUnauthorized(accessToken);
+          if (authRetried) continue;
+        }
 
         // Handle other errors
         if (!response.ok) {
@@ -403,6 +490,10 @@ export class EtsyClient {
 
         return data;
       } catch (error) {
+        // Token read or refresh failures pass through unchanged.
+        if (error instanceof TokenFailure) {
+          throw error.cause;
+        }
         // Re-throw rate limit errors (they've already been handled)
         if (error instanceof EtsyRateLimitError) {
           throw error;
@@ -1064,12 +1155,9 @@ export class EtsyClient {
     if (params?.alt_text) formData.append('alt_text', params.alt_text);
 
     const url = `${this.baseUrl}/shops/${shopId}/listings/${listingId}/images`;
-    const accessToken = await this.tokenManager.getAccessToken();
-
     const response = await this.fetchOnceWithRateLimit(url, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${accessToken}`,
         'x-api-key': this.getApiKey(),
       },
       body: formData
@@ -1685,12 +1773,9 @@ export class EtsyClient {
     }
 
     const url = `${this.baseUrl}/shops/${shopId}/listings/${listingId}/properties/${propertyId}`;
-    const accessToken = await this.tokenManager.getAccessToken();
-
     const response = await this.fetchOnceWithRateLimit(url, {
       method: 'PUT',
       headers: {
-        'Authorization': `Bearer ${accessToken}`,
         'x-api-key': this.getApiKey(),
         'Content-Type': 'application/x-www-form-urlencoded'
       },
@@ -1992,12 +2077,9 @@ export class EtsyClient {
     if (params?.listing_file_id !== undefined) formData.append('listing_file_id', params.listing_file_id.toString());
 
     const url = `${this.baseUrl}/shops/${shopId}/listings/${listingId}/files`;
-    const accessToken = await this.tokenManager.getAccessToken();
-
     const response = await this.fetchOnceWithRateLimit(url, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${accessToken}`,
         'x-api-key': this.getApiKey(),
       },
       body: formData
@@ -2083,12 +2165,9 @@ export class EtsyClient {
     if (params?.video_id !== undefined) formData.append('video_id', params.video_id.toString());
 
     const url = `${this.baseUrl}/shops/${shopId}/listings/${listingId}/videos`;
-    const accessToken = await this.tokenManager.getAccessToken();
-
     const response = await this.fetchOnceWithRateLimit(url, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${accessToken}`,
         'x-api-key': this.getApiKey(),
       },
       body: formData

@@ -97,17 +97,12 @@ async function makeAuthenticatedRequest() {
   try {
     return await client.getShopByOwnerUserId();
   } catch (error) {
-    if (error.statusCode === 401) {
-      // Try refreshing token
-      try {
-        await client.refreshAccessToken();
-        return await client.getShopByOwnerUserId(); // Retry
-      } catch (refreshError) {
-        // Refresh failed, need to re-authenticate
-        console.log('Token refresh failed, please re-authenticate');
-        await client.clearTokens();
-        // Redirect to auth flow
-      }
+    // On a 401 the client has already refreshed the token and retried once.
+    // A 401 or EtsyAuthError here means the user must re-authenticate.
+    if (error.statusCode === 401 || error instanceof EtsyAuthError) {
+      console.log('Please re-authenticate');
+      await client.clearTokens();
+      // Redirect to auth flow
     }
     throw error;
   }
@@ -253,7 +248,8 @@ async function bulkUpdate(listings: any[]) {
   }
 }
 
-// Handle 429 errors with retry
+// Handle 429 errors with retry. Every 429 throws EtsyRateLimitError; writes
+// are never replayed by the client, so reconcile before retrying a write.
 async function makeRequestWithRetry<T>(
   fn: () => Promise<T>,
   maxRetries = 3
@@ -262,9 +258,9 @@ async function makeRequestWithRetry<T>(
     try {
       return await fn();
     } catch (error) {
-      if (error.statusCode === 429 && i < maxRetries - 1) {
-        // Wait before retrying (exponential backoff)
-        const delay = Math.pow(2, i) * 1000;
+      if (error instanceof EtsyRateLimitError && error.isRetryable() && i < maxRetries - 1) {
+        // Wait at least as long as Etsy asks
+        const delay = Math.max((error.retryAfter ?? 0) * 1000, Math.pow(2, i) * 1000);
         console.log(`Rate limited, waiting ${delay}ms before retry ${i + 1}`);
         await new Promise(resolve => setTimeout(resolve, delay));
       } else {

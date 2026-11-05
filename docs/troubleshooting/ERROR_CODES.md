@@ -135,25 +135,22 @@ try {
 
 **Solutions:**
 
+When Etsy answers 401 and the client holds a refresh token, the client
+refreshes the token once and resends the request once. You only see a 401 if
+the resent request is rejected too, or if no refresh token is held. Refreshing
+again will not help; the user needs to re-authorise or grant the missing scope.
+
 ```typescript
 try {
   await client.getUser();
 } catch (error) {
   if (error instanceof EtsyApiError && error.statusCode === 401) {
-    console.log('Authentication failed. Refreshing token...');
-
-    // Refresh the token
-    try {
-      await client.refreshAccessToken();
-
-      // Retry the request
-      const user = await client.getUser();
-      console.log('Success after refresh:', user);
-    } catch (refreshError) {
-      console.error('Token refresh failed. User needs to re-authenticate.');
-      // Redirect user to OAuth flow
-      window.location.href = '/auth/etsy';
-    }
+    // The client already refreshed and retried once.
+    console.error('Etsy still rejects the token. User needs to re-authenticate.');
+    window.location.href = '/auth/etsy';
+  } else if (error instanceof EtsyAuthError) {
+    // The refresh after the 401 failed.
+    console.error('Token refresh failed:', error.code);
   }
 }
 ```
@@ -452,22 +449,32 @@ async function updateListingWithRetry(
 
 **Solutions:**
 
+Every rate-limit failure throws `EtsyRateLimitError`. Reads are retried
+automatically first. Writes (POST, PUT, PATCH, DELETE) are never replayed by
+the client: a 429 on a write throws at once, and `retryAfter` holds Etsy's
+`Retry-After` value in seconds (or the client's own cooldown when Etsy sends
+none). Re-read the resource before you retry a write, so you do not send stale
+data.
+
 ```typescript
+import { EtsyRateLimitError } from '@profplum700/etsy-v3-api-client';
+
 try {
-  await client.updateListing(listingId, updates);
+  await client.updateListing(shopId, listingId, updates);
 } catch (error) {
-  if (error instanceof EtsyApiError && error.statusCode === 429) {
-    const retryAfter = error.getRetryAfter();
-    const resetTime = error.getRateLimitReset();
+  if (error instanceof EtsyRateLimitError) {
+    if (!error.isRetryable()) {
+      console.log('Daily quota used up.');
+      throw error;
+    }
 
+    const retryAfter = error.retryAfter ?? 1;
     console.log(`Rate limited! Retry after ${retryAfter} seconds`);
-    console.log(`Rate limit resets at: ${resetTime?.toLocaleString()}`);
+    await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
 
-    // Wait and retry
-    await new Promise(resolve => setTimeout(resolve, retryAfter! * 1000));
-
-    // Retry request
-    await client.updateListing(listingId, updates);
+    // Reconcile, then retry the write yourself
+    await client.getListing(listingId);
+    await client.updateListing(shopId, listingId, updates);
   }
 }
 ```
@@ -834,7 +841,7 @@ const listing = await withRetry(() => client.getListing(listingId));
 ### 4. Use Type Guards
 
 ```typescript
-import { EtsyApiError, EtsyAuthError, ValidationException } from '@profplum700/etsy-v3-api-client';
+import { EtsyApiError, EtsyAuthError, EtsyRateLimitError, ValidationException } from '@profplum700/etsy-v3-api-client';
 
 try {
   await client.createDraftListing(params);
@@ -845,11 +852,12 @@ try {
   } else if (error instanceof EtsyAuthError) {
     // Handle auth errors
     redirectToLogin();
+  } else if (error instanceof EtsyRateLimitError) {
+    // Every 429, read or write
+    handleRateLimit(error);
   } else if (error instanceof EtsyApiError) {
     // Handle API errors
-    if (error.statusCode === 429) {
-      handleRateLimit(error);
-    } else if (error.statusCode === 403) {
+    if (error.statusCode === 403) {
       handlePermissionDenied(error);
     } else {
       handleGenericError(error);

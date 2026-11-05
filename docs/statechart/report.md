@@ -1,23 +1,14 @@
 # EtsyClientCall
 
-TLC reached 108 states and 158 steps. The chart draws 16 states and 19 arrows.
-The view hides 56 steps, so the chart does not draw them.
-
-## AuthErrorOnlyWhenReauthNeeded breaks
-The shortest path has 4 steps:
-0. You call a method
-1. no cached answer: Checking the access token
-2. token has over a minute left: Waiting for a rate-limit slot
-3. pacing and cooldown pass: Request sent to Etsy
-4. Etsy answers 401: Thrown: EtsyApiError 401
-
-## RateLimitErrorsAreTyped breaks
-The shortest path has 4 steps:
-0. You call a method
-1. no cached answer: Checking the access token
-2. token has over a minute left: Waiting for a rate-limit slot
-3. pacing and cooldown pass: Request sent to Etsy
-4. Etsy answers 429 [a write]: Thrown: EtsyApiError 429
+TLC reached 296 states and 444 steps. The chart draws 16 states and 21 arrows.
+The view hides no steps.
 
 ## Rules that hold
-TypeOK, NoExpiringTokenSent, NoUnsavedTokensUsed, WritesNotReplayed, RetriesBounded, NoDeadlock
+TypeOK, NoExpiringTokenSent, NoUnsavedTokensUsed, WritesNotReplayed, RetriesBounded, RateLimitErrorsAreTyped, AuthErrorOnlyWhenReauthNeeded, NoDeadlock
+
+## Paths checked to be reachable
+Each was checked by giving TLC its negation as an invariant and seeing it break:
+- a call ends with `EtsyApiError 401` (second 401, or no refresh token held);
+- a call returns data after refreshing on a 401;
+- a write ends with `EtsyRateLimitError` after a 429;
+- a write reaches Etsy twice (resent once after a 401).
