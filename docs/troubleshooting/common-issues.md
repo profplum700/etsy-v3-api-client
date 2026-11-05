@@ -323,30 +323,58 @@ try {
 
 **Solution**:
 ```typescript
-async function ensureAuthenticated() {
+import { EtsyClient, EtsyAuthError, type TokenStorage } from '@profplum700/etsy-v3-api-client';
+
+// `tokenStorage` is your app's durable TokenStorage (save/load/clear).
+declare const tokenStorage: TokenStorage;
+const saved = (await tokenStorage.load())!;
+
+// Persist every refreshed token pair, or a restart loads the old refresh
+// token. The client does not write to tokenStorage by itself.
+let client: EtsyClient | null = new EtsyClient({
+  keystring: process.env.ETSY_API_KEY!,
+  sharedSecret: process.env.ETSY_SHARED_SECRET!,
+  accessToken: saved.access_token,
+  refreshToken: saved.refresh_token,
+  expiresAt: saved.expires_at,
+  refreshSaveAsync: (accessToken, refreshToken, expiresAt) =>
+    tokenStorage.save({ access_token: accessToken, refresh_token: refreshToken, expires_at: expiresAt, token_type: 'Bearer', scope: '' }),
+  refreshClearAsync: () => tokenStorage.clear(),
+});
+
+async function ensureAuthenticated(current: EtsyClient): Promise<boolean> {
+  // The refresh token this attempt uses
+  const usedRefreshToken = current.getCurrentTokens()?.refresh_token;
   try {
     // Refreshing proves the refresh token still works
-    await client.refreshToken();
+    await current.refreshToken();
     return true;
   } catch (error) {
     if (error instanceof EtsyAuthError && error.code === 'REAUTH_REQUIRED') {
-      console.log('Refresh token expired, need to re-authenticate');
-      // Clear the stored tokens in your own token storage, then
-      // redirect to the auth flow
-      await tokenStorage.clear();
+      // Clear storage only if no other process has saved newer tokens since
+      const stored = await tokenStorage.load();
+      if (stored?.refresh_token === usedRefreshToken) await tokenStorage.clear();
       return false;
     }
     throw error;
   }
 }
 
-// Check periodically
+// Check daily. Catch every failure so a network error or 5xx cannot become
+// an unhandled rejection; transient failures are simply retried next tick.
 setInterval(async () => {
-  const isAuth = await ensureAuthenticated();
-  if (!isAuth) {
-    console.log('Re-authentication required');
+  if (!client) return;
+  try {
+    if (!(await ensureAuthenticated(client))) {
+      // Its in-memory tokens are dead: stop using this client, send the user
+      // through OAuth, and create a new EtsyClient with the new tokens.
+      client = null;
+      console.log('Re-authentication required');
+    }
+  } catch (error) {
+    console.warn('Token check failed; will retry on the next check:', error);
   }
-}, 24 * 60 * 60 * 1000); // Daily
+}, 24 * 60 * 60 * 1000);
 ```
 
 ## Network Issues
