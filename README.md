@@ -233,7 +233,8 @@ try {
     // Etsy refused the refresh token (invalid_grant): send the user through OAuth again
     console.error('Re-authorisation needed');
   } else if (error instanceof EtsyAuthError) {
-    // Other auth errors, e.g. TOKEN_REFRESH_FAILED for a transient refresh failure
+    // Other auth errors, e.g. TOKEN_REFRESH_FAILED or TOKEN_REFRESH_TIMEOUT
+    // for a transient refresh failure; the stored tokens are kept
     console.error('Auth error:', error.message, error.code);
   } else if (error instanceof EtsyRateLimitError) {
     // Handle rate limiting
@@ -543,6 +544,7 @@ interface EtsyClientConfig {
   refreshToken?: string;                // User's refresh token
   expiresAt?: Date;                     // Token expiration date
   refreshSave?: (token, refresh, expires) => void; // Token save callback
+  tokenRefreshTimeoutMs?: number;       // Deadline for a token refresh request (default 30000)
 
   rateLimiting?: {
     enabled?: boolean;                  // Enable rate limiting

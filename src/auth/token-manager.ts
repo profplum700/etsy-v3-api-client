@@ -16,6 +16,9 @@ import {
 } from '../types';
 import { isNode, hasLocalStorage, hasSessionStorage, assertFetchSupport } from '../utils/environment';
 
+/** Default deadline for a request to Etsy's token endpoint. */
+export const DEFAULT_TOKEN_REFRESH_TIMEOUT_MS = 30_000;
+
 /**
  * In-memory token storage implementation
  */
@@ -50,8 +53,14 @@ export class TokenManager {
   private refreshPromise?: Promise<EtsyTokens>;
   private rotationConfig?: TokenRotationConfig;
   private rotationTimer?: ReturnType<typeof setInterval>;
+  private refreshTimeoutMs: number;
 
   constructor(config: EtsyClientConfig, storage?: TokenStorage, rotationConfig?: TokenRotationConfig) {
+    const refreshTimeoutMs = config.tokenRefreshTimeoutMs ?? DEFAULT_TOKEN_REFRESH_TIMEOUT_MS;
+    if (!Number.isFinite(refreshTimeoutMs) || refreshTimeoutMs <= 0) {
+      throw new RangeError('tokenRefreshTimeoutMs must be a positive, finite number of milliseconds');
+    }
+    this.refreshTimeoutMs = refreshTimeoutMs;
     this.keystring = config.keystring;
     this.refreshCallback = config.refreshSaveAsync ?? config.refreshSave;
     this.refreshClearRequired = config.refreshSaveAsync !== undefined;
@@ -217,10 +226,37 @@ export class TokenManager {
       refresh_token: this.currentTokens.refresh_token
     });
 
+    // A hung token endpoint must not hang every caller sharing this refresh.
+    // The race also covers fetch implementations that ignore the signal.
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<never>((_resolve, reject) => {
+      timer = setTimeout(() => {
+        controller.abort();
+        reject(new EtsyAuthError(
+          `Token refresh timed out after ${this.refreshTimeoutMs}ms. The stored tokens were kept; try again later.`,
+          'TOKEN_REFRESH_TIMEOUT'
+        ));
+      }, this.refreshTimeoutMs);
+    });
+
+    try {
+      return await Promise.race([this.requestRefreshedTokens(body, controller.signal, generation), timeout]);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  private async requestRefreshedTokens(
+    body: URLSearchParams,
+    signal: AbortSignal,
+    generation: number
+  ): Promise<EtsyTokens> {
     try {
       const response = await this.fetch('https://api.etsy.com/v3/public/oauth/token', {
         method: 'POST',
         redirect: 'error',
+        signal,
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
           'Accept': 'application/json'

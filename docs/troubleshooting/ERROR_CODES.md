@@ -153,8 +153,8 @@ try {
     console.error('User needs to re-authenticate.');
     window.location.href = '/auth/etsy';
   } else if (error instanceof EtsyAuthError) {
-    // The refresh after the 401 failed for another reason (TOKEN_REFRESH_FAILED
-    // or TOKEN_REFRESH_ERROR): it may succeed later.
+    // The refresh after the 401 failed for another reason (TOKEN_REFRESH_FAILED,
+    // TOKEN_REFRESH_ERROR or TOKEN_REFRESH_TIMEOUT): it may succeed later.
     console.error('Token refresh failed:', error.code);
   }
 }
@@ -677,6 +677,19 @@ refresh failures keep `TOKEN_REFRESH_FAILED` (Etsy answered with another
 error, such as a 5xx) or `TOKEN_REFRESH_ERROR` (no answer, such as a network
 failure); those may succeed on a later try.
 
+A refresh that gets no complete answer within `tokenRefreshTimeoutMs`
+(default 30000 ms) throws `EtsyAuthError` with code `TOKEN_REFRESH_TIMEOUT`.
+The request is aborted and the stored tokens are kept, so this is transient
+too: it never means `REAUTH_REQUIRED`. Every caller waiting on that refresh
+gets the same error, and the next call tries a new refresh.
+
+```typescript
+const client = new EtsyClient({
+  // ...
+  tokenRefreshTimeoutMs: 10_000, // give up on a hung token endpoint after 10s
+});
+```
+
 ```typescript
 // If refresh fails, re-authenticate
 try {
@@ -686,7 +699,7 @@ try {
     console.log('Refresh token invalid. User must re-authenticate.');
     // Redirect to OAuth flow
   } else if (error instanceof EtsyAuthError) {
-    // TOKEN_REFRESH_FAILED or TOKEN_REFRESH_ERROR: try again later
+    // TOKEN_REFRESH_FAILED, TOKEN_REFRESH_ERROR or TOKEN_REFRESH_TIMEOUT: try again later
   }
 }
 ```
