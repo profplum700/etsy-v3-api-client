@@ -57,7 +57,7 @@ export class TokenManager {
     this.refreshClearRequired = config.refreshSaveAsync !== undefined;
     this.storage = storage;
     this.clearCallback = config.refreshClearAsync;
-    this.rotationConfig = rotationConfig;
+    this.rotationConfig = rotationConfig ?? config.tokenRotation;
 
     // Initialize with provided tokens
     this.currentTokens = {
