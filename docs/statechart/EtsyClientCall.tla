@@ -21,7 +21,7 @@ VARIABLES
 vars == <<phase, kind, token, refreshOk, unsaved, retries, sends, outcome>>
 
 Outcomes == {"pending", "data", "cached data",
-             "EtsyAuthError: refresh failed", "EtsyAuthError: save failed",
+             "EtsyAuthError: refresh failed", "storage error",
              "EtsyRateLimitError: daily quota", "EtsyRateLimitError: retries used up",
              "EtsyApiError 429", "EtsyApiError 401", "EtsyApiError other"}
 
@@ -92,9 +92,12 @@ SaveSucceeds ==
     /\ refreshOk' = TRUE
     /\ UNCHANGED <<kind, retries, sends, outcome>>
 
+\* persistRefreshedTokens has no catch, and makeRequest calls getAccessToken
+\* outside executeWithRetry's wrapping, so the caller gets the error thrown by
+\* storage.save or refreshSave, unchanged (not an EtsyAuthError).
 SaveFails ==
     /\ phase = "saving"
-    /\ Fail("EtsyAuthError: save failed")
+    /\ Fail("storage error")
     /\ UNCHANGED <<kind, token, refreshOk, unsaved, retries, sends>>
 
 \* acquireRequestSlot: waits for pacing and cooldown, but throws when the
@@ -167,7 +170,9 @@ Spec == Init /\ [][Next]_vars
 
 \* ---- Rules the SDK user can hold the client to ----
 
-\* The client never sends a token it knows is about to expire.
+\* The token is fresh when the client fetches it (getAccessToken). The model
+\* has no elapsed time: the quota wait and 429 backoff that follow, and GET
+\* retries reusing the same Authorization header, are not covered.
 NoExpiringTokenSent == phase = "sent" => token = "fresh"
 
 \* Rotated tokens are used only after they are saved.

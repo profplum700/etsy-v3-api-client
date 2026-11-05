@@ -3,7 +3,7 @@ export const title = "One EtsyClient API call, as the caller sees it";
 
 const failed = {
   "EtsyAuthError: refresh failed": "Thrown: EtsyAuthError (refresh failed)",
-  "EtsyAuthError: save failed": "Thrown: EtsyAuthError (new tokens not saved)",
+  "storage error": "Thrown: the storage or refreshSave error, unchanged",
   "EtsyRateLimitError: daily quota": "Thrown: EtsyRateLimitError (daily quota)",
   "EtsyRateLimitError: retries used up": "Thrown: EtsyRateLimitError (retries used up)",
   "EtsyApiError 429": "Thrown: EtsyApiError 429",

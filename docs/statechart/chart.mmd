@@ -28,7 +28,7 @@ stateDiagram-v2
   s5: Waiting for a rate-limit slot
   s6: Thrown: EtsyAuthError (refresh failed)
   s7: Thrown: EtsyRateLimitError (daily quota)
-  s8: Thrown: EtsyAuthError (new tokens not saved)
+  s8: Thrown: the storage or refreshSave error, unchanged
   s9: Request sent to Etsy
   s10: Backing off after a 429
   s11: Thrown: EtsyApiError 401

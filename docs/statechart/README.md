@@ -48,7 +48,7 @@ stateDiagram-v2
   s5: Waiting for a rate-limit slot
   s6: Thrown: EtsyAuthError (refresh failed)
   s7: Thrown: EtsyRateLimitError (daily quota)
-  s8: Thrown: EtsyAuthError (new tokens not saved)
+  s8: Thrown: the storage or refreshSave error, unchanged
   s9: Request sent to Etsy
   s10: Backing off after a 429
   s11: Thrown: EtsyApiError 401
@@ -112,6 +112,16 @@ cases. A blue border marks a state on the shortest path to a break.
 Rules that hold: `NoExpiringTokenSent`, `NoUnsavedTokensUsed`,
 `WritesNotReplayed`, `RetriesBounded`, `TypeOK`, `NoDeadlock`.
 
+`NoExpiringTokenSent` means the token is fresh when the client fetches it
+(`getAccessToken`, before the rate-limit wait). It does not promise the token
+is still fresh when the request leaves: the model has no elapsed time (see
+below).
+
+If saving rotated tokens fails, the caller gets the error that
+`storage.save` or `refreshSave` threw, unchanged. It is not wrapped in
+`EtsyAuthError`: `persistRefreshedTokens` has no catch, and `makeRequest`
+calls `getAccessToken` outside `executeWithRetry`'s error wrapping.
+
 Two proposed rules break. Each break was replayed against `src/client.ts`
 with a throwaway Vitest test that stubs `fetch`, and each one reproduces.
 
@@ -145,7 +155,18 @@ fix the docs listed in the PR.
   GET 429s are still retried.
 - Exact delays, jitter and `Retry-After` arithmetic. Time is reduced to
   "token fresh / token expiring" and "backoff passes".
+- Time passing during the quota wait and the 429 backoff. `getAccessToken`
+  checks expiry once, before `executeWithRetry` waits for a slot, and GET
+  retries reuse the same `Authorization` header after backing off. A token
+  fresh at fetch time can expire before a later send.
 - The model assumes that a refresh token Etsy has just issued works.
+
+## Open questions
+
+- Should the client re-check token expiry before each send (after the
+  rate-limit wait and after each 429 backoff), rather than once per call?
+- Should a failure to save rotated tokens be wrapped in `EtsyAuthError`, or is
+  passing the storage error through unchanged the intended contract?
 
 ## Regenerate
 
