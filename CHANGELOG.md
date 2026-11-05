@@ -27,6 +27,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **BREAKING**: When Etsy refuses a refresh token with `invalid_grant` (expired, revoked or already used), `EtsyAuthError.code` is now `REAUTH_REQUIRED`. It used to be `TOKEN_REFRESH_FAILED`, which now means only a refresh that may succeed later (another error from Etsy, such as a 5xx). Code that sends users to re-authorise on `TOKEN_REFRESH_FAILED` should check `REAUTH_REQUIRED`.
+
 ### Fixed
 - **@profplum700/etsy-nextjs**: Fixed "createContext is not a function" build error in Next.js API routes
   - **BREAKING**: Main entry point (`@profplum700/etsy-nextjs`) now exports only server-side code

@@ -208,6 +208,8 @@ export class TokenManager {
     if (!this.currentTokens) {
       throw new EtsyAuthError('No tokens available', 'NO_TOKENS');
     }
+    // Captured before the first await, so it matches refreshToken()'s capture.
+    const generation = this.tokenMutationGeneration;
 
     const body = new URLSearchParams({
       grant_type: 'refresh_token',
@@ -227,6 +229,17 @@ export class TokenManager {
       });
 
       if (!response.ok) {
+        // Etsy refused the refresh token itself (expired, revoked, or already
+        // rotated): retrying cannot help, the user must authorise again.
+        if (await this.isRefreshTokenRefused(response)) {
+          // The refused token is stale if updateTokens/clearTokens ran meanwhile;
+          // do not tell the caller to re-authorise over newer credentials.
+          this.throwIfSuperseded(generation);
+          throw new EtsyAuthError(
+            `Token refresh refused: ${response.status} invalid_grant. The user must authorise the app again.`,
+            'REAUTH_REQUIRED'
+          );
+        }
         // Don't include error text as it might contain sensitive information
         throw new EtsyAuthError(
           `Token refresh failed: ${response.status} ${response.statusText}`,
@@ -251,6 +264,21 @@ export class TokenManager {
         `Token refresh failed: ${_error instanceof Error ? _error.message : 'Unknown error'}`,
         'TOKEN_REFRESH_ERROR'
       );
+    }
+  }
+
+  /**
+   * Whether a failed refresh response is OAuth's `invalid_grant`. Only the
+   * error code is read; the description is never surfaced.
+   */
+  private async isRefreshTokenRefused(response: Response): Promise<boolean> {
+    if (response.status !== 400 && response.status !== 401) return false;
+    try {
+      const body: unknown = JSON.parse(await response.text());
+      return typeof body === 'object' && body !== null
+        && (body as { error?: unknown }).error === 'invalid_grant';
+    } catch {
+      return false;
     }
   }
 

@@ -229,8 +229,11 @@ import { EtsyApiError, EtsyAuthError, EtsyRateLimitError } from '@profplum700/et
 try {
   const user = await client.getUser();
 } catch (error) {
-  if (error instanceof EtsyAuthError) {
-    // Handle authentication errors
+  if (error instanceof EtsyAuthError && error.code === 'REAUTH_REQUIRED') {
+    // Etsy refused the refresh token (invalid_grant): send the user through OAuth again
+    console.error('Re-authorisation needed');
+  } else if (error instanceof EtsyAuthError) {
+    // Other auth errors, e.g. TOKEN_REFRESH_FAILED for a transient refresh failure
     console.error('Auth error:', error.message, error.code);
   } else if (error instanceof EtsyRateLimitError) {
     // Handle rate limiting

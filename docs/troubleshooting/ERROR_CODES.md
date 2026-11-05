@@ -656,14 +656,22 @@ ETSY_API_KEY=your_actual_api_key_here
 - Refresh token expires after 90 days of inactivity
 - User may have revoked app access
 
+When Etsy refuses a refresh token with `invalid_grant`, the client throws
+`EtsyAuthError` with code `REAUTH_REQUIRED`. Retrying cannot help. Other
+refresh failures keep `TOKEN_REFRESH_FAILED` (Etsy answered with another
+error, such as a 5xx) or `TOKEN_REFRESH_ERROR` (no answer, such as a network
+failure); those may succeed on a later try.
+
 ```typescript
 // If refresh fails, re-authenticate
 try {
-  await client.refreshAccessToken();
+  await client.refreshToken();
 } catch (error) {
-  if (error instanceof EtsyAuthError && error.code === 'invalid_grant') {
+  if (error instanceof EtsyAuthError && error.code === 'REAUTH_REQUIRED') {
     console.log('Refresh token invalid. User must re-authenticate.');
     // Redirect to OAuth flow
+  } else if (error instanceof EtsyAuthError) {
+    // TOKEN_REFRESH_FAILED or TOKEN_REFRESH_ERROR: try again later
   }
 }
 ```
