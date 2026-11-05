@@ -621,6 +621,74 @@ describe('TokenManager', () => {
       await expect(tokenManager.refreshToken()).rejects.toThrow('Token refresh failed: 400 Bad Request');
     });
 
+    it('should report REAUTH_REQUIRED when Etsy refuses the refresh token', async () => {
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 400,
+        statusText: 'Bad Request',
+        text: vi.fn().mockResolvedValue(JSON.stringify({
+          error: 'invalid_grant',
+          error_description: 'refresh token secret-value is expired'
+        }))
+      });
+
+      const tokenManager = new TokenManager(mockConfig);
+      const error = await tokenManager.refreshToken().catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(EtsyAuthError);
+      expect((error as EtsyAuthError).code).toBe('REAUTH_REQUIRED');
+      // Etsy's description can echo token material; keep it out of the message.
+      expect((error as Error).message).not.toContain('secret-value');
+    });
+
+    it('should report TOKEN_REFRESH_SUPERSEDED, not REAUTH_REQUIRED, when new tokens arrive during a refused refresh', async () => {
+      let answer: ((value: unknown) => void) | undefined;
+      mockFetch.mockReturnValue(new Promise(resolve => { answer = resolve; }));
+
+      const tokenManager = new TokenManager(mockConfig);
+      const refresh = tokenManager.refreshToken();
+      await Promise.resolve();
+      tokenManager.updateTokens({
+        access_token: 'manual-access-token', refresh_token: 'manual-refresh-token',
+        expires_at: new Date(Date.now() + 3600000), token_type: 'Bearer', scope: ''
+      });
+      answer?.({
+        ok: false,
+        status: 400,
+        statusText: 'Bad Request',
+        text: vi.fn().mockResolvedValue(JSON.stringify({ error: 'invalid_grant' }))
+      });
+
+      await expect(refresh).rejects.toMatchObject({ code: 'TOKEN_REFRESH_SUPERSEDED' });
+      expect(tokenManager.getCurrentTokens()?.access_token).toBe('manual-access-token');
+    });
+
+    it('should keep TOKEN_REFRESH_FAILED for a transient refresh failure', async () => {
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 503,
+        statusText: 'Service Unavailable',
+        text: vi.fn().mockResolvedValue('upstream down')
+      });
+
+      const tokenManager = new TokenManager(mockConfig);
+
+      await expect(tokenManager.refreshToken()).rejects.toMatchObject({ code: 'TOKEN_REFRESH_FAILED' });
+    });
+
+    it('should keep TOKEN_REFRESH_FAILED for other OAuth errors', async () => {
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 400,
+        statusText: 'Bad Request',
+        text: vi.fn().mockResolvedValue(JSON.stringify({ error: 'invalid_request' }))
+      });
+
+      const tokenManager = new TokenManager(mockConfig);
+
+      await expect(tokenManager.refreshToken()).rejects.toMatchObject({ code: 'TOKEN_REFRESH_FAILED' });
+    });
+
     it('should handle network errors', async () => {
       mockFetch.mockRejectedValue(new Error('Network error'));
 
