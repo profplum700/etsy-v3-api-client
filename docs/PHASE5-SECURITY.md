@@ -31,17 +31,29 @@ const storage = new EncryptedFileTokenStorage({
   encryptionKey: process.env.ENCRYPTION_KEY // Must be 32 bytes
 });
 
-// Use with Etsy client
-const client = new EtsyClient(
-  {
-    keystring: process.env.ETSY_API_KEY,
-    accessToken: '...',
-    refreshToken: '...',
-    expiresAt: new Date()
-  },
-  storage
-);
+// Load the tokens saved after the user authorised the app
+const saved = await storage.load();
+if (!saved) throw new Error('No saved tokens: authorise the app first');
+
+// Use with Etsy client: start from the saved tokens and save every refresh
+const client = new EtsyClient({
+  keystring: process.env.ETSY_API_KEY,
+  sharedSecret: process.env.ETSY_SHARED_SECRET,
+  accessToken: saved.access_token,
+  refreshToken: saved.refresh_token,
+  expiresAt: saved.expires_at,
+  refreshSaveAsync: (accessToken, refreshToken, expiresAt) =>
+    storage.save({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+      expires_at: expiresAt,
+      token_type: 'Bearer',
+      scope: saved.scope
+    })
+});
 ```
+
+`EtsyClient` does not take a storage object. It starts from the tokens in its config and hands every refreshed set to `refreshSaveAsync`, which waits for the save before the new access token is used.
 
 ### Generating Encryption Keys
 
@@ -478,17 +490,27 @@ const rotationConfig = {
   }
 };
 
-// 3. Create Etsy client
-const client = new EtsyClient(
-  {
-    keystring: process.env.ETSY_API_KEY,
-    accessToken: '...',
-    refreshToken: '...',
-    expiresAt: new Date(),
-    tokenRotation: rotationConfig
-  },
-  storage
-);
+// 3. Create Etsy client from the saved tokens; every refresh and rotation
+//    is saved to encrypted storage before the new access token is used
+const saved = await storage.load();
+if (!saved) throw new Error('No saved tokens: authorise the app first');
+
+const client = new EtsyClient({
+  keystring: process.env.ETSY_API_KEY,
+  sharedSecret: process.env.ETSY_SHARED_SECRET,
+  accessToken: saved.access_token,
+  refreshToken: saved.refresh_token,
+  expiresAt: saved.expires_at,
+  refreshSaveAsync: (accessToken, refreshToken, expiresAt) =>
+    storage.save({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+      expires_at: expiresAt,
+      token_type: 'Bearer',
+      scope: saved.scope
+    }),
+  tokenRotation: rotationConfig
+});
 
 // 4. Setup webhook security
 const webhookSecurity = new WebhookSecurity({
@@ -581,20 +603,18 @@ const storage = new EncryptedFileTokenStorage({
 
 ```typescript
 // Before
-const client = new EtsyClient(config, storage);
+const client = new EtsyClient(config);
 
-// After
-const client = new EtsyClient(
-  {
-    ...config,
-    tokenRotation: {
-      enabled: true,
-      rotateBeforeExpiry: 15 * 60 * 1000,
-      autoSchedule: true
-    }
-  },
-  storage
-);
+// After: config keeps its tokens and refreshSave / refreshSaveAsync callback,
+// so rotated tokens are saved the same way as any other refresh
+const client = new EtsyClient({
+  ...config,
+  tokenRotation: {
+    enabled: true,
+    rotateBeforeExpiry: 15 * 60 * 1000,
+    autoSchedule: true
+  }
+});
 ```
 
 ## Additional Resources
