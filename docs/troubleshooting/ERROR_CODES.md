@@ -451,6 +451,8 @@ async function updateListingWithRetry(
      rateLimiting: { enabled: false }, // Don't do this!
    });
    ```
+   `enabled: false` turns off local pacing only. Reads that get a 429 are
+   still retried with backoff, so the client keeps hitting the limit.
 
 **Solutions:**
 

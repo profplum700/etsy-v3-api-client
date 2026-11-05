@@ -19,52 +19,55 @@ stateDiagram-v2
   s2: Waiting for a rate-limit slot
   s3: Thrown: EtsyRateLimitError (daily quota)
   s4: Checking the access token
-  s5: Request sent to Etsy
-  s6: Refreshing the token
-  s7: Saving the new tokens
-  s8: Returns data
+  s5: Refreshing the token
+  s6: Saving the new tokens
+  s7: Request sent to Etsy
+  s8: Backing off after a 429
   s9: Thrown: EtsyApiError 401
   s10: Thrown: EtsyApiError (5xx, 4xx, network)
-  s11: Backing off after a 429
-  s12: Thrown: EtsyAuthError (refresh failed)
-  s13: Thrown: the storage or refreshSave error, unchanged
-  s14: Thrown: EtsyRateLimitError (write, with retryAfter)
-  s15: Thrown: EtsyRateLimitError (retries used up)
+  s11: Thrown: EtsyAuthError (refresh failed)
+  s12: Thrown: EtsyAuthError TOKEN_REFRESH_TIMEOUT (tokens kept)
+  s13: Thrown: EtsyRateLimitError (write, with retryAfter)
+  s14: Returns data
+  s15: Thrown: EtsyAuthError TOKEN_SAVE_FAILED (cause: the storage error)
+  s16: Thrown: EtsyRateLimitError (retries used up)
   [*] --> s0
   s0 --> s1: a cached answer exists [reads only]
   s0 --> s2: no cached answer
   s2 --> s3: local 24-hour count is used up
   s2 --> s4: pacing and cooldown pass (the token may age meanwhile)
-  s4 --> s5: token has over a minute left
-  s4 --> s6: token expiring
-  s4 --> s7: token expiring [new tokens from an earlier call wait to be saved]
-  s5 --> s8: Etsy answers 2xx
-  s5 --> s9: Etsy answers 401 [again, or no refresh token held]
-  s5 --> s10: Etsy answers 5xx or 4xx, or the network fails
-  s5 --> s3: Etsy answers 429 with no daily quota left
-  s5 --> s11: Etsy answers 429 [a read with retries left]
-  s6 --> s12: Etsy refuses the refresh, or the network fails
-  s5 --> s6: Etsy answers 401 [first time, refresh token held]
-  s6 --> s7: Etsy issues new tokens
-  s7 --> s5: storage and refreshSave succeed
-  s7 --> s13: storage or refreshSave throws
-  s5 --> s14: Etsy answers 429 [a write]
-  s11 --> s2: the backoff delay passes
-  s7 --> s2: storage and refreshSave succeed [after a 401]
-  s5 --> s15: Etsy answers 429 [retries used up]
+  s4 --> s5: token expiring
+  s4 --> s7: token has over a minute left
+  s4 --> s6: token expiring [new tokens from an earlier call wait to be saved]
+  s5 --> s11: Etsy refuses the refresh, or the network fails
+  s5 --> s12: the token endpoint does not answer in time
+  s5 --> s6: Etsy issues new tokens
+  s6 --> s7: storage and refreshSave succeed
+  s6 --> s15: storage or refreshSave throws
+  s7 --> s8: Etsy answers 429 [a read with retries left]
+  s7 --> s9: Etsy answers 401 [again, or no refresh token held]
+  s7 --> s10: Etsy answers 5xx or 4xx, or the network fails
+  s7 --> s3: Etsy answers 429 with no daily quota left
+  s7 --> s14: Etsy answers 2xx
+  s7 --> s13: Etsy answers 429 [a write]
+  s7 --> s5: Etsy answers 401 [first time, refresh token held]
+  s8 --> s2: the backoff delay passes
+  s6 --> s2: storage and refreshSave succeed [after a 401]
+  s7 --> s16: Etsy answers 429 [retries used up]
   class s0 blue
   class s1 teal
   class s2 yellow
   class s3 pink
   class s4 purple
-  class s5 blue
+  class s5 purple
   class s6 purple
-  class s7 purple
-  class s8 teal
+  class s7 blue
+  class s8 yellow
   class s9 pink
   class s10 pink
-  class s11 yellow
+  class s11 pink
   class s12 pink
   class s13 pink
-  class s14 pink
+  class s14 teal
   class s15 pink
+  class s16 pink
