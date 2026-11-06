@@ -51,6 +51,23 @@ describe('EtsyClient.clearTokens', () => {
     expect(mockFetch).toHaveBeenCalledTimes(1);
   });
 
+  it('does not cache the answer of a GET that was in flight during clearTokens', async () => {
+    let answer: ((value: unknown) => void) | undefined;
+    mockFetch.mockImplementationOnce(() => new Promise((resolve) => { answer = resolve; }));
+    const client = new EtsyClient(config());
+    const inFlight = client.getUser();
+    await vi.waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
+
+    await client.clearTokens();
+    answer?.(userResponse());
+
+    // The caller that sent the request still gets its answer...
+    await expect(inFlight).resolves.toEqual({ user_id: 1 });
+    // ...but it is not cached, so no later call is served without a token.
+    await expect(client.getUser()).rejects.toMatchObject({ code: 'NO_TOKENS' });
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
   it('clears a custom cache storage', async () => {
     const storage: CacheStorage = {
       get: vi.fn().mockResolvedValue(null),

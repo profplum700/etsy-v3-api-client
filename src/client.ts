@@ -202,6 +202,8 @@ export class EtsyClient {
   private logger: LoggerInterface;
   private cache?: CacheStorage;
   private cacheTtl!: number;
+  /** Bumped by clearTokens(); a GET caches its answer only if it is unchanged. */
+  private cacheGeneration = 0;
   private rateLimitingEnabled: boolean;
   private keystring: string;
   private sharedSecret: string;
@@ -386,6 +388,9 @@ export class EtsyClient {
     };
 
     const cacheKey = `${url}:${JSON.stringify(requestOptions)}`;
+    // Captured before any await: clearTokens() bumps it, so an answer to a
+    // request sent before sign-out is never written back into the cache.
+    const cacheGeneration = this.cacheGeneration;
 
     // Check cache first
     if (useCache && this.cache && requestOptions.method === 'GET') {
@@ -411,7 +416,7 @@ export class EtsyClient {
     };
 
     // Execute request with retry loop for 429 errors
-    return this.executeWithRetry<T>(url, { ...requestOptions, headers }, cacheKey, useCache);
+    return this.executeWithRetry<T>(url, { ...requestOptions, headers }, cacheKey, useCache, cacheGeneration);
   }
 
   /**
@@ -426,7 +431,8 @@ export class EtsyClient {
     url: string,
     options: RequestInit,
     cacheKey: string,
-    useCache: boolean
+    useCache: boolean,
+    cacheGeneration: number
   ): Promise<T> {
     let retryAttempt = 0;
     let authRetried = false;
@@ -496,7 +502,7 @@ export class EtsyClient {
         const data = await response.json();
 
         // Cache successful GET requests
-        if (useCache && this.cache && options.method === 'GET') {
+        if (useCache && this.cache && options.method === 'GET' && cacheGeneration === this.cacheGeneration) {
           await this.cache.set(cacheKey, JSON.stringify(data), this.cacheTtl);
         }
 
@@ -2921,9 +2927,11 @@ export class EtsyClient {
   /**
    * Clear the tokens (in memory, in token storage and through refreshClearAsync)
    * and the response cache, so cached answers are not served after sign-out.
-   * The cache is cleared even if clearing the tokens throws.
+   * The cache is cleared even if clearing the tokens throws, and answers to
+   * GETs already in flight are returned to their callers but not cached.
    */
   public async clearTokens(): Promise<void> {
+    this.cacheGeneration += 1;
     try {
       await this.tokenManager.clearTokens();
     } finally {
