@@ -252,6 +252,45 @@ try {
 - **Access Token**: Expires after 1 hour
 - **Refresh Token**: Expires after 90 days
 
+### Refresh Token Rotation and Failed Saves
+
+Etsy issues a new refresh token on every refresh, and the old one may stop
+working. The client saves the new tokens (token storage, `refreshSave` or
+`refreshSaveAsync`) before it uses them. If the save fails, the call throws
+`EtsyAuthError` with code `TOKEN_SAVE_FAILED` and the storage error as
+`error.cause`. The new tokens are then held only in memory; the next refresh
+retries the save without asking Etsy again.
+
+If the process exits before a save succeeds, the new refresh token is lost,
+and Etsy may require the user to authorise again. Handle `TOKEN_SAVE_FAILED`
+explicitly:
+
+```typescript
+import { EtsyAuthError } from '@profplum700/etsy-v3-api-client';
+
+async function getShop(shopId: string) {
+  try {
+    return await client.getShop(shopId);
+  } catch (error) {
+    if (error instanceof EtsyAuthError && error.code === 'TOKEN_SAVE_FAILED') {
+      // The new tokens are only in memory: keep the process running and retry
+      // the save. refreshToken() re-saves the pending tokens without asking
+      // Etsy again. Log the code, not error.cause: a custom save callback's
+      // error may contain tokens.
+      console.error('Saving refreshed tokens failed:', error.code);
+      setTimeout(() => {
+        client.refreshToken().catch((retryError) => {
+          console.error('Retrying the token save failed:',
+            retryError instanceof EtsyAuthError ? retryError.code : 'unknown error');
+        });
+      }, 30_000);
+      return undefined;
+    }
+    throw error;
+  }
+}
+```
+
 ### Handling Token Expiration
 
 ```typescript
