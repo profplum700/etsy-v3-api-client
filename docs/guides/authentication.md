@@ -482,7 +482,7 @@ app.get('/api/shop', async (req, res) => {
 
 ### Token Rotation
 
-To refresh tokens before they expire, pass `tokenRotation` in the client config. The client's own token manager rotates the tokens it signs requests with, and saves each rotated set through `refreshSave` / `refreshSaveAsync`:
+To refresh tokens before they expire, pass `tokenRotation` in the client config. The client's own token manager rotates the tokens it signs requests with. Etsy invalidates the old refresh token on each rotation, so if you keep tokens between runs, `config` must also set `refreshSave` or `refreshSaveAsync` to save each rotated set; `onRotation` alone does not save anything:
 
 ```typescript
 const client = new EtsyClient({

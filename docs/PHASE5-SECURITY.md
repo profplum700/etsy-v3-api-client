@@ -118,7 +118,7 @@ Enhanced token rotation automatically refreshes OAuth tokens before they expire.
 
 ### Basic Usage
 
-Pass the rotation settings to the client as `tokenRotation`. The client's own token manager then rotates the tokens it signs requests with, and saves each rotated set through `refreshSave` / `refreshSaveAsync` like any other refresh.
+Pass the rotation settings to the client as `tokenRotation`. The client's own token manager then rotates the tokens it signs requests with. Each rotation spends the old refresh token, so if you keep tokens between runs, also set `refreshSave` or `refreshSaveAsync` in the config (see [Token Encryption at Rest](#token-encryption-at-rest)); `onRotation` alone does not save anything.
 
 ```typescript
 import { EtsyClient } from '@profplum700/etsy-v3-api-client';
