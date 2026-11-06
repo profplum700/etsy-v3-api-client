@@ -232,6 +232,11 @@ try {
   if (error instanceof EtsyAuthError && error.code === 'REAUTH_REQUIRED') {
     // Etsy refused the refresh token (invalid_grant): send the user through OAuth again
     console.error('Re-authorisation needed');
+  } else if (error instanceof EtsyAuthError && error.code === 'TOKEN_SAVE_FAILED') {
+    // Saving rotated tokens failed; error.cause is the storage/callback error.
+    // The new tokens are only in memory until a retry saves them. Do not log
+    // error.cause as-is: a custom save callback's error may contain tokens.
+    console.error('Token save failed:', error.code);
   } else if (error instanceof EtsyAuthError) {
     // Other auth errors, e.g. TOKEN_REFRESH_FAILED for a transient refresh failure
     console.error('Auth error:', error.message, error.code);
@@ -302,6 +307,10 @@ class CustomTokenStorage implements TokenStorage {
 }
 ```
 
+### Refresh Token Rotation
+
+Etsy issues a new refresh token on every refresh, and the old one may stop working. The client saves the new tokens (token storage, `refreshSave` or `refreshSaveAsync`) before it uses them. If that save fails, the call throws `EtsyAuthError` with code `TOKEN_SAVE_FAILED`, and `error.cause` is the original storage or callback error. The new tokens are then held only in memory, and the next refresh retries the save without asking Etsy again. If the process exits before a save succeeds, the new refresh token is lost and Etsy may require the user to authorise again. Handle `TOKEN_SAVE_FAILED`: fix the storage and let a later call retry the save before the process exits.
+
 ## 🚦 Rate Limiting
 
 The client includes built-in rate limiting to respect Etsy's API limits:
@@ -321,6 +330,8 @@ const client = new EtsyClient({
 const remaining = client.getRemainingRequests();
 console.log(`${remaining} requests remaining in the rolling 24-hour window`);
 ```
+
+`rateLimiting.enabled: false` turns off local pacing only (the per-second interval, the local daily count and the shared cooldown). It does not turn off 429 handling: a read that gets a 429 is still retried with backoff, and every 429 still throws `EtsyRateLimitError`. With pacing off, the retry options in `rateLimiting` (`maxRetries`, `baseDelayMs`, `maxDelayMs`, `jitter`) are ignored and the defaults apply (3 retries). A read is not retried when Etsy reports that the daily quota is used up.
 
 Every 429 throws `EtsyRateLimitError`. A read that gets a 429 is retried with backoff first. A write (POST, PUT, PATCH, DELETE) is never replayed: it throws at once, with `retryAfter` set to Etsy's `Retry-After` in seconds (or the client's own cooldown when Etsy sends none). The exception is a used-up daily quota (`isRetryable()` is false): there `retryAfter` is set only when Etsy sends `Retry-After`.
 
@@ -357,7 +368,13 @@ const client = new EtsyClient({
 
 // Clear cache when needed
 await client.clearCache();
+
+// Sign out: clears the tokens and the response cache, so cached
+// answers are not served after the tokens are gone
+await client.clearTokens();
 ```
+
+Cache keys are built from the request alone, not from the Etsy account. Do not share one `caching.storage` between clients signed in to different Etsy accounts, or they may read each other's cached responses.
 
 ## 🌐 Environment Support
 
@@ -516,6 +533,10 @@ The package provides optimized builds for different environments:
 - `getReviewsByListing(listingId, options?)` - Get reviews for a listing        
 - `getReviewsByShop(shopId, options?)` - Get reviews for a shop
 
+#### Session Methods
+- `clearTokens()` - Clear the tokens (memory, token storage and `refreshClearAsync`) and the response cache
+- `clearCache()` - Clear the response cache only
+
 #### Search Methods
 - `findAllListingsActive(params)` - Search listings with filters
 
@@ -545,7 +566,7 @@ interface EtsyClientConfig {
   refreshSave?: (token, refresh, expires) => void; // Token save callback
 
   rateLimiting?: {
-    enabled?: boolean;                  // Enable rate limiting
+    enabled?: boolean;                  // Local pacing only; false does not stop 429 retries
     maxRequestsPerSecond?: number;      // Requests per second limit
     maxRequestsPerDay?: number;         // Daily request limit  
     minRequestInterval?: number;        // Minimum interval between requests (ms)
