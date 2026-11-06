@@ -51,13 +51,21 @@ export class TokenManager {
   private rotationConfig?: TokenRotationConfig;
   private rotationTimer?: ReturnType<typeof setInterval>;
 
+  /**
+   * @param config - Client configuration holding the starting tokens and the
+   *   refreshSave / refreshSaveAsync / refreshClearAsync callbacks.
+   * @param storage - Optional storage that every refreshed token set is saved to.
+   * @param rotationConfig - Proactive rotation settings. When omitted,
+   *   `config.tokenRotation` is used, which is how EtsyClient passes them.
+   *   With `enabled` and `autoSchedule`, background checks start immediately.
+   */
   constructor(config: EtsyClientConfig, storage?: TokenStorage, rotationConfig?: TokenRotationConfig) {
     this.keystring = config.keystring;
     this.refreshCallback = config.refreshSaveAsync ?? config.refreshSave;
     this.refreshClearRequired = config.refreshSaveAsync !== undefined;
     this.storage = storage;
     this.clearCallback = config.refreshClearAsync;
-    this.rotationConfig = rotationConfig;
+    this.rotationConfig = rotationConfig ?? config.tokenRotation;
 
     // Initialize with provided tokens
     this.currentTokens = {

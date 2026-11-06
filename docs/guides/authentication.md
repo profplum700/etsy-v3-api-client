@@ -482,19 +482,27 @@ app.get('/api/shop', async (req, res) => {
 
 ### Token Rotation
 
-Implement proactive token rotation:
+To refresh tokens before they expire, pass `tokenRotation` in the client config. The client's own token manager rotates the tokens it signs requests with. Etsy invalidates the old refresh token on each rotation, so if you keep tokens between runs, `config` must also set `refreshSave` or `refreshSaveAsync` to save each rotated set; `onRotation` alone does not save anything:
 
 ```typescript
-// Rotate tokens before expiry
-setInterval(async () => {
-  try {
-    await client.refreshAccessToken();
-    console.log('Tokens rotated successfully');
-  } catch (error) {
-    console.error('Token rotation failed:', error);
+const client = new EtsyClient({
+  ...config,
+  tokenRotation: {
+    enabled: true,
+    rotateBeforeExpiry: 15 * 60 * 1000, // rotate 15 minutes before expiry
+    autoSchedule: true,                 // check in the background
+    checkInterval: 60 * 1000,           // every minute
+    onRotation: (oldTokens, newTokens) => {
+      console.log('Tokens rotated, new expiry:', newTokens.expires_at);
+    }
   }
-}, 30 * 60 * 1000); // Every 30 minutes
+});
+
+// When you discard the client:
+client.stopTokenRotation();
 ```
+
+Do not rotate with a separate `TokenManager` next to the client: Etsy invalidates the old refresh token on each refresh, so the client would be left holding a spent one. See [Proactive Token Rotation](../PHASE5-SECURITY.md#proactive-token-rotation) for the full options.
 
 ### Logout / Revoke Access
 

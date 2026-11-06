@@ -23,6 +23,16 @@ export interface EtsyClientConfig {
   refreshSaveAsync?: TokenRefreshCallbackAsync;
   /** Optional cleanup paired with refreshSaveAsync for callback-owned durable storage. */
   refreshClearAsync?: TokenRefreshClearCallbackAsync;
+
+  /**
+   * Proactive token rotation for the client's own token manager. Rotation
+   * refreshes through the same token manager that signs requests, so the
+   * client never holds a refresh token that rotation has already spent.
+   * Rotated tokens go through `refreshSave` / `refreshSaveAsync` like any
+   * other refresh. With `autoSchedule`, stop the background checks with
+   * `EtsyClient.stopTokenRotation()` when you discard the client.
+   */
+  tokenRotation?: TokenRotationConfig;
   
   // Optional configuration
   baseUrl?: string;

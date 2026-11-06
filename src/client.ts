@@ -2926,6 +2926,14 @@ export class EtsyClient {
   }
 
   /**
+   * Stop the background rotation checks started by
+   * `tokenRotation.autoSchedule`. Call it when you discard the client.
+   */
+  public stopTokenRotation(): void {
+    this.tokenManager.stopRotationScheduler();
+  }
+
+  /**
    * Fetch implementation that works in both Node.js and browser
    */
   private async fetch(url: string, options: RequestInit): Promise<Response> {
