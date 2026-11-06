@@ -475,6 +475,62 @@ describe('TokenManager', () => {
       await expect(storage.load()).resolves.toMatchObject({ access_token: 'manual-access-token' });
     });
 
+    it('does not promise a retried save when repairing storage after updateTokens fails', async () => {
+      const storage = new MemoryTokenStorage();
+      const repairError = new Error('credential store went read-only');
+      let releaseSave: (() => void) | undefined;
+      let signalSaveStarted: (() => void) | undefined;
+      const saveStarted = new Promise<void>((resolve) => { signalSaveStarted = resolve; });
+      const blockedSave = new Promise<void>((resolve) => { releaseSave = resolve; });
+      vi.spyOn(storage, 'save')
+        .mockImplementationOnce(async () => {
+          signalSaveStarted?.();
+          await blockedSave;
+        })
+        .mockRejectedValueOnce(repairError);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          access_token: 'rotated-access-token', refresh_token: 'rotated-refresh-token',
+          expires_in: 3600, token_type: 'Bearer', scope: ''
+        })
+      });
+      const tokenManager = new TokenManager(mockConfig, storage);
+      const refresh = tokenManager.refreshToken().catch((e: unknown) => e);
+      await saveStarted;
+      tokenManager.updateTokens({
+        access_token: 'manual-access-token', refresh_token: 'manual-refresh-token',
+        expires_at: new Date(Date.now() + 60 * 60 * 1000), token_type: 'Bearer', scope: ''
+      });
+      releaseSave?.();
+
+      const error = await refresh;
+      expect(error).toBeInstanceOf(EtsyAuthError);
+      expect(error).toMatchObject({ code: 'TOKEN_SAVE_FAILED', cause: repairError });
+      // updateTokens dropped the rotated tokens, so no later refresh retries saving them.
+      expect((error as Error).message).not.toMatch(/retr/i);
+      expect(tokenManager.getCurrentTokens()?.access_token).toBe('manual-access-token');
+    });
+
+    it('wraps an EtsyAuthError thrown by the storage itself in TOKEN_SAVE_FAILED', async () => {
+      const storage = new MemoryTokenStorage();
+      const storageError = new EtsyAuthError('Keychain is locked', 'KEYCHAIN_LOCKED');
+      vi.spyOn(storage, 'save').mockRejectedValueOnce(storageError);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          access_token: 'rotated-access-token', refresh_token: 'rotated-refresh-token',
+          expires_in: 3600, token_type: 'Bearer', scope: ''
+        })
+      });
+      const tokenManager = new TokenManager(mockConfig, storage);
+
+      await expect(tokenManager.refreshToken()).rejects.toMatchObject({
+        code: 'TOKEN_SAVE_FAILED',
+        cause: storageError
+      });
+    });
+
     it('repairs the latest token generation when updates race persistence repair', async () => {
       const storage = new MemoryTokenStorage();
       const originalSave = storage.save.bind(storage);

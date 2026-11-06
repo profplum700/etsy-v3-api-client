@@ -709,7 +709,8 @@ try {
   await client.getUser();
 } catch (error) {
   if (error instanceof EtsyAuthError && error.code === 'TOKEN_SAVE_FAILED') {
-    console.error('Could not save refreshed tokens:', error.cause);
+    // Log the code, not error.cause: a custom refreshSave error may contain tokens
+    console.error('Could not save refreshed tokens:', error.code);
     // Fix the storage, then retry soon; do not exit the process first
   }
 }

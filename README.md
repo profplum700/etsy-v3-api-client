@@ -234,8 +234,9 @@ try {
     console.error('Re-authorisation needed');
   } else if (error instanceof EtsyAuthError && error.code === 'TOKEN_SAVE_FAILED') {
     // Saving rotated tokens failed; error.cause is the storage/callback error.
-    // The new tokens are only in memory until a retry saves them.
-    console.error('Token save failed:', error.cause);
+    // The new tokens are only in memory until a retry saves them. Do not log
+    // error.cause as-is: a custom save callback's error may contain tokens.
+    console.error('Token save failed:', error.code);
   } else if (error instanceof EtsyAuthError) {
     // Other auth errors, e.g. TOKEN_REFRESH_FAILED for a transient refresh failure
     console.error('Auth error:', error.message, error.code);

@@ -171,7 +171,7 @@ export class TokenManager {
       const storage = this.storage;
       await this.saveRotatedTokens(() => storage.save(newTokens));
       if (generation !== this.tokenMutationGeneration) {
-        await this.saveRotatedTokens(() => this.repairPersistenceToCurrentTokens());
+        await this.saveRotatedTokens(() => this.repairPersistenceToCurrentTokens(), 'repair');
         this.throwIfSuperseded(generation);
       }
     }
@@ -187,7 +187,7 @@ export class TokenManager {
         );
       });
       if (generation !== this.tokenMutationGeneration) {
-        await this.saveRotatedTokens(() => this.repairPersistenceToCurrentTokens());
+        await this.saveRotatedTokens(() => this.repairPersistenceToCurrentTokens(), 'repair');
         this.throwIfSuperseded(generation);
       }
     }
@@ -200,20 +200,27 @@ export class TokenManager {
 
   /**
    * Run one token save step. A failure from storage or a refreshSave callback
-   * is thrown as EtsyAuthError TOKEN_SAVE_FAILED with the original as `cause`;
-   * the rotated tokens stay pending so the next refreshToken() retries the save.
+   * is thrown as EtsyAuthError TOKEN_SAVE_FAILED with the original as `cause`,
+   * whatever the original's class. In a `repair` step (re-saving the current
+   * tokens after updateTokens/clearTokens raced the save), the client's own
+   * EtsyAuthErrors, such as TOKEN_CLEAR_CALLBACK_REQUIRED, pass through.
    */
-  private async saveRotatedTokens(save: () => Promise<void> | void): Promise<void> {
+  private async saveRotatedTokens(
+    save: () => Promise<void> | void,
+    step: 'rotated' | 'repair' = 'rotated'
+  ): Promise<void> {
     try {
       await save();
     } catch (error) {
-      if (error instanceof EtsyAuthError) throw error;
-      throw new EtsyAuthError(
-        'Saving the refreshed tokens failed. Etsy has already rotated the refresh token; ' +
-          'they are kept in memory and the next refresh retries the save. See the error cause.',
-        'TOKEN_SAVE_FAILED',
-        { cause: error }
-      );
+      if (step === 'repair' && error instanceof EtsyAuthError) throw error;
+      // updateTokens/clearTokens drop the rotated tokens, so only promise a
+      // retried save while they are still pending.
+      const message = this.pendingTokens
+        ? 'Saving the refreshed tokens failed. Etsy has already rotated the refresh token; ' +
+          'they are kept in memory and the next refresh retries the save. See the error cause.'
+        : 'Saving tokens failed after they were replaced during a refresh; ' +
+          'token storage may hold out-of-date tokens. See the error cause.';
+      throw new EtsyAuthError(message, 'TOKEN_SAVE_FAILED', { cause: error });
     }
   }
 
