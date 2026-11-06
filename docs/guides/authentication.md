@@ -460,12 +460,18 @@ const client = await createClientFromStorage(storage);
 
 **Recommended for production:**
 
-The key is 32 random bytes, stored as 64 hex characters in `ENCRYPTION_KEY`. Generate it once and keep it: a new key on each start makes the saved tokens unreadable. Don't print it to the terminal, where it can end up in scrollback or captured logs. Write it to a file only you can read, add it to your secret manager, then delete the file:
+The key is 32 random bytes, stored as 64 hex characters in `ENCRYPTION_KEY`. Generate it once and keep it: a new key on each start makes the saved tokens unreadable. Don't print it to the terminal, where it can end up in scrollback or captured logs. Instead, write it to a new file that only you can read, in your home directory rather than your project, so it can't be committed by accident:
 
 ```bash
-(umask 077 && node -e "process.stdout.write(require('crypto').randomBytes(32).toString('hex'))" > etsy-encryption.key)
-# add the file's contents to your secret manager as ENCRYPTION_KEY, then:
-rm etsy-encryption.key
+keyfile="$(mktemp "$HOME/etsy-encryption-key.XXXXXX")"
+node -e "process.stdout.write(require('crypto').randomBytes(32).toString('hex'))" > "$keyfile"
+echo "Key written to $keyfile"
+```
+
+`mktemp` always creates a new file with owner-only permissions, so an existing file is never reused. Add the file's contents to your secret manager as `ENCRYPTION_KEY`. Only then delete the file, using the path printed above:
+
+```bash
+rm "$keyfile"
 ```
 
 ```typescript
