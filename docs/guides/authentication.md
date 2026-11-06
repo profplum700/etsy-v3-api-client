@@ -275,13 +275,44 @@ async function makeApiCall() {
 
 ### Token Storage Options
 
+`EtsyClient` takes a single config object and does not accept a storage object. To keep tokens across restarts, load the saved set from your storage when you create the client, and save every refreshed set through `refreshSaveAsync`. The client waits for `refreshSaveAsync` to finish before it uses the new access token. This matters because Etsy invalidates the old refresh token on each refresh, so a refresh that is never saved locks the app out on the next start.
+
+This helper works with any `TokenStorage`. The examples below use it:
+
+```typescript
+import { EtsyClient, TokenStorage } from '@profplum700/etsy-v3-api-client';
+
+async function createClientFromStorage(storage: TokenStorage): Promise<EtsyClient> {
+  // Load the tokens saved after the user authorised the app
+  const saved = await storage.load();
+  if (!saved) throw new Error('No saved tokens: authorise the app first');
+
+  return new EtsyClient({
+    keystring: process.env.ETSY_API_KEY!,
+    sharedSecret: process.env.ETSY_SHARED_SECRET!,
+    accessToken: saved.access_token,
+    refreshToken: saved.refresh_token,
+    expiresAt: saved.expires_at,
+    // Save every refreshed token set before the client uses it
+    refreshSaveAsync: (accessToken, refreshToken, expiresAt) =>
+      storage.save({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+        expires_at: expiresAt,
+        token_type: 'Bearer',
+        scope: saved.scope
+      })
+  });
+}
+```
+
 #### File Storage
 
 ```typescript
 import { FileTokenStorage } from '@profplum700/etsy-v3-api-client';
 
 const storage = new FileTokenStorage('./tokens.json');
-const client = new EtsyClient(config, storage);
+const client = await createClientFromStorage(storage);
 ```
 
 #### Encrypted File Storage
@@ -290,29 +321,28 @@ const client = new EtsyClient(config, storage);
 
 ```typescript
 import { EncryptedFileTokenStorage } from '@profplum700/etsy-v3-api-client';
-import crypto from 'crypto';
 
-// Generate a 32-byte encryption key
-const encryptionKey = process.env.ENCRYPTION_KEY ||
-  crypto.randomBytes(32).toString('hex');
+// ENCRYPTION_KEY holds 32 random bytes as hex, generated once and kept, e.g.
+//   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+// A new key on each start would make the saved tokens unreadable.
+const storage = new EncryptedFileTokenStorage({
+  filePath: './tokens.enc',
+  encryptionKey: Buffer.from(process.env.ENCRYPTION_KEY!, 'hex')
+});
 
-const storage = new EncryptedFileTokenStorage(
-  './tokens.enc',
-  encryptionKey
-);
-
-const client = new EtsyClient(config, storage);
+const client = await createClientFromStorage(storage);
 ```
 
 #### Memory Storage
 
-**For testing only:**
+**For testing only:** tokens are lost when the process exits, and the storage starts empty, so save a token set before creating the client.
 
 ```typescript
 import { MemoryTokenStorage } from '@profplum700/etsy-v3-api-client';
 
 const storage = new MemoryTokenStorage();
-const client = new EtsyClient(config, storage);
+await storage.save(testTokens); // an EtsyTokens object from your test setup
+const client = await createClientFromStorage(storage);
 ```
 
 #### Custom Storage
@@ -338,7 +368,10 @@ class RedisTokenStorage implements TokenStorage {
 
   async load(): Promise<EtsyTokens | null> {
     const data = await this.redis.get(this.key);
-    return data ? JSON.parse(data) : null;
+    if (!data) return null;
+    const tokens = JSON.parse(data);
+    // JSON stores dates as strings; turn expires_at back into a Date
+    return { ...tokens, expires_at: new Date(tokens.expires_at) };
   }
 
   async clear(): Promise<void> {
@@ -348,7 +381,7 @@ class RedisTokenStorage implements TokenStorage {
 
 // Usage
 const storage = new RedisTokenStorage('redis://localhost:6379');
-const client = new EtsyClient(config, storage);
+const client = await createClientFromStorage(storage);
 ```
 
 ## Security Best Practices
@@ -464,16 +497,18 @@ class DatabaseTokenStorage implements TokenStorage {
   }
 }
 
-// Create client per user
-function getClientForUser(userId: string): EtsyClient {
+// Create client per user, starting from that user's saved tokens.
+// createClientFromStorage is the helper from "Token Storage Options";
+// it saves each refreshed token set back to this user's row.
+function getClientForUser(userId: string): Promise<EtsyClient> {
   const storage = new DatabaseTokenStorage(userId, db);
-  return new EtsyClient(config, storage);
+  return createClientFromStorage(storage);
 }
 
 // Usage in route handler
 app.get('/api/shop', async (req, res) => {
   const userId = req.user.id;
-  const client = getClientForUser(userId);
+  const client = await getClientForUser(userId);
 
   const shop = await client.getShopByOwnerUserId();
   res.json(shop);
@@ -498,13 +533,18 @@ setInterval(async () => {
 
 ### Logout / Revoke Access
 
-```typescript
-// Clear stored tokens
-await client.clearTokens();
+`EtsyClient` has no logout or revoke method. To sign a user out of your app, stop using their client and delete the tokens from your storage:
 
-// User will need to re-authenticate
-const isAuth = await client.isAuthenticated(); // false
+```typescript
+// Drop the client first: a request still in flight could refresh the tokens
+// and save them back through refreshSaveAsync after you clear storage.
+const storage = new DatabaseTokenStorage(userId, db);
+await storage.clear();
+
+// createClientFromStorage(storage) now throws until the user authorises again
 ```
+
+This removes your copy of the tokens only. It does not revoke the app's access at Etsy.
 
 ## Troubleshooting
 
