@@ -274,7 +274,8 @@ try {
   if (error instanceof EtsyAuthError && error.code === 'TOKEN_SAVE_FAILED') {
     // The new tokens are only in memory. Fix the storage and retry soon;
     // do not exit or restart the process before a save succeeds.
-    console.error('Saving refreshed tokens failed:', error.cause);
+    // Log the code, not error.cause: a custom save callback's error may contain tokens
+    console.error('Saving refreshed tokens failed:', error.code);
   }
   throw error;
 }
