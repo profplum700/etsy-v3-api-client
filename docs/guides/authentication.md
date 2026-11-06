@@ -460,10 +460,10 @@ const client = await createClientFromStorage(storage);
 
 **Recommended for production:**
 
-The key is 32 random bytes, stored as 64 hex characters in `ENCRYPTION_KEY`. Generate it once and keep it: a new key on each start makes the saved tokens unreadable. Don't print it to the terminal, where it can end up in scrollback or captured logs. Instead, write it to a new file that only you can read, in your home directory rather than your project, so it can't be committed by accident:
+The key is 32 random bytes, stored as 64 hex characters in `ENCRYPTION_KEY`. Generate it once and keep it: a new key on each start makes the saved tokens unreadable. Don't print it to the terminal, where it can end up in scrollback or captured logs. Instead, write it to a new file that only you can read, in the system temp directory rather than your project or home directory, so `git add` can't pick it up:
 
 ```bash
-keyfile="$(mktemp "$HOME/etsy-encryption-key.XXXXXX")"
+keyfile="$(mktemp)"
 node -e "process.stdout.write(require('crypto').randomBytes(32).toString('hex'))" > "$keyfile"
 echo "Key written to $keyfile"
 ```
