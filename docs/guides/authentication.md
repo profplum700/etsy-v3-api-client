@@ -704,7 +704,7 @@ app.get('/api/shop', async (req, res) => {
 });
 ```
 
-Etsy accepts each refresh token only once, and each `EtsyClient` keeps its own copy of the tokens. If several processes serve the same user, route each user to one process. A lock around the refresh is not enough on its own: a process that holds a token another process has already spent still refreshes with it and gets `REAUTH_REQUIRED`. If you do run several processes per user, then on `REAUTH_REQUIRED` drop the cached client and create a new one from storage with `createClientFromStorage` before sending the user through OAuth again, because another process may have saved newer tokens. While a save is failing (`TOKEN_SAVE_FAILED`), the newer tokens exist only in the process that received them, so other processes cannot pick them up from storage.
+Etsy accepts each refresh token only once, and each `EtsyClient` keeps its own copy of the tokens. Serve each user from one process: several processes refreshing the same user's tokens is not supported. A lock around the refresh does not make it safe. A process may still hold a token another process has already spent. And while a save is failing (`TOKEN_SAVE_FAILED`), the newer tokens exist only in the process that received them, so another process that reloads from storage gets the spent token and can force the user to authorise again.
 
 ### Token Rotation
 
