@@ -363,6 +363,8 @@ await client.clearCache();
 await client.clearTokens();
 ```
 
+Cache keys are built from the request alone, not from the Etsy account. Do not share one `caching.storage` between clients signed in to different Etsy accounts, or they may read each other's cached responses.
+
 ## 🌐 Environment Support
 
 ### Browser
