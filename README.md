@@ -326,7 +326,7 @@ const remaining = client.getRemainingRequests();
 console.log(`${remaining} requests remaining in the rolling 24-hour window`);
 ```
 
-`rateLimiting.enabled: false` turns off local pacing only (the per-second interval, the local daily count and the shared cooldown). It does not turn off 429 handling: a read that gets a 429 is still retried with backoff, up to `maxRetries`, and every 429 still throws `EtsyRateLimitError`.
+`rateLimiting.enabled: false` turns off local pacing only (the per-second interval, the local daily count and the shared cooldown). It does not turn off 429 handling: a read that gets a 429 is still retried with backoff, and every 429 still throws `EtsyRateLimitError`. With pacing off, the retry options in `rateLimiting` (`maxRetries`, `baseDelayMs`, `maxDelayMs`, `jitter`) are ignored and the defaults apply (3 retries). A read is not retried when Etsy reports that the daily quota is used up.
 
 Every 429 throws `EtsyRateLimitError`. A read that gets a 429 is retried with backoff first. A write (POST, PUT, PATCH, DELETE) is never replayed: it throws at once, with `retryAfter` set to Etsy's `Retry-After` in seconds (or the client's own cooldown when Etsy sends none). The exception is a used-up daily quota (`isRetryable()` is false): there `retryAfter` is set only when Etsy sends `Retry-After`.
 

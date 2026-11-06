@@ -268,16 +268,26 @@ explicitly:
 ```typescript
 import { EtsyAuthError } from '@profplum700/etsy-v3-api-client';
 
-try {
-  await client.getShop('123');
-} catch (error) {
-  if (error instanceof EtsyAuthError && error.code === 'TOKEN_SAVE_FAILED') {
-    // The new tokens are only in memory. Fix the storage and retry soon;
-    // do not exit or restart the process before a save succeeds.
-    // Log the code, not error.cause: a custom save callback's error may contain tokens
-    console.error('Saving refreshed tokens failed:', error.code);
+async function getShop(shopId: string) {
+  try {
+    return await client.getShop(shopId);
+  } catch (error) {
+    if (error instanceof EtsyAuthError && error.code === 'TOKEN_SAVE_FAILED') {
+      // The new tokens are only in memory: keep the process running and retry
+      // the save. refreshToken() re-saves the pending tokens without asking
+      // Etsy again. Log the code, not error.cause: a custom save callback's
+      // error may contain tokens.
+      console.error('Saving refreshed tokens failed:', error.code);
+      setTimeout(() => {
+        client.refreshToken().catch((retryError) => {
+          console.error('Retrying the token save failed:',
+            retryError instanceof EtsyAuthError ? retryError.code : 'unknown error');
+        });
+      }, 30_000);
+      return undefined;
+    }
+    throw error;
   }
-  throw error;
 }
 ```
 

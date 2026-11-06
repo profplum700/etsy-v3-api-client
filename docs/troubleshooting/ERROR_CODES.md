@@ -452,7 +452,9 @@ async function updateListingWithRetry(
    });
    ```
    `enabled: false` turns off local pacing only. Reads that get a 429 are
-   still retried with backoff, so the client keeps hitting the limit.
+   still retried with backoff (up to 3 times, the default; not at all once
+   Etsy reports the daily quota is used up), so the client keeps hitting the
+   limit.
 
 **Solutions:**
 
