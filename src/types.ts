@@ -23,6 +23,14 @@ export interface EtsyClientConfig {
   refreshSaveAsync?: TokenRefreshCallbackAsync;
   /** Optional cleanup paired with refreshSaveAsync for callback-owned durable storage. */
   refreshClearAsync?: TokenRefreshClearCallbackAsync;
+  /**
+   * Deadline in milliseconds for a request to Etsy's token endpoint, including
+   * reading its response. On expiry the refresh throws `EtsyAuthError` with
+   * code `TOKEN_REFRESH_TIMEOUT` and the stored tokens are kept. Must be more
+   * than 0 and at most 2147483647, the largest delay a timer can hold.
+   * @default 30000
+   */
+  tokenRefreshTimeoutMs?: number;
 
   /**
    * Proactive token rotation for the client's own token manager. Rotation

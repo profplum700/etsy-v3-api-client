@@ -238,7 +238,8 @@ try {
     // error.cause as-is: a custom save callback's error may contain tokens.
     console.error('Token save failed:', error.code);
   } else if (error instanceof EtsyAuthError) {
-    // Other auth errors, e.g. TOKEN_REFRESH_FAILED for a transient refresh failure
+    // Other auth errors, e.g. TOKEN_REFRESH_FAILED or TOKEN_REFRESH_TIMEOUT
+    // for a transient refresh failure; the stored tokens are kept
     console.error('Auth error:', error.message, error.code);
   } else if (error instanceof EtsyRateLimitError) {
     // Handle rate limiting
@@ -564,6 +565,7 @@ interface EtsyClientConfig {
   refreshToken?: string;                // User's refresh token
   expiresAt?: Date;                     // Token expiration date
   refreshSave?: (token, refresh, expires) => void; // Token save callback
+  tokenRefreshTimeoutMs?: number;       // Deadline for a token refresh request (default 30000)
 
   rateLimiting?: {
     enabled?: boolean;                  // Local pacing only; false does not stop 429 retries
