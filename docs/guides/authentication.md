@@ -704,7 +704,7 @@ app.get('/api/shop', async (req, res) => {
 });
 ```
 
-Etsy accepts each refresh token only once. If several processes serve the same user, coordinate refreshes between them, for example with a per-user lock around the refresh, or route each user to one process. Otherwise two processes can refresh the same token at once, and the one that loses gets `REAUTH_REQUIRED`.
+Etsy accepts each refresh token only once, and each `EtsyClient` keeps its own copy of the tokens. If several processes serve the same user, route each user to one process. A lock around the refresh is not enough on its own: a process that holds a token another process has already spent still refreshes with it and gets `REAUTH_REQUIRED`. If you do run several processes per user, then on `REAUTH_REQUIRED` drop the cached client and create a new one from storage with `createClientFromStorage` before sending the user through OAuth again, because another process may have saved newer tokens. While a save is failing (`TOKEN_SAVE_FAILED`), the newer tokens exist only in the process that received them, so other processes cannot pick them up from storage.
 
 ### Token Rotation
 
