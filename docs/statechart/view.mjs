@@ -3,7 +3,8 @@ export const title = "One EtsyClient API call, as the caller sees it";
 
 const failed = {
   "EtsyAuthError: refresh failed": "Thrown: EtsyAuthError (refresh failed)",
-  "storage error": "Thrown: the storage or refreshSave error, unchanged",
+  "EtsyAuthError: refresh timed out": "Thrown: EtsyAuthError TOKEN_REFRESH_TIMEOUT (tokens kept)",
+  "EtsyAuthError: save failed": "Thrown: EtsyAuthError TOKEN_SAVE_FAILED (cause: the storage error)",
   "EtsyRateLimitError: daily quota": "Thrown: EtsyRateLimitError (daily quota)",
   "EtsyRateLimitError: retries used up": "Thrown: EtsyRateLimitError (retries used up)",
   "EtsyRateLimitError: write not replayed": "Thrown: EtsyRateLimitError (write, with retryAfter)",
@@ -50,6 +51,7 @@ export const step = (action, from, to) => {
     case "SaveSucceeds": return to.phase === "slot"
       ? "storage and refreshSave succeed [after a 401]"
       : "storage and refreshSave succeed";
+    case "RefreshTimesOut": return "the token endpoint does not answer in time";
     case "SaveFails": return "storage or refreshSave throws";
     case "LocalDailyQuotaUsedUp": return "local 24-hour count is used up";
     case "SlotGranted": return "pacing and cooldown pass (the token may age meanwhile)";

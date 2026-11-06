@@ -252,6 +252,45 @@ try {
 - **Access Token**: Expires after 1 hour
 - **Refresh Token**: Expires after 90 days
 
+### Refresh Token Rotation and Failed Saves
+
+Etsy issues a new refresh token on every refresh, and the old one may stop
+working. The client saves the new tokens (token storage, `refreshSave` or
+`refreshSaveAsync`) before it uses them. If the save fails, the call throws
+`EtsyAuthError` with code `TOKEN_SAVE_FAILED` and the storage error as
+`error.cause`. The new tokens are then held only in memory; the next refresh
+retries the save without asking Etsy again.
+
+If the process exits before a save succeeds, the new refresh token is lost,
+and Etsy may require the user to authorise again. Handle `TOKEN_SAVE_FAILED`
+explicitly:
+
+```typescript
+import { EtsyAuthError } from '@profplum700/etsy-v3-api-client';
+
+async function getShop(shopId: string) {
+  try {
+    return await client.getShop(shopId);
+  } catch (error) {
+    if (error instanceof EtsyAuthError && error.code === 'TOKEN_SAVE_FAILED') {
+      // The new tokens are only in memory: keep the process running and retry
+      // the save. refreshToken() re-saves the pending tokens without asking
+      // Etsy again. Log the code, not error.cause: a custom save callback's
+      // error may contain tokens.
+      console.error('Saving refreshed tokens failed:', error.code);
+      setTimeout(() => {
+        client.refreshToken().catch((retryError) => {
+          console.error('Retrying the token save failed:',
+            retryError instanceof EtsyAuthError ? retryError.code : 'unknown error');
+        });
+      }, 30_000);
+      return undefined;
+    }
+    throw error;
+  }
+}
+```
+
 ### Handling Token Expiration
 
 ```typescript
@@ -482,28 +521,36 @@ app.get('/api/shop', async (req, res) => {
 
 ### Token Rotation
 
-Implement proactive token rotation:
+To refresh tokens before they expire, pass `tokenRotation` in the client config. The client's own token manager rotates the tokens it signs requests with. Etsy invalidates the old refresh token on each rotation, so if you keep tokens between runs, `config` must also set `refreshSave` or `refreshSaveAsync` to save each rotated set; `onRotation` alone does not save anything:
 
 ```typescript
-// Rotate tokens before expiry
-setInterval(async () => {
-  try {
-    await client.refreshAccessToken();
-    console.log('Tokens rotated successfully');
-  } catch (error) {
-    console.error('Token rotation failed:', error);
+const client = new EtsyClient({
+  ...config,
+  tokenRotation: {
+    enabled: true,
+    rotateBeforeExpiry: 15 * 60 * 1000, // rotate 15 minutes before expiry
+    autoSchedule: true,                 // check in the background
+    checkInterval: 60 * 1000,           // every minute
+    onRotation: (oldTokens, newTokens) => {
+      console.log('Tokens rotated, new expiry:', newTokens.expires_at);
+    }
   }
-}, 30 * 60 * 1000); // Every 30 minutes
+});
+
+// When you discard the client:
+client.stopTokenRotation();
 ```
+
+Do not rotate with a separate `TokenManager` next to the client: Etsy invalidates the old refresh token on each refresh, so the client would be left holding a spent one. See [Proactive Token Rotation](../PHASE5-SECURITY.md#proactive-token-rotation) for the full options.
 
 ### Logout / Revoke Access
 
 ```typescript
-// Clear stored tokens
+// Clear the tokens and the response cache
 await client.clearTokens();
 
-// User will need to re-authenticate
-const isAuth = await client.isAuthenticated(); // false
+// Calls now throw EtsyAuthError NO_TOKENS instead of serving cached data;
+// the user will need to re-authenticate
 ```
 
 ## Troubleshooting

@@ -31,17 +31,29 @@ const storage = new EncryptedFileTokenStorage({
   encryptionKey: process.env.ENCRYPTION_KEY // Must be 32 bytes
 });
 
-// Use with Etsy client
-const client = new EtsyClient(
-  {
-    keystring: process.env.ETSY_API_KEY,
-    accessToken: '...',
-    refreshToken: '...',
-    expiresAt: new Date()
-  },
-  storage
-);
+// Load the tokens saved after the user authorised the app
+const saved = await storage.load();
+if (!saved) throw new Error('No saved tokens: authorise the app first');
+
+// Use with Etsy client: start from the saved tokens and save every refresh
+const client = new EtsyClient({
+  keystring: process.env.ETSY_API_KEY,
+  sharedSecret: process.env.ETSY_SHARED_SECRET,
+  accessToken: saved.access_token,
+  refreshToken: saved.refresh_token,
+  expiresAt: saved.expires_at,
+  refreshSaveAsync: (accessToken, refreshToken, expiresAt) =>
+    storage.save({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+      expires_at: expiresAt,
+      token_type: 'Bearer',
+      scope: saved.scope
+    })
+});
 ```
+
+`EtsyClient` does not take a storage object. It starts from the tokens in its config and hands every refreshed set to `refreshSaveAsync`, which waits for the save before the new access token is used.
 
 ### Generating Encryption Keys
 
@@ -106,70 +118,70 @@ Enhanced token rotation automatically refreshes OAuth tokens before they expire.
 
 ### Basic Usage
 
-```typescript
-import { EtsyClient, TokenManager } from '@profplum700/etsy-v3-api-client';
+Pass the rotation settings to the client as `tokenRotation`. The client's own token manager then rotates the tokens it signs requests with. Each rotation spends the old refresh token, so if you keep tokens between runs, also set `refreshSave` or `refreshSaveAsync` in the config (see [Token Encryption at Rest](#token-encryption-at-rest)); `onRotation` alone does not save anything.
 
-const client = new EtsyClient(config, storage, {
-  enabled: true,
-  rotateBeforeExpiry: 15 * 60 * 1000, // 15 minutes
-  onRotation: async (oldTokens, newTokens) => {
-    console.log('Tokens rotated successfully');
-    // Notify other services, log event, etc.
+```typescript
+import { EtsyClient } from '@profplum700/etsy-v3-api-client';
+
+const client = new EtsyClient({
+  ...config,
+  tokenRotation: {
+    enabled: true,
+    rotateBeforeExpiry: 15 * 60 * 1000, // 15 minutes
+    autoSchedule: true, // check in the background
+    onRotation: async (oldTokens, newTokens) => {
+      console.log('Tokens rotated successfully');
+      // Notify other services, log event, etc.
+    }
   }
 });
 ```
+
+> **Do not run a separate `TokenManager` next to an `EtsyClient`.** The client keeps its own token manager. If a second one rotates the tokens, Etsy invalidates the refresh token the client still holds, and the client's next refresh fails with `REAUTH_REQUIRED`. Configure rotation on the client with `tokenRotation` instead.
 
 ### Automatic Rotation Scheduler
 
 ```typescript
-const rotationConfig = {
-  enabled: true,
-  rotateBeforeExpiry: 15 * 60 * 1000, // Rotate 15 mins before expiry
-  autoSchedule: true, // Enable automatic background checks
-  checkInterval: 60 * 1000, // Check every 1 minute
-  onRotation: async (oldTokens, newTokens) => {
-    // Update distributed cache, notify services, etc.
-    await notifyTokenChange(newTokens);
-  }
-};
-
-const tokenManager = new TokenManager(config, storage, rotationConfig);
-
-// Scheduler starts automatically
-// To manually stop:
-tokenManager.stopRotationScheduler();
-```
-
-### Manual Token Rotation
-
-```typescript
-const tokenManager = new TokenManager(config, storage, rotationConfig);
-
-// Check if rotation is needed
-if (tokenManager.needsProactiveRotation()) {
-  // Manually rotate token
-  const newTokens = await tokenManager.rotateToken();
-  console.log('Token rotated:', newTokens);
-}
-```
-
-### Dynamic Configuration
-
-```typescript
-const tokenManager = new TokenManager(config, storage);
-
-// Update rotation configuration at runtime
-tokenManager.updateRotationConfig({
-  enabled: true,
-  rotateBeforeExpiry: 30 * 60 * 1000, // Change to 30 minutes
-  autoSchedule: true,
-  onRotation: async (oldTokens, newTokens) => {
-    console.log('Token rotation event');
+const client = new EtsyClient({
+  ...config,
+  tokenRotation: {
+    enabled: true,
+    rotateBeforeExpiry: 15 * 60 * 1000, // Rotate 15 mins before expiry
+    autoSchedule: true, // Enable automatic background checks
+    checkInterval: 60 * 1000, // Check every 1 minute
+    onRotation: async (oldTokens, newTokens) => {
+      // Update distributed cache, notify services, etc.
+      await notifyTokenChange(newTokens);
+    }
   }
 });
 
-// Get current configuration
-const currentConfig = tokenManager.getRotationConfig();
+// The scheduler starts when the client is created.
+// Stop it when you discard the client:
+client.stopTokenRotation();
+```
+
+In Node.js the scheduler's timer does not keep the process alive on its own.
+
+### Without autoSchedule
+
+Without `autoSchedule`, nothing rotates ahead of time: the client still refreshes an expired token before a request, and once more after a 401. To refresh at a time you choose, call `client.refreshToken()`; it goes through the same token manager.
+
+### Standalone TokenManager
+
+`TokenManager` also takes rotation settings as its third argument, and offers `needsProactiveRotation()`, `rotateToken()`, `updateRotationConfig()` and `getRotationConfig()`. Use these only when you manage tokens yourself without an `EtsyClient`; an explicit third argument overrides `config.tokenRotation`.
+
+```typescript
+import { TokenManager } from '@profplum700/etsy-v3-api-client';
+
+const tokenManager = new TokenManager(config, storage, {
+  enabled: true,
+  rotateBeforeExpiry: 30 * 60 * 1000
+});
+
+if (tokenManager.needsProactiveRotation()) {
+  const newTokens = await tokenManager.rotateToken();
+}
 ```
 
 ### Rotation Callback Use Cases
@@ -456,7 +468,6 @@ try {
 import {
   EtsyClient,
   EncryptedFileTokenStorage,
-  TokenManager,
   WebhookSecurity,
   generateEncryptionKey
 } from '@profplum700/etsy-v3-api-client';
@@ -479,17 +490,27 @@ const rotationConfig = {
   }
 };
 
-// 3. Create Etsy client
-const client = new EtsyClient(
-  {
-    keystring: process.env.ETSY_API_KEY,
-    accessToken: '...',
-    refreshToken: '...',
-    expiresAt: new Date()
-  },
-  storage,
-  rotationConfig
-);
+// 3. Create Etsy client from the saved tokens; every refresh and rotation
+//    is saved to encrypted storage before the new access token is used
+const saved = await storage.load();
+if (!saved) throw new Error('No saved tokens: authorise the app first');
+
+const client = new EtsyClient({
+  keystring: process.env.ETSY_API_KEY,
+  sharedSecret: process.env.ETSY_SHARED_SECRET,
+  accessToken: saved.access_token,
+  refreshToken: saved.refresh_token,
+  expiresAt: saved.expires_at,
+  refreshSaveAsync: (accessToken, refreshToken, expiresAt) =>
+    storage.save({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+      expires_at: expiresAt,
+      token_type: 'Bearer',
+      scope: saved.scope
+    }),
+  tokenRotation: rotationConfig
+});
 
 // 4. Setup webhook security
 const webhookSecurity = new WebhookSecurity({
@@ -582,13 +603,17 @@ const storage = new EncryptedFileTokenStorage({
 
 ```typescript
 // Before
-const client = new EtsyClient(config, storage);
+const client = new EtsyClient(config);
 
-// After
-const client = new EtsyClient(config, storage, {
-  enabled: true,
-  rotateBeforeExpiry: 15 * 60 * 1000,
-  autoSchedule: true
+// After: config keeps its tokens and refreshSave / refreshSaveAsync callback,
+// so rotated tokens are saved the same way as any other refresh
+const client = new EtsyClient({
+  ...config,
+  tokenRotation: {
+    enabled: true,
+    rotateBeforeExpiry: 15 * 60 * 1000,
+    autoSchedule: true
+  }
 });
 ```
 

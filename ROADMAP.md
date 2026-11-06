@@ -668,6 +668,7 @@ const client = new EtsyClient({
   tokenRotation: {
     enabled: true,
     rotateBeforeExpiry: 15 * 60 * 1000, // 15 minutes
+    autoSchedule: true, // check in the background
     onRotation: async (oldTokens, newTokens) => {
       // Notify other services of token change
       await notifyTokenRotation(newTokens);

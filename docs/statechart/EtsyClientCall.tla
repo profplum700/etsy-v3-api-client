@@ -26,7 +26,8 @@ vars == <<phase, kind, token, hasRefresh, refreshOk, unsaved, why, authRetried,
           retries, sends, outcome>>
 
 Outcomes == {"pending", "data", "cached data",
-             "EtsyAuthError: refresh failed", "storage error",
+             "EtsyAuthError: refresh failed", "EtsyAuthError: refresh timed out",
+             "EtsyAuthError: save failed",
              "EtsyRateLimitError: daily quota", "EtsyRateLimitError: retries used up",
              "EtsyRateLimitError: write not replayed",
              "EtsyApiError 429", "EtsyApiError 401", "EtsyApiError other"}
@@ -114,6 +115,16 @@ RefreshFails ==
     /\ Fail("EtsyAuthError: refresh failed")
     /\ UNCHANGED <<kind, token, hasRefresh, refreshOk, unsaved, why, authRetried, retries, sends>>
 
+\* performTokenRefresh: the token endpoint gives no complete answer within
+\* tokenRefreshTimeoutMs (default 30 s), whether or not it would accept the
+\* refresh token. The request is aborted and EtsyAuthError
+\* TOKEN_REFRESH_TIMEOUT is thrown. Nothing is changed: the stored tokens are
+\* kept, and this is never REAUTH_REQUIRED.
+RefreshTimesOut ==
+    /\ phase = "refreshing"
+    /\ Fail("EtsyAuthError: refresh timed out")
+    /\ UNCHANGED <<kind, token, hasRefresh, refreshOk, unsaved, why, authRetried, retries, sends>>
+
 \* persistRefreshedTokens: storage.save and refreshSave must both succeed
 \* before the new tokens are used. A refresh at send time sends at once; a
 \* refresh after a 401 goes back to wait for a slot.
@@ -127,12 +138,13 @@ SaveSucceeds ==
     /\ hasRefresh' = TRUE /\ refreshOk' = TRUE
     /\ UNCHANGED <<kind, why, authRetried, retries, outcome>>
 
-\* persistRefreshedTokens has no catch, and the request loop passes token
-\* errors through, so the caller gets the error thrown by storage.save or
-\* refreshSave, unchanged (not an EtsyAuthError).
+\* persistRefreshedTokens (saveRotatedTokens) wraps an error thrown by
+\* storage.save or refreshSave in EtsyAuthError TOKEN_SAVE_FAILED, with the
+\* original as `cause`. The rotated tokens stay pending (unsaved), so the next
+\* refresh retries the save without asking Etsy again.
 SaveFails ==
     /\ phase = "saving"
-    /\ Fail("storage error")
+    /\ Fail("EtsyAuthError: save failed")
     /\ UNCHANGED <<kind, token, hasRefresh, refreshOk, unsaved, why, authRetried, retries, sends>>
 
 \* Etsy's answers.
@@ -188,7 +200,7 @@ Next ==
     \/ CacheHit \/ CacheMiss
     \/ LocalDailyQuotaUsedUp \/ SlotGranted
     \/ TokenIsFresh \/ TokenIsExpiring
-    \/ RefreshSucceeds \/ RefreshFails
+    \/ RefreshSucceeds \/ RefreshFails \/ RefreshTimesOut
     \/ SaveSucceeds \/ SaveFails
     \/ EtsyAnswersOk \/ EtsyRejectsToken \/ EtsyFailsOtherwise
     \/ EtsySaysDailyQuotaGone \/ EtsySaysSlowDown
@@ -220,5 +232,16 @@ RateLimitErrorsAreTyped == outcome # "EtsyApiError 429"
 \* You only see a 401 when re-authorising is the only fix: the client already
 \* refreshed and resent once, or holds no refresh token.
 AuthErrorOnlyWhenReauthNeeded == outcome = "EtsyApiError 401" => (authRetried \/ ~hasRefresh)
+
+\* A refresh that times out changes no tokens: Etsy issued none, so none wait
+\* to be saved, and the stored tokens are the ones the call started with. A
+\* later call can try again; it is not reported as REAUTH_REQUIRED.
+RefreshTimeoutKeepsTokens ==
+    outcome = "EtsyAuthError: refresh timed out" => ~unsaved
+
+\* When saving rotated tokens fails, the caller gets an EtsyAuthError, and the
+\* rotated tokens are kept in memory for the next save attempt.
+SaveFailureKeepsRotatedTokens ==
+    outcome = "EtsyAuthError: save failed" => unsaved
 
 ====

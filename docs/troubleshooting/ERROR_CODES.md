@@ -451,6 +451,10 @@ async function updateListingWithRetry(
      rateLimiting: { enabled: false }, // Don't do this!
    });
    ```
+   `enabled: false` turns off local pacing only. Reads that get a 429 are
+   still retried with backoff (up to 3 times, the default; not at all once
+   Etsy reports the daily quota is used up), so the client keeps hitting the
+   limit.
 
 **Solutions:**
 
@@ -700,6 +704,31 @@ try {
     // Redirect to OAuth flow
   } else if (error instanceof EtsyAuthError) {
     // TOKEN_REFRESH_FAILED, TOKEN_REFRESH_ERROR or TOKEN_REFRESH_TIMEOUT: try again later
+  }
+}
+```
+
+### TOKEN_SAVE_FAILED
+
+**Meaning:** Etsy issued new tokens, but saving them failed. The save goes
+through `TokenStorage.save()`, `refreshSave` or `refreshSaveAsync`. The client
+throws `EtsyAuthError` with code `TOKEN_SAVE_FAILED`, and `error.cause` holds
+the original storage or callback error.
+
+Etsy rotates the refresh token on every refresh, so the old one may no longer
+work. The new tokens are kept in memory only, and the next refresh (or the next
+call that needs one) retries the save without asking Etsy again. If the
+process exits before a save succeeds, the new refresh token is lost and the
+user may have to authorise the app again.
+
+```typescript
+try {
+  await client.getUser();
+} catch (error) {
+  if (error instanceof EtsyAuthError && error.code === 'TOKEN_SAVE_FAILED') {
+    // Log the code, not error.cause: a custom refreshSave error may contain tokens
+    console.error('Could not save refreshed tokens:', error.code);
+    // Fix the storage, then retry soon; do not exit the process first
   }
 }
 ```

@@ -57,6 +57,14 @@ export class TokenManager {
   private rotationTimer?: ReturnType<typeof setInterval>;
   private refreshTimeoutMs: number;
 
+  /**
+   * @param config - Client configuration holding the starting tokens and the
+   *   refreshSave / refreshSaveAsync / refreshClearAsync callbacks.
+   * @param storage - Optional storage that every refreshed token set is saved to.
+   * @param rotationConfig - Proactive rotation settings. When omitted,
+   *   `config.tokenRotation` is used, which is how EtsyClient passes them.
+   *   With `enabled` and `autoSchedule`, background checks start immediately.
+   */
   constructor(config: EtsyClientConfig, storage?: TokenStorage, rotationConfig?: TokenRotationConfig) {
     const refreshTimeoutMs = config.tokenRefreshTimeoutMs ?? DEFAULT_TOKEN_REFRESH_TIMEOUT_MS;
     if (!Number.isFinite(refreshTimeoutMs) || refreshTimeoutMs <= 0 || refreshTimeoutMs > MAX_TIMER_DELAY_MS) {
@@ -68,7 +76,7 @@ export class TokenManager {
     this.refreshClearRequired = config.refreshSaveAsync !== undefined;
     this.storage = storage;
     this.clearCallback = config.refreshClearAsync;
-    this.rotationConfig = rotationConfig;
+    this.rotationConfig = rotationConfig ?? config.tokenRotation;
 
     // Initialize with provided tokens
     this.currentTokens = {
@@ -179,22 +187,26 @@ export class TokenManager {
     this.throwIfSuperseded(generation);
     // Keep all concurrent callers waiting until refreshed credentials are durable.
     if (this.storage) {
-      await this.storage.save(newTokens);
+      const storage = this.storage;
+      await this.saveRotatedTokens(() => storage.save(newTokens));
       if (generation !== this.tokenMutationGeneration) {
-        await this.repairPersistenceToCurrentTokens();
+        await this.saveRotatedTokens(() => this.repairPersistenceToCurrentTokens(), 'repair');
         this.throwIfSuperseded(generation);
       }
     }
 
     this.throwIfSuperseded(generation);
-    if (this.refreshCallback) {
-      await this.refreshCallback(
-        newTokens.access_token,
-        newTokens.refresh_token,
-        newTokens.expires_at
-      );
+    const refreshCallback = this.refreshCallback;
+    if (refreshCallback) {
+      await this.saveRotatedTokens(async () => {
+        await refreshCallback(
+          newTokens.access_token,
+          newTokens.refresh_token,
+          newTokens.expires_at
+        );
+      });
       if (generation !== this.tokenMutationGeneration) {
-        await this.repairPersistenceToCurrentTokens();
+        await this.saveRotatedTokens(() => this.repairPersistenceToCurrentTokens(), 'repair');
         this.throwIfSuperseded(generation);
       }
     }
@@ -203,6 +215,32 @@ export class TokenManager {
     this.currentTokens = newTokens;
     this.pendingTokens = undefined;
     return newTokens;
+  }
+
+  /**
+   * Run one token save step. A failure from storage or a refreshSave callback
+   * is thrown as EtsyAuthError TOKEN_SAVE_FAILED with the original as `cause`,
+   * whatever the original's class. In a `repair` step (re-saving the current
+   * tokens after updateTokens/clearTokens raced the save), the client's own
+   * EtsyAuthErrors, such as TOKEN_CLEAR_CALLBACK_REQUIRED, pass through.
+   */
+  private async saveRotatedTokens(
+    save: () => Promise<void> | void,
+    step: 'rotated' | 'repair' = 'rotated'
+  ): Promise<void> {
+    try {
+      await save();
+    } catch (error) {
+      if (step === 'repair' && error instanceof EtsyAuthError) throw error;
+      // updateTokens/clearTokens drop the rotated tokens, so only promise a
+      // retried save while they are still pending.
+      const message = this.pendingTokens
+        ? 'Saving the refreshed tokens failed. Etsy has already rotated the refresh token; ' +
+          'they are kept in memory and the next refresh retries the save. See the error cause.'
+        : 'Saving tokens failed after they were replaced during a refresh; ' +
+          'token storage may hold out-of-date tokens. See the error cause.';
+      throw new EtsyAuthError(message, 'TOKEN_SAVE_FAILED', { cause: error });
+    }
   }
 
   private async retryPendingTokenPersistence(): Promise<EtsyTokens> {

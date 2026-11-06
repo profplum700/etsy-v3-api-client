@@ -31,6 +31,16 @@ export interface EtsyClientConfig {
    * @default 30000
    */
   tokenRefreshTimeoutMs?: number;
+
+  /**
+   * Proactive token rotation for the client's own token manager. Rotation
+   * refreshes through the same token manager that signs requests, so the
+   * client never holds a refresh token that rotation has already spent.
+   * Rotated tokens go through `refreshSave` / `refreshSaveAsync` like any
+   * other refresh. With `autoSchedule`, stop the background checks with
+   * `EtsyClient.stopTokenRotation()` when you discard the client.
+   */
+  tokenRotation?: TokenRotationConfig;
   
   // Optional configuration
   baseUrl?: string;
@@ -943,8 +953,8 @@ export class EtsyApiError extends Error {
 }
 
 export class EtsyAuthError extends Error {
-  constructor(message: string, public _code?: string) {
-    super(message);
+  constructor(message: string, public _code?: string, options?: { cause?: unknown }) {
+    super(message, options);
     this.name = 'EtsyAuthError';
   }
 
