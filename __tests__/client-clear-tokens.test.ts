@@ -68,6 +68,34 @@ describe('EtsyClient.clearTokens', () => {
     expect(mockFetch).toHaveBeenCalledTimes(1);
   });
 
+  it('does not let a cache write still in progress outlive clearTokens', async () => {
+    const entries = new Map<string, string>();
+    let finishSet: (() => void) | undefined;
+    let signalSetStarted: (() => void) | undefined;
+    const setStarted = new Promise<void>((resolve) => { signalSetStarted = resolve; });
+    const storage: CacheStorage = {
+      get: vi.fn(async (key: string) => entries.get(key) ?? null),
+      set: vi.fn(async (key: string, value: string) => {
+        signalSetStarted?.();
+        await new Promise<void>((resolve) => { finishSet = resolve; });
+        entries.set(key, value);
+      }),
+      delete: vi.fn(async (key: string) => { entries.delete(key); }),
+      clear: vi.fn(async () => { entries.clear(); })
+    };
+    const client = new EtsyClient(config({ caching: { enabled: true, storage } }));
+    const inFlight = client.getUser();
+    await setStarted;
+
+    const cleared = client.clearTokens();
+    finishSet?.();
+    await cleared;
+    await inFlight;
+
+    await expect(client.getUser()).rejects.toMatchObject({ code: 'NO_TOKENS' });
+    expect(entries.size).toBe(0);
+  });
+
   it('clears a custom cache storage', async () => {
     const storage: CacheStorage = {
       get: vi.fn().mockResolvedValue(null),
