@@ -387,10 +387,11 @@ export class EtsyClient {
       redirect: 'error'
     };
 
-    const cacheKey = `${url}:${JSON.stringify(requestOptions)}`;
-    // Captured before any await: clearTokens() bumps it, so an answer to a
-    // request sent before sign-out is never written back into the cache.
+    // The key carries the cache generation, which clearTokens() bumps. A
+    // write from before sign-out lands under an old key that no later read
+    // looks up, however late an async CacheStorage makes it visible.
     const cacheGeneration = this.cacheGeneration;
+    const cacheKey = `${cacheGeneration}:${url}:${JSON.stringify(requestOptions)}`;
 
     // Check cache first
     if (useCache && this.cache && requestOptions.method === 'GET') {
@@ -504,8 +505,8 @@ export class EtsyClient {
         // Cache successful GET requests
         if (useCache && this.cache && options.method === 'GET' && cacheGeneration === this.cacheGeneration) {
           await this.cache.set(cacheKey, JSON.stringify(data), this.cacheTtl);
-          // An async CacheStorage may finish this write after clearTokens()
-          // cleared the cache; remove it again so it does not outlive sign-out.
+          // Its key is already unreachable after clearTokens(); delete it so
+          // old-generation entries do not pile up until their TTL.
           if (cacheGeneration !== this.cacheGeneration) {
             await this.cache.delete(cacheKey);
           }
@@ -2934,8 +2935,8 @@ export class EtsyClient {
    * and the response cache, so cached answers are not served after sign-out.
    * The cache is cleared even if clearing the tokens throws, and answers to
    * GETs already in flight are returned to their callers but not cached. A
-   * cache write already under way when this runs removes its own entry when
-   * it finishes, so sign-out never waits on the cache storage.
+   * cache write already under way is stored under the old generation's key,
+   * which no later read looks up, so sign-out never waits on the cache storage.
    */
   public async clearTokens(): Promise<void> {
     this.cacheGeneration += 1;

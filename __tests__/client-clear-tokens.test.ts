@@ -113,6 +113,31 @@ describe('EtsyClient.clearTokens', () => {
     expect(storage.clear).toHaveBeenCalledTimes(1);
   });
 
+  it('never serves an entry a pre-sign-out write makes visible before its set() resolves', async () => {
+    const entries = new Map<string, string>();
+    let signalVisible: (() => void) | undefined;
+    const visible = new Promise<void>((resolve) => { signalVisible = resolve; });
+    const storage: CacheStorage = {
+      get: vi.fn(async (key: string) => entries.get(key) ?? null),
+      set: vi.fn(async (key: string, value: string) => {
+        await visible;
+        entries.set(key, value); // readable now, but set() never resolves
+        await new Promise<void>(() => undefined);
+      }),
+      delete: vi.fn(async (key: string) => { entries.delete(key); }),
+      clear: vi.fn(async () => { entries.clear(); })
+    };
+    const client = new EtsyClient(config({ caching: { enabled: true, storage } }));
+    void client.getUser();
+    await vi.waitFor(() => expect(storage.set).toHaveBeenCalledTimes(1));
+
+    await client.clearTokens();
+    signalVisible?.();
+    await vi.waitFor(() => expect(entries.size).toBe(1));
+
+    await expect(client.getUser()).rejects.toMatchObject({ code: 'NO_TOKENS' });
+  });
+
   it('clears a custom cache storage', async () => {
     const storage: CacheStorage = {
       get: vi.fn().mockResolvedValue(null),
