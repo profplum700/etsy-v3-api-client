@@ -160,7 +160,7 @@ const client = new EtsyClient({
 
 Two classes take part. `AuthHelper` runs the OAuth 2.0 PKCE flow: it builds the authorization URL and exchanges the returned code for tokens. `EtsyClient` makes API calls with those tokens, refreshes them when they expire, and hands each refreshed set to `refreshSaveAsync` so it can be saved.
 
-This Express app serves a single Etsy account and keeps its tokens in a file:
+This Express app serves a single Etsy account and keeps its tokens in a file. Whoever completes the OAuth flow replaces the saved account, so the login, callback and dashboard routes must sit behind your app's own authentication. The example marks this with a `requireOwner` middleware that you supply:
 
 ```typescript
 import express from 'express';
@@ -174,6 +174,12 @@ import {
 
 const app = express();
 const storage = new FileTokenStorage('./tokens.json');
+
+// Your app's own authentication: only the account owner may connect,
+// replace or use the Etsy account. Replace this with your real check.
+declare function requireOwner(
+  req: express.Request, res: express.Response, next: express.NextFunction
+): void;
 
 const KEYSTRING = process.env.ETSY_API_KEY!;
 const SHARED_SECRET = process.env.ETSY_SHARED_SECRET!;
@@ -210,7 +216,7 @@ function createClient(tokens: EtsyTokens): EtsyClient {
 }
 
 // Step 1: Start authentication
-app.get('/auth/etsy', async (req, res) => {
+app.get('/auth/etsy', requireOwner, async (req, res) => {
   try {
     const auth = new AuthHelper({
       keystring: KEYSTRING,
@@ -230,7 +236,7 @@ app.get('/auth/etsy', async (req, res) => {
 });
 
 // Step 2: Handle callback
-app.get('/callback', async (req, res) => {
+app.get('/callback', requireOwner, async (req, res) => {
   const { code, state, error } = req.query;
 
   if (typeof error === 'string') {
@@ -264,7 +270,7 @@ app.get('/callback', async (req, res) => {
 });
 
 // Protected route example
-app.get('/dashboard', async (req, res) => {
+app.get('/dashboard', requireOwner, async (req, res) => {
   if (!client) {
     return res.redirect('/auth/etsy');
   }
@@ -550,13 +556,21 @@ const auth = new AuthHelper({
   scopes: ['listings_r', 'shops_r']
 });
 
-// Later, with the tokens from auth.getAccessToken() or your storage:
+// Later, with the tokens from auth.getAccessToken(). Etsy invalidates the
+// old refresh token on every refresh, so save each new set; with tokens kept
+// in a TokenStorage, use createClientFromStorage from "Token Storage Options".
 const client = new EtsyClient({
   keystring: process.env.ETSY_API_KEY!,
   sharedSecret: process.env.ETSY_SHARED_SECRET!,
   accessToken: tokens.access_token,
   refreshToken: tokens.refresh_token,
-  expiresAt: tokens.expires_at
+  expiresAt: tokens.expires_at,
+  refreshSaveAsync: async (accessToken, refreshToken, expiresAt) => {
+    await saveTokens({ accessToken, refreshToken, expiresAt }); // your storage
+  },
+  refreshClearAsync: async () => {
+    await deleteTokens(); // lets client.clearTokens() remove saved tokens
+  }
 });
 ```
 
@@ -664,12 +678,20 @@ class DatabaseTokenStorage implements TokenStorage {
   }
 }
 
-// Create client per user, starting from that user's saved tokens.
-// createClientFromStorage is the helper from "Token Storage Options";
-// it saves each refreshed token set back to this user's row.
+// One client per user, reused across requests, so concurrent requests share
+// one token refresh instead of spending the same refresh token twice.
+// createClientFromStorage is the helper from "Token Storage Options"; it
+// saves each refreshed token set back to this user's row.
+const clients = new Map<string, Promise<EtsyClient>>();
+
 function getClientForUser(userId: string): Promise<EtsyClient> {
-  const storage = new DatabaseTokenStorage(userId, db);
-  return createClientFromStorage(storage);
+  let client = clients.get(userId);
+  if (!client) {
+    client = createClientFromStorage(new DatabaseTokenStorage(userId, db));
+    clients.set(userId, client);
+    client.catch(() => clients.delete(userId)); // retry the load next time
+  }
+  return client;
 }
 
 // Usage in route handler
@@ -681,6 +703,8 @@ app.get('/api/shop', async (req, res) => {
   res.json(shop);
 });
 ```
+
+Etsy accepts each refresh token only once. If several processes serve the same user, coordinate refreshes between them, for example with a per-user lock around the refresh, or route each user to one process. Otherwise two processes can refresh the same token at once, and the one that loses gets `REAUTH_REQUIRED`.
 
 ### Token Rotation
 
