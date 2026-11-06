@@ -204,7 +204,6 @@ export class EtsyClient {
   private cacheTtl!: number;
   /** Bumped by clearTokens(); a GET caches its answer only if it is unchanged. */
   private cacheGeneration = 0;
-  private pendingCacheWrites = new Set<Promise<void>>();
   private rateLimitingEnabled: boolean;
   private keystring: string;
   private sharedSecret: string;
@@ -504,14 +503,11 @@ export class EtsyClient {
 
         // Cache successful GET requests
         if (useCache && this.cache && options.method === 'GET' && cacheGeneration === this.cacheGeneration) {
-          // Tracked so clearTokens() can wait for a write already under way
-          // in an async CacheStorage before it clears the cache.
-          const write = this.cache.set(cacheKey, JSON.stringify(data), this.cacheTtl);
-          this.pendingCacheWrites.add(write);
-          try {
-            await write;
-          } finally {
-            this.pendingCacheWrites.delete(write);
+          await this.cache.set(cacheKey, JSON.stringify(data), this.cacheTtl);
+          // An async CacheStorage may finish this write after clearTokens()
+          // cleared the cache; remove it again so it does not outlive sign-out.
+          if (cacheGeneration !== this.cacheGeneration) {
+            await this.cache.delete(cacheKey);
           }
         }
 
@@ -2938,15 +2934,14 @@ export class EtsyClient {
    * and the response cache, so cached answers are not served after sign-out.
    * The cache is cleared even if clearing the tokens throws, and answers to
    * GETs already in flight are returned to their callers but not cached. A
-   * cache write already under way is awaited first, then cleared.
+   * cache write already under way when this runs removes its own entry when
+   * it finishes, so sign-out never waits on the cache storage.
    */
   public async clearTokens(): Promise<void> {
     this.cacheGeneration += 1;
     try {
       await this.tokenManager.clearTokens();
     } finally {
-      // Writes started before the bump finish first, so the clear removes them.
-      await Promise.allSettled([...this.pendingCacheWrites]);
       await this.clearCache();
     }
   }

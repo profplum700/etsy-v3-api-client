@@ -96,6 +96,23 @@ describe('EtsyClient.clearTokens', () => {
     expect(entries.size).toBe(0);
   });
 
+  it('does not hang when a custom cache write never finishes', async () => {
+    let signalSetStarted: (() => void) | undefined;
+    const setStarted = new Promise<void>((resolve) => { signalSetStarted = resolve; });
+    const storage: CacheStorage = {
+      get: vi.fn().mockResolvedValue(null),
+      set: vi.fn(() => { signalSetStarted?.(); return new Promise<void>(() => undefined); }),
+      delete: vi.fn().mockResolvedValue(undefined),
+      clear: vi.fn().mockResolvedValue(undefined)
+    };
+    const client = new EtsyClient(config({ caching: { enabled: true, storage } }));
+    void client.getUser();
+    await setStarted;
+
+    await expect(client.clearTokens()).resolves.toBeUndefined();
+    expect(storage.clear).toHaveBeenCalledTimes(1);
+  });
+
   it('clears a custom cache storage', async () => {
     const storage: CacheStorage = {
       get: vi.fn().mockResolvedValue(null),
