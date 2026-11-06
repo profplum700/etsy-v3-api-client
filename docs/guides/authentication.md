@@ -460,12 +460,29 @@ const client = await createClientFromStorage(storage);
 
 **Recommended for production:**
 
+The key is 32 random bytes, stored as 64 hex characters in `ENCRYPTION_KEY`. Generate it once and keep it: a new key on each start makes the saved tokens unreadable. Don't print it to the terminal, where it can end up in scrollback or captured logs. Instead, write it to a new file that only you can read, in the system temp directory. The command checks that this directory is not inside a Git repository, so `git add` can't pick the key up, and stops without writing the key if it is:
+
+```bash
+keyfile="$(mktemp)"
+if git -C "$(dirname "$keyfile")" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  rm -- "$keyfile"
+  echo "Temp directory is inside a Git repository; set TMPDIR to a directory outside it and run again" >&2
+else
+  node -e "process.stdout.write(require('crypto').randomBytes(32).toString('hex'))" > "$keyfile"
+  echo "Key written to $keyfile"
+fi
+```
+
+`mktemp` always creates a new file with owner-only permissions, so an existing file is never reused. Add the file's contents to your secret manager as `ENCRYPTION_KEY`. Only then delete the file, using the path printed above:
+
+```bash
+rm "$keyfile"
+```
+
 ```typescript
 import { EncryptedFileTokenStorage } from '@profplum700/etsy-v3-api-client';
 
-// ENCRYPTION_KEY holds 32 random bytes as hex, generated once and kept, e.g.
-//   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-// A new key on each start would make the saved tokens unreadable.
+// ENCRYPTION_KEY: 64 hex characters (32 bytes), loaded from your secret manager
 const storage = new EncryptedFileTokenStorage({
   filePath: './tokens.enc',
   encryptionKey: Buffer.from(process.env.ENCRYPTION_KEY!, 'hex')
