@@ -202,6 +202,8 @@ export class EtsyClient {
   private logger: LoggerInterface;
   private cache?: CacheStorage;
   private cacheTtl!: number;
+  /** Bumped by clearTokens(); a GET caches its answer only if it is unchanged. */
+  private cacheGeneration = 0;
   private rateLimitingEnabled: boolean;
   private keystring: string;
   private sharedSecret: string;
@@ -385,7 +387,11 @@ export class EtsyClient {
       redirect: 'error'
     };
 
-    const cacheKey = `${url}:${JSON.stringify(requestOptions)}`;
+    // The key carries the cache generation, which clearTokens() bumps. A
+    // write from before sign-out lands under an old key that no later read
+    // looks up, however late an async CacheStorage makes it visible.
+    const cacheGeneration = this.cacheGeneration;
+    const cacheKey = `${cacheGeneration}:${url}:${JSON.stringify(requestOptions)}`;
 
     // Check cache first
     if (useCache && this.cache && requestOptions.method === 'GET') {
@@ -411,7 +417,7 @@ export class EtsyClient {
     };
 
     // Execute request with retry loop for 429 errors
-    return this.executeWithRetry<T>(url, { ...requestOptions, headers }, cacheKey, useCache);
+    return this.executeWithRetry<T>(url, { ...requestOptions, headers }, cacheKey, useCache, cacheGeneration);
   }
 
   /**
@@ -426,7 +432,8 @@ export class EtsyClient {
     url: string,
     options: RequestInit,
     cacheKey: string,
-    useCache: boolean
+    useCache: boolean,
+    cacheGeneration: number
   ): Promise<T> {
     let retryAttempt = 0;
     let authRetried = false;
@@ -496,8 +503,13 @@ export class EtsyClient {
         const data = await response.json();
 
         // Cache successful GET requests
-        if (useCache && this.cache && options.method === 'GET') {
+        if (useCache && this.cache && options.method === 'GET' && cacheGeneration === this.cacheGeneration) {
           await this.cache.set(cacheKey, JSON.stringify(data), this.cacheTtl);
+          // Its key is already unreachable after clearTokens(); delete it so
+          // old-generation entries do not pile up until their TTL.
+          if (cacheGeneration !== this.cacheGeneration) {
+            await this.cache.delete(cacheKey);
+          }
         }
 
         return data;
@@ -2916,6 +2928,23 @@ export class EtsyClient {
    */
   public isTokenExpired(): boolean {
     return this.tokenManager.isTokenExpired();
+  }
+
+  /**
+   * Clear the tokens (in memory, in token storage and through refreshClearAsync)
+   * and the response cache, so cached answers are not served after sign-out.
+   * The cache is cleared even if clearing the tokens throws, and answers to
+   * GETs already in flight are returned to their callers but not cached. A
+   * cache write already under way is stored under the old generation's key,
+   * which no later read looks up, so sign-out never waits on the cache storage.
+   */
+  public async clearTokens(): Promise<void> {
+    this.cacheGeneration += 1;
+    try {
+      await this.tokenManager.clearTokens();
+    } finally {
+      await this.clearCache();
+    }
   }
 
   /**

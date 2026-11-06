@@ -357,7 +357,13 @@ const client = new EtsyClient({
 
 // Clear cache when needed
 await client.clearCache();
+
+// Sign out: clears the tokens and the response cache, so cached
+// answers are not served after the tokens are gone
+await client.clearTokens();
 ```
+
+Cache keys are built from the request alone, not from the Etsy account. Do not share one `caching.storage` between clients signed in to different Etsy accounts, or they may read each other's cached responses.
 
 ## 🌐 Environment Support
 
@@ -515,6 +521,10 @@ The package provides optimized builds for different environments:
 #### Review Methods
 - `getReviewsByListing(listingId, options?)` - Get reviews for a listing        
 - `getReviewsByShop(shopId, options?)` - Get reviews for a shop
+
+#### Session Methods
+- `clearTokens()` - Clear the tokens (memory, token storage and `refreshClearAsync`) and the response cache
+- `clearCache()` - Clear the response cache only
 
 #### Search Methods
 - `findAllListingsActive(params)` - Search listings with filters
