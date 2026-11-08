@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getEtsyServerClient } from './client';
-import type { EtsyClient } from '@profplum700/etsy-v3-api-client';
 
 export interface EtsyApiRouteConfig {
   apiKey: string;
@@ -16,163 +14,33 @@ export interface EtsyApiRouteConfig {
   };
 }
 
-interface RateLimitEntry {
-  count: number;
-  resetTime: number;
-}
-
-const rateLimitStore = new Map<string, RateLimitEntry>();
+const NOT_IMPLEMENTED_MESSAGE =
+  'createEtsyApiRoute does not call the Etsy API yet. Write your own route handler ' +
+  'that calls getEtsyServerClient(). See ' +
+  'https://github.com/profplum700/etsy-v3-api-client/issues/107';
 
 /**
- * Create API route handlers for Etsy API
- * Provides automatic rate limiting, caching, and error handling
+ * Not implemented yet: every handler answers 501 Not Implemented.
+ *
+ * Earlier versions returned placeholder JSON with status 200 and never called
+ * Etsy. Until a real proxy exists (tracked in issue #107), write your own route
+ * handler that calls `getEtsyServerClient()` for the current request.
+ *
+ * @deprecated Not implemented; see issue #107.
  */
-export function createEtsyApiRoute(config: EtsyApiRouteConfig): {
+export function createEtsyApiRoute(_config: EtsyApiRouteConfig): {
   GET: (request: NextRequest) => Promise<NextResponse>;
   POST: (request: NextRequest) => Promise<NextResponse>;
   PUT: (request: NextRequest) => Promise<NextResponse>;
   DELETE: (request: NextRequest) => Promise<NextResponse>;
 } {
-  const { rateLimit, cache } = config;
-
-  // Rate limiting helper
-  function checkRateLimit(identifier: string): boolean {
-    if (!rateLimit) return true;
-
-    const now = Date.now();
-    const entry = rateLimitStore.get(identifier);
-
-    if (!entry || now > entry.resetTime) {
-      rateLimitStore.set(identifier, {
-        count: 1,
-        resetTime: now + rateLimit.window,
-      });
-      return true;
-    }
-
-    if (entry.count >= rateLimit.requests) {
-      return false;
-    }
-
-    entry.count++;
-    return true;
-  }
-
-  async function handleRequest(
-    request: NextRequest,
-    handler: (client: EtsyClient, request: NextRequest) => Promise<unknown>
-  ): Promise<NextResponse> {
-    try {
-      // Rate limiting
-      if (rateLimit) {
-        const identifier = request.headers.get('x-forwarded-for') || 'anonymous';
-        if (!checkRateLimit(identifier)) {
-          return NextResponse.json(
-            { error: 'Rate limit exceeded' },
-            { status: 429 }
-          );
-        }
-      }
-
-      // Get client
-      const client = await getEtsyServerClient();
-
-      // Execute handler
-      const result = await handler(client, request);
-
-      // Return response with cache headers
-      const response = NextResponse.json(result);
-
-      if (cache?.enabled) {
-        response.headers.set(
-          'Cache-Control',
-          `public, s-maxage=${cache.ttl}, stale-while-revalidate`
-        );
-      }
-
-      return response;
-    } catch (error) {
-      console.error('Etsy API route error:', error);
-
-      if (error instanceof Error) {
-        return NextResponse.json(
-          { error: error.message },
-          { status: 500 }
-        );
-      }
-
-      return NextResponse.json(
-        { error: 'Internal server error' },
-        { status: 500 }
-      );
-    }
-  }
+  const notImplemented = async (_request: NextRequest): Promise<NextResponse> =>
+    NextResponse.json({ error: NOT_IMPLEMENTED_MESSAGE }, { status: 501 });
 
   return {
-    GET: async (request: NextRequest): Promise<NextResponse> => {
-      return handleRequest(request, async (_client): Promise<unknown> => {
-        const { searchParams } = new URL(request.url);
-        const endpoint = searchParams.get('endpoint');
-
-        if (!endpoint) {
-          throw new Error('Endpoint parameter is required');
-        }
-
-        // Parse additional parameters
-        const params: Record<string, unknown> = {};
-        searchParams.forEach((value, key) => {
-          if (key !== 'endpoint') {
-            params[key] = value;
-          }
-        });
-
-        // Make API call
-        // Note: This is a simplified implementation
-        // You would need to map endpoints to client methods
-        return { message: 'GET endpoint', endpoint, params };
-      });
-    },
-
-    POST: async (request: NextRequest): Promise<NextResponse> => {
-      return handleRequest(request, async (_client): Promise<unknown> => {
-        const body = await request.json();
-        const { endpoint, data } = body;
-
-        if (!endpoint) {
-          throw new Error('Endpoint parameter is required');
-        }
-
-        // Make API call
-        return { message: 'POST endpoint', endpoint, data };
-      });
-    },
-
-    PUT: async (request: NextRequest): Promise<NextResponse> => {
-      return handleRequest(request, async (_client): Promise<unknown> => {
-        const body = await request.json();
-        const { endpoint, data } = body;
-
-        if (!endpoint) {
-          throw new Error('Endpoint parameter is required');
-        }
-
-        // Make API call
-        return { message: 'PUT endpoint', endpoint, data };
-      });
-    },
-
-    DELETE: async (request: NextRequest): Promise<NextResponse> => {
-      return handleRequest(request, async (_client): Promise<unknown> => {
-        const { searchParams } = new URL(request.url);
-        const endpoint = searchParams.get('endpoint');
-
-        if (!endpoint) {
-          throw new Error('Endpoint parameter is required');
-        }
-
-        // Make API call
-        return { message: 'DELETE endpoint', endpoint };
-      });
-    },
+    GET: notImplemented,
+    POST: notImplemented,
+    PUT: notImplemented,
+    DELETE: notImplemented,
   };
 }

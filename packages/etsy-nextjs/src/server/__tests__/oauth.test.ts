@@ -313,6 +313,33 @@ describe('createOAuthRoute', () => {
       expect(response.status).toBe(307); // Redirect status
       expect(response.headers.get('location')).toBe('http://localhost:3000/');
     });
+
+    it('keeps a same-origin redirect_url path', async () => {
+      const handler = createOAuthRoute();
+      const request = new NextRequest(
+        'http://localhost:3000/api/etsy/auth/logout?redirect_url=%2Fsigned-out%3Fbye%3D1',
+        { method: 'POST', headers: { accept: 'text/html' } }
+      );
+
+      const response = await handler(request);
+      expect(response.headers.get('location')).toBe('http://localhost:3000/signed-out?bye=1');
+    });
+
+    it.each([
+      'https://evil.example/phish',
+      '//evil.example/phish',
+      '/\\evil.example/phish',
+      'javascript:alert(1)',
+    ])('ignores an off-site redirect_url (%s)', async (target) => {
+      const handler = createOAuthRoute();
+      const request = new NextRequest(
+        `http://localhost:3000/api/etsy/auth/logout?redirect_url=${encodeURIComponent(target)}`,
+        { method: 'POST', headers: { accept: 'text/html' } }
+      );
+
+      const response = await handler(request);
+      expect(response.headers.get('location')).toBe('http://localhost:3000/');
+    });
   });
 
   describe('invalid action', () => {
