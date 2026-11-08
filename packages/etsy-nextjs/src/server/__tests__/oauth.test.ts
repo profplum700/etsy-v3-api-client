@@ -219,6 +219,46 @@ describe('createOAuthRoute', () => {
       expect(json).toHaveProperty('expiresAt');
     });
 
+    async function completeLogin(successUrl: string): Promise<Response> {
+      (global.fetch as MockedFunction<typeof fetch>).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          access_token: 'test-access-token',
+          refresh_token: 'test-refresh-token',
+          token_type: 'Bearer',
+          expires_in: 3600,
+        }),
+      } as Response);
+
+      const handler = createOAuthRoute();
+      const authorizeResponse = await handler(
+        new NextRequest('http://localhost:3000/api/etsy/auth/authorize', {
+          headers: { accept: 'application/json' },
+        })
+      );
+      const { state } = await authorizeResponse.json();
+
+      return handler(
+        new NextRequest(
+          `http://localhost:3000/api/etsy/auth/callback?code=test-code&state=${state}` +
+            `&success_url=${encodeURIComponent(successUrl)}`,
+          { headers: { accept: 'text/html' } }
+        )
+      );
+    }
+
+    it('redirects to a same-origin success_url after login', async () => {
+      const response = await completeLogin('/dashboard?tab=orders');
+      expect(response.status).toBe(307);
+      expect(response.headers.get('location')).toBe('http://localhost:3000/dashboard?tab=orders');
+    });
+
+    it('ignores an off-site success_url after login', async () => {
+      const response = await completeLogin('https://evil.example/phish');
+      expect(response.status).toBe(307);
+      expect(response.headers.get('location')).toBe('http://localhost:3000/');
+    });
+
     it('should reject mismatched state', async () => {
       const handler = createOAuthRoute();
       const request = new NextRequest(
