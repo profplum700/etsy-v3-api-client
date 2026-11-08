@@ -125,10 +125,11 @@ For production environments, use encrypted storage:
 ```typescript
 import { EncryptedFileTokenStorage } from '@profplum700/etsy-v3-api-client';
 
-const storage = new EncryptedFileTokenStorage(
-  './tokens.enc',
-  process.env.ENCRYPTION_KEY! // 32-byte key as 64 hex characters
-);
+const storage = new EncryptedFileTokenStorage({
+  filePath: './tokens.enc',
+  // 32 random bytes, stored as 64 hex characters in ENCRYPTION_KEY
+  encryptionKey: Buffer.from(process.env.ENCRYPTION_KEY!, 'hex')
+});
 const client = await createClientFromStorage(storage);
 ```
 

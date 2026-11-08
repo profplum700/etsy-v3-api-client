@@ -290,7 +290,7 @@ const memoryStorage = new MemoryTokenStorage();
 `EtsyClient` takes a single config object and does not accept a storage object. To keep tokens across restarts, load the saved set from your storage when you create the client, and save every refreshed set through `refreshSaveAsync`. The client waits for that save before it uses the new access token. Etsy invalidates the old refresh token on each refresh, so a refresh that is never saved locks the app out on the next start.
 
 ```typescript
-import { EtsyClient, TokenStorage } from '@profplum700/etsy-v3-api-client';
+import { EtsyClient, TokenStorage, createDefaultTokenStorage } from '@profplum700/etsy-v3-api-client';
 
 async function createClientFromStorage(storage: TokenStorage): Promise<EtsyClient> {
   // Load the tokens saved after the user authorised the app
@@ -865,41 +865,27 @@ This example demonstrates:
 
 ### React Hook Example
 
+`EtsyClient` sends your shared secret with every request, and anything in a React bundle (including `REACT_APP_*` variables) is public. So keep the client on your server, behind your app's own authentication, and have React call your own routes. The [authentication guide's complete example](docs/guides/authentication.md#complete-authentication-example) shows such a server; its `/dashboard` route returns the shop and listings.
+
 ```typescript
 import { useState, useEffect } from 'react';
-import { EtsyClient, createDefaultTokenStorage } from '@profplum700/etsy-v3-api-client';
 
-function useEtsyClient(tokens) {
-  const [client, setClient] = useState(null);
+// Calls a route on your own server, which uses EtsyClient there
+function useEtsyDashboard() {
+  const [data, setData] = useState(null);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (tokens) {
-      const storage = createDefaultTokenStorage({ preferSession: true });
-      const etsyClient = new EtsyClient({
-        keystring: process.env.REACT_APP_ETSY_API_KEY,
-        sharedSecret: process.env.REACT_APP_ETSY_SHARED_SECRET,
-        accessToken: tokens.access_token,
-        refreshToken: tokens.refresh_token,
-        expiresAt: tokens.expires_at,
-        // Save every refreshed token set before the client uses it
-        refreshSaveAsync: (accessToken, refreshToken, expiresAt) =>
-          storage.save({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-            expires_at: expiresAt,
-            token_type: 'Bearer',
-            scope: tokens.scope
-          }),
-        refreshClearAsync: () => storage.clear(),
-        rateLimiting: { enabled: true },
-        caching: { enabled: true, ttl: 300 }
-      });
-      
-      setClient(etsyClient);
-    }
-  }, [tokens]);
+    fetch('/dashboard', { credentials: 'include' })
+      .then((res) => {
+        if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+        return res.json();
+      })
+      .then(setData)
+      .catch(setError);
+  }, []);
 
-  return client;
+  return { data, error };
 }
 ```
 
