@@ -307,10 +307,11 @@ if (!fs.existsSync(tokenDir)) {
 const storage = new FileTokenStorage(path.join(tokenDir, 'tokens.json'));
 ```
 
-Creating a `FileTokenStorage` does not touch the disk, so a bad path or missing permission shows up only when tokens are saved:
+Creating a `FileTokenStorage` does not touch the disk, so a bad path or missing permission shows up only when tokens are read or written:
 
-- **After the OAuth flow**, `await storage.save(tokens)` rejects. Fix the storage before you create the client.
-- **When the client refreshes**, it saves the new tokens through `refreshSaveAsync` (see `createClientFromStorage` in the [authentication guide](../guides/authentication.md#token-storage-options)). If that save fails, the call throws `EtsyAuthError` with code `TOKEN_SAVE_FAILED`, and `error.cause` is the storage error. The client keeps the new tokens in memory and retries the save on the next refresh, so fix the storage before the process exits.
+- **Loading**: `storage.load()` returns `null` when it can't read or parse the file, and doesn't say why. So `createClientFromStorage` (see the [authentication guide](../guides/authentication.md#token-storage-options)) reports `No saved tokens` even when the file exists but can't be read. If you expect saved tokens, check that the file is there and that the process can read it.
+- **After the OAuth flow**: `await storage.save(tokens)` rejects. Fix the storage before you create the client.
+- **When the client refreshes**: it saves the new tokens through `refreshSaveAsync`. If that save fails, the call throws `EtsyAuthError` with code `TOKEN_SAVE_FAILED`. The client keeps the new tokens in memory only, and fixing the storage doesn't save them by itself. After fixing it, and before the process exits, call `await client.refreshToken()`: it retries the save without asking Etsy for new tokens.
 
 ```typescript
 import { EtsyAuthError } from '@profplum700/etsy-v3-api-client';
@@ -319,7 +320,10 @@ try {
   await client.getShop();
 } catch (error) {
   if (error instanceof EtsyAuthError && error.code === 'TOKEN_SAVE_FAILED') {
-    console.error('Could not save refreshed tokens:', error.cause);
+    // Log the code, not error.cause: a storage error can include the tokens
+    console.error('Could not save refreshed tokens:', error.code);
+    // ...fix the storage, then retry the save:
+    await client.refreshToken();
   }
   throw error;
 }

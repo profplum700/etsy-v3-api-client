@@ -870,23 +870,40 @@ This example demonstrates:
 ```typescript
 import { useState, useEffect } from 'react';
 
+interface Dashboard {
+  shop: string;
+  activeListings: number;
+  listings: { listing_id: number; title: string }[];
+}
+
 // Calls a route on your own server, which uses EtsyClient there
 function useEtsyDashboard() {
-  const [data, setData] = useState(null);
-  const [error, setError] = useState(null);
+  const [data, setData] = useState<Dashboard | null>(null);
+  const [needsAuth, setNeedsAuth] = useState(false);
+  const [error, setError] = useState<unknown>(null);
 
   useEffect(() => {
-    fetch('/dashboard', { credentials: 'include' })
-      .then((res) => {
+    // The server redirects to /auth/etsy when the shop isn't connected. fetch
+    // can't follow that into Etsy's login page, so stop at the redirect and
+    // let the page navigate there instead.
+    fetch('/dashboard', { credentials: 'include', redirect: 'manual' })
+      .then(async (res) => {
+        if (res.type === 'opaqueredirect') {
+          setNeedsAuth(true);
+          return;
+        }
         if (!res.ok) throw new Error(`Request failed: ${res.status}`);
-        return res.json();
+        setData((await res.json()) as Dashboard);
       })
-      .then(setData)
       .catch(setError);
   }, []);
 
-  return { data, error };
+  return { data, needsAuth, error };
 }
+
+// In a component:
+//   const { data, needsAuth } = useEtsyDashboard();
+//   if (needsAuth) window.location.assign('/auth/etsy'); // or render a link
 ```
 
 ## 📚 Documentation

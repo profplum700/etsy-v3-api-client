@@ -97,6 +97,10 @@ The library supports multiple storage backends. `EtsyClient` takes a single conf
 
 The examples below use `createClientFromStorage`, a helper defined in the authentication guide's [Token Storage Options](./authentication.md#token-storage-options) section. It works with any `TokenStorage`.
 
+On the first run the storage is empty, and `createClientFromStorage` throws `No saved tokens`. Save the tokens from the OAuth flow to the same storage once, with `await storage.save(tokens)`, as the authentication guide's [complete example](./authentication.md#complete-authentication-example) does in its callback. Later starts load them from there.
+
+Token files hold live credentials, so keep them out of Git: add your token file's path (for example `tokens.json` or `tokens.enc`) to your project's `.gitignore`.
+
 ### File Storage (Default)
 
 ```typescript
