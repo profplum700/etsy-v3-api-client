@@ -89,61 +89,13 @@ console.log('Recent orders:', receipts.results.length);
 
 ## Complete Example
 
-Here's a complete example with Express:
-
-```typescript
-import express from 'express';
-import { EtsyClient, FileTokenStorage } from '@profplum700/etsy-v3-api-client';
-
-const app = express();
-
-// Initialize client with file storage for tokens
-const storage = new FileTokenStorage('./tokens.json');
-const client = new EtsyClient(
-  {
-    apiKey: process.env.ETSY_API_KEY!,
-    redirectUri: 'http://localhost:3000/callback',
-    scopes: ['listings_r', 'shops_r', 'transactions_r']
-  },
-  storage
-);
-
-// Step 1: Redirect to Etsy for authorization
-app.get('/auth', async (req, res) => {
-  const authUrl = await client.getAuthorizationUrl();
-  res.redirect(authUrl);
-});
-
-// Step 2: Handle the callback from Etsy
-app.get('/callback', async (req, res) => {
-  try {
-    const code = req.query.code as string;
-    await client.exchangeAuthorizationCode(code);
-    res.send('Authentication successful! You can now use the API.');
-  } catch (error) {
-    res.status(500).send('Authentication failed: ' + error.message);
-  }
-});
-
-// Step 3: Use the API
-app.get('/shop', async (req, res) => {
-  try {
-    const shop = await client.getShopByOwnerUserId();
-    res.json(shop);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.listen(3000, () => {
-  console.log('Server running on http://localhost:3000');
-  console.log('Visit http://localhost:3000/auth to start authentication');
-});
-```
+The authentication guide's [complete authentication example](./authentication.md#complete-authentication-example) is a full Express app: it runs the OAuth flow with `AuthHelper`, saves the tokens to a file, keeps them saved as the client refreshes them, and picks them up again after a restart.
 
 ## Token Storage
 
-The library supports multiple storage backends:
+The library supports multiple storage backends. `EtsyClient` takes a single config object and does not accept a storage object, so you connect a storage through the config: load the saved tokens when you create the client, and save every refreshed set through `refreshSaveAsync`. Etsy invalidates the old refresh token on each refresh, so a refresh that is never saved locks the app out on the next start.
+
+The examples below use `createClientFromStorage`, a helper defined in the authentication guide's [Token Storage Options](./authentication.md#token-storage-options) section. It works with any `TokenStorage`.
 
 ### File Storage (Default)
 
@@ -151,16 +103,19 @@ The library supports multiple storage backends:
 import { FileTokenStorage } from '@profplum700/etsy-v3-api-client';
 
 const storage = new FileTokenStorage('./tokens.json');
-const client = new EtsyClient(config, storage);
+const client = await createClientFromStorage(storage);
 ```
 
 ### Memory Storage
+
+Memory storage loses the tokens when the process exits, so use it only for tests:
 
 ```typescript
 import { MemoryTokenStorage } from '@profplum700/etsy-v3-api-client';
 
 const storage = new MemoryTokenStorage();
-const client = new EtsyClient(config, storage);
+await storage.save(tokens); // tokens from AuthHelper.getAccessToken()
+const client = await createClientFromStorage(storage);
 ```
 
 ### Encrypted Storage
@@ -172,9 +127,9 @@ import { EncryptedFileTokenStorage } from '@profplum700/etsy-v3-api-client';
 
 const storage = new EncryptedFileTokenStorage(
   './tokens.enc',
-  process.env.ENCRYPTION_KEY! // 32-byte encryption key
+  process.env.ENCRYPTION_KEY! // 32-byte key as 64 hex characters
 );
-const client = new EtsyClient(config, storage);
+const client = await createClientFromStorage(storage);
 ```
 
 ### Custom Storage

@@ -304,18 +304,28 @@ if (!fs.existsSync(tokenDir)) {
   fs.mkdirSync(tokenDir, { recursive: true });
 }
 
-const tokenPath = path.join(tokenDir, 'tokens.json');
+const storage = new FileTokenStorage(path.join(tokenDir, 'tokens.json'));
+```
+
+Creating a `FileTokenStorage` does not touch the disk, so a bad path or missing permission shows up only when tokens are saved:
+
+- **After the OAuth flow**, `await storage.save(tokens)` rejects. Fix the storage before you create the client.
+- **When the client refreshes**, it saves the new tokens through `refreshSaveAsync` (see `createClientFromStorage` in the [authentication guide](../guides/authentication.md#token-storage-options)). If that save fails, the call throws `EtsyAuthError` with code `TOKEN_SAVE_FAILED`, and `error.cause` is the storage error. The client keeps the new tokens in memory and retries the save on the next refresh, so fix the storage before the process exits.
+
+```typescript
+import { EtsyAuthError } from '@profplum700/etsy-v3-api-client';
 
 try {
-  const storage = new FileTokenStorage(tokenPath);
-  const client = new EtsyClient(config, storage);
+  await client.getShop();
 } catch (error) {
-  console.error('Storage initialization failed:', error);
-  // Fall back to memory storage
-  const storage = new MemoryTokenStorage();
-  const client = new EtsyClient(config, storage);
+  if (error instanceof EtsyAuthError && error.code === 'TOKEN_SAVE_FAILED') {
+    console.error('Could not save refreshed tokens:', error.cause);
+  }
+  throw error;
 }
 ```
+
+Don't fall back to `MemoryTokenStorage`: Etsy invalidates the old refresh token on each refresh, so tokens held only in memory are lost when the process exits, and the user has to authorise the app again.
 
 ### "Refresh token expired"
 

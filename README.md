@@ -283,10 +283,44 @@ const fileStorage = new FileTokenStorage('./tokens.json');
 
 // In-memory storage (not persistent)
 const memoryStorage = new MemoryTokenStorage();
-
-// Use with client
-const client = new EtsyClient(config, storage);
 ```
+
+### Using Storage with the Client
+
+`EtsyClient` takes a single config object and does not accept a storage object. To keep tokens across restarts, load the saved set from your storage when you create the client, and save every refreshed set through `refreshSaveAsync`. The client waits for that save before it uses the new access token. Etsy invalidates the old refresh token on each refresh, so a refresh that is never saved locks the app out on the next start.
+
+```typescript
+import { EtsyClient, TokenStorage } from '@profplum700/etsy-v3-api-client';
+
+async function createClientFromStorage(storage: TokenStorage): Promise<EtsyClient> {
+  // Load the tokens saved after the user authorised the app
+  const saved = await storage.load();
+  if (!saved) throw new Error('No saved tokens: authorise the app first');
+
+  return new EtsyClient({
+    keystring: process.env.ETSY_API_KEY!,
+    sharedSecret: process.env.ETSY_SHARED_SECRET!,
+    accessToken: saved.access_token,
+    refreshToken: saved.refresh_token,
+    expiresAt: saved.expires_at,
+    // Save every refreshed token set before the client uses it
+    refreshSaveAsync: (accessToken, refreshToken, expiresAt) =>
+      storage.save({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+        expires_at: expiresAt,
+        token_type: 'Bearer',
+        scope: saved.scope
+      }),
+    // Delete the saved tokens when client.clearTokens() is called
+    refreshClearAsync: () => storage.clear()
+  });
+}
+
+const client = await createClientFromStorage(createDefaultTokenStorage());
+```
+
+The [authentication guide](docs/guides/authentication.md#token-storage-options) has more storage examples.
 
 ### Custom Storage
 
@@ -612,12 +646,25 @@ async function authenticateAndFetchData() {
   await authHelper.setAuthorizationCode(code, state);
   const tokens = await authHelper.getAccessToken();
 
-  // Step 5: Create client with storage
+  // Step 5: Save the tokens, then create a client that saves every refresh
   const storage = createDefaultTokenStorage();
+  await storage.save(tokens);
   const client = new EtsyClient({
     keystring: process.env.ETSY_API_KEY!,
-    ...tokens
-  }, storage);
+    sharedSecret: process.env.ETSY_SHARED_SECRET!,
+    accessToken: tokens.access_token,
+    refreshToken: tokens.refresh_token,
+    expiresAt: tokens.expires_at,
+    refreshSaveAsync: (accessToken, refreshToken, expiresAt) =>
+      storage.save({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+        expires_at: expiresAt,
+        token_type: 'Bearer',
+        scope: tokens.scope
+      }),
+    refreshClearAsync: () => storage.clear()
+  });
 
   // Step 6: Use the API
   const user = await client.getUser();
@@ -830,10 +877,23 @@ function useEtsyClient(tokens) {
       const storage = createDefaultTokenStorage({ preferSession: true });
       const etsyClient = new EtsyClient({
         keystring: process.env.REACT_APP_ETSY_API_KEY,
-        ...tokens,
+        sharedSecret: process.env.REACT_APP_ETSY_SHARED_SECRET,
+        accessToken: tokens.access_token,
+        refreshToken: tokens.refresh_token,
+        expiresAt: tokens.expires_at,
+        // Save every refreshed token set before the client uses it
+        refreshSaveAsync: (accessToken, refreshToken, expiresAt) =>
+          storage.save({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+            expires_at: expiresAt,
+            token_type: 'Bearer',
+            scope: tokens.scope
+          }),
+        refreshClearAsync: () => storage.clear(),
         rateLimiting: { enabled: true },
         caching: { enabled: true, ttl: 300 }
-      }, storage);
+      });
       
       setClient(etsyClient);
     }
