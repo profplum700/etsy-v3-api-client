@@ -98,7 +98,7 @@ The authentication guide's [complete authentication example](./authentication.md
 
 The library supports multiple storage backends. `EtsyClient` takes a single config object and does not accept a storage object, so you connect a storage through the config: load the saved tokens when you create the client, and save every refreshed set through `refreshSaveAsync`. Etsy invalidates the old refresh token on each refresh, so a refresh that is never saved locks the app out on the next start.
 
-The examples below use `createClientFromStorage`, a helper defined in the authentication guide's [Token Storage Options](./authentication.md#token-storage-options) section. It works with any `TokenStorage`.
+The examples below use `createClientFromStorage`, a helper defined in the authentication guide's [Token Storage Options](./authentication.md#token-storage-options) section. Copy the helper and its imports into the file with your storage example. It works with any `TokenStorage`.
 
 On the first run the storage is empty, and `createClientFromStorage` throws `No saved tokens`. Save the tokens from the OAuth flow to the same storage once, with `await storage.save(tokens)`, as the authentication guide's [complete example](./authentication.md#complete-authentication-example) does in its callback. Later starts load them from there.
 
