@@ -25,6 +25,8 @@ Thumbs.db
 
 # Authentication tokens
 etsy-tokens.json
+tokens.json
+tokens.enc
 
 # Logs
 *.log

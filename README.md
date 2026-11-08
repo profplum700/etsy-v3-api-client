@@ -283,10 +283,44 @@ const fileStorage = new FileTokenStorage('./tokens.json');
 
 // In-memory storage (not persistent)
 const memoryStorage = new MemoryTokenStorage();
-
-// Use with client
-const client = new EtsyClient(config, storage);
 ```
+
+### Using Storage with the Client
+
+`EtsyClient` takes a single config object and does not accept a storage object. To keep tokens across restarts, load the saved set from your storage when you create the client, and save every refreshed set through `refreshSaveAsync`. The client waits for that save before it uses the new access token. Etsy invalidates the old refresh token on each refresh, so a refresh that is never saved locks the app out on the next start.
+
+```typescript
+import { EtsyClient, TokenStorage, createDefaultTokenStorage } from '@profplum700/etsy-v3-api-client';
+
+async function createClientFromStorage(storage: TokenStorage): Promise<EtsyClient> {
+  // Load the tokens saved after the user authorised the app
+  const saved = await storage.load();
+  if (!saved) throw new Error('No saved tokens: authorise the app first');
+
+  return new EtsyClient({
+    keystring: process.env.ETSY_API_KEY!,
+    sharedSecret: process.env.ETSY_SHARED_SECRET!,
+    accessToken: saved.access_token,
+    refreshToken: saved.refresh_token,
+    expiresAt: saved.expires_at,
+    // Save every refreshed token set before the client uses it
+    refreshSaveAsync: (accessToken, refreshToken, expiresAt) =>
+      storage.save({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+        expires_at: expiresAt,
+        token_type: 'Bearer',
+        scope: saved.scope
+      }),
+    // Delete the saved tokens when client.clearTokens() is called
+    refreshClearAsync: () => storage.clear()
+  });
+}
+
+const client = await createClientFromStorage(createDefaultTokenStorage());
+```
+
+The [authentication guide](docs/guides/authentication.md#token-storage-options) has more storage examples.
 
 ### Custom Storage
 
@@ -612,12 +646,25 @@ async function authenticateAndFetchData() {
   await authHelper.setAuthorizationCode(code, state);
   const tokens = await authHelper.getAccessToken();
 
-  // Step 5: Create client with storage
+  // Step 5: Save the tokens, then create a client that saves every refresh
   const storage = createDefaultTokenStorage();
+  await storage.save(tokens);
   const client = new EtsyClient({
     keystring: process.env.ETSY_API_KEY!,
-    ...tokens
-  }, storage);
+    sharedSecret: process.env.ETSY_SHARED_SECRET!,
+    accessToken: tokens.access_token,
+    refreshToken: tokens.refresh_token,
+    expiresAt: tokens.expires_at,
+    refreshSaveAsync: (accessToken, refreshToken, expiresAt) =>
+      storage.save({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+        expires_at: expiresAt,
+        token_type: 'Bearer',
+        scope: tokens.scope
+      }),
+    refreshClearAsync: () => storage.clear()
+  });
 
   // Step 6: Use the API
   const user = await client.getUser();
@@ -818,29 +865,45 @@ This example demonstrates:
 
 ### React Hook Example
 
+`EtsyClient` sends your shared secret with every request, and anything in a React bundle (including `REACT_APP_*` variables) is public. So keep the client on your server, behind your app's own authentication, and have React call your own routes. The [authentication guide's complete example](docs/guides/authentication.md#complete-authentication-example) shows such a server; its `/dashboard` route returns the shop and listings.
+
 ```typescript
 import { useState, useEffect } from 'react';
-import { EtsyClient, createDefaultTokenStorage } from '@profplum700/etsy-v3-api-client';
 
-function useEtsyClient(tokens) {
-  const [client, setClient] = useState(null);
+interface Dashboard {
+  shop: string;
+  activeListings: number;
+  listings: { listing_id: number; title: string }[];
+}
+
+// Calls a route on your own server, which uses EtsyClient there
+function useEtsyDashboard() {
+  const [data, setData] = useState<Dashboard | null>(null);
+  const [needsAuth, setNeedsAuth] = useState(false);
+  const [error, setError] = useState<unknown>(null);
 
   useEffect(() => {
-    if (tokens) {
-      const storage = createDefaultTokenStorage({ preferSession: true });
-      const etsyClient = new EtsyClient({
-        keystring: process.env.REACT_APP_ETSY_API_KEY,
-        ...tokens,
-        rateLimiting: { enabled: true },
-        caching: { enabled: true, ttl: 300 }
-      }, storage);
-      
-      setClient(etsyClient);
-    }
-  }, [tokens]);
+    // The server redirects to /auth/etsy when the shop isn't connected. fetch
+    // can't follow that into Etsy's login page, so stop at the redirect and
+    // let the page navigate there instead.
+    fetch('/dashboard', { credentials: 'include', redirect: 'manual' })
+      .then(async (res) => {
+        if (res.type === 'opaqueredirect') {
+          setNeedsAuth(true);
+          return;
+        }
+        if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+        setData((await res.json()) as Dashboard);
+      })
+      .catch(setError);
+  }, []);
 
-  return client;
+  return { data, needsAuth, error };
 }
+
+// In a component:
+//   const { data, needsAuth } = useEtsyDashboard();
+//   if (needsAuth) window.location.assign('/auth/etsy'); // or render a link
 ```
 
 ## 📚 Documentation

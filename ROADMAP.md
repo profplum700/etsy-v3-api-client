@@ -649,7 +649,10 @@ const storage = new EncryptedFileTokenStorage(
   process.env.ENCRYPTION_KEY // 32-byte key from env
 );
 
-const client = new EtsyClient(config, storage);
+// EtsyClient takes no storage argument: load the tokens from storage and save
+// refreshes through refreshSaveAsync (createClientFromStorage in
+// docs/guides/authentication.md, "Token Storage Options")
+const client = await createClientFromStorage(storage);
 ```
 
 **Benefits**:
