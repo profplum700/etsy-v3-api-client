@@ -12,16 +12,33 @@ npm install @profplum700/etsy-react @profplum700/etsy-v3-api-client
 
 ## Quick Start
 
+> **Trusted environments only.** These hooks call `EtsyClient` methods in the browser. `EtsyClient` requires your Etsy app's shared secret and sends it with every API request, so anyone who can load your app can read the secret from its JavaScript. Use the hooks only where everyone who can load the app may hold the secret, such as an internal tool for your own team. In a public web app, call Etsy from your server instead (see [Browser Usage](https://github.com/profplum700/etsy-v3-api-client#browser-usage)). A server-proxy mode for these hooks is tracked in [#107](https://github.com/profplum700/etsy-v3-api-client/issues/107).
+
+Create the client once. The tokens come from your OAuth flow (see the [authentication guide](https://github.com/profplum700/etsy-v3-api-client/blob/master/docs/guides/authentication.md)):
+
+```tsx
+// etsy-client.ts
+import { EtsyClient } from '@profplum700/etsy-v3-api-client';
+import { tokens, saveTokens } from './token-store'; // your own token storage
+
+export const client = new EtsyClient({
+  keystring: process.env.ETSY_API_KEY!,
+  sharedSecret: process.env.ETSY_SHARED_SECRET!,
+  accessToken: tokens.access_token,
+  refreshToken: tokens.refresh_token,
+  expiresAt: tokens.expires_at,
+  // Etsy invalidates the old refresh token on each refresh, so save every
+  // new set: (accessToken, refreshToken, expiresAt) => Promise<void>
+  refreshSaveAsync: saveTokens,
+});
+```
+
+Then wrap your app in `EtsyProvider`:
+
 ```tsx
 import React from 'react';
 import { EtsyProvider, useShop, useListings, useUpdateListing } from '@profplum700/etsy-react';
-import { EtsyClient } from '@profplum700/etsy-v3-api-client';
-
-// Initialize client
-const client = new EtsyClient({
-  apiKey: process.env.ETSY_API_KEY,
-  // ... other config
-});
+import { client } from './etsy-client';
 
 function App() {
   return (
