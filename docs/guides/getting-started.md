@@ -13,8 +13,10 @@ npm install @profplum700/etsy-v3-api-client
 Before you begin, you'll need:
 
 1. An Etsy developer account
-2. An Etsy app with OAuth credentials
-3. Node.js 18 or higher
+2. An Etsy app, with its keystring and shared secret
+3. Node.js 24 or higher
+
+Every API call sends your keystring and shared secret together, so make API calls from a server. Don't put the shared secret in a public web page (see [Browser Usage](../../README.md#browser-usage)).
 
 ## Quick Start
 
@@ -22,69 +24,70 @@ Before you begin, you'll need:
 
 1. Go to [Etsy Developer Portal](https://www.etsy.com/developers)
 2. Create a new app or use an existing one
-3. Note your `client_id` (API Key)
+3. On the Your Apps page, note the app's **keystring** and **shared secret**. Keep them in environment variables, for example `ETSY_API_KEY` and `ETSY_SHARED_SECRET`
 4. Configure your redirect URI (e.g., `http://localhost:3000/callback`)
 
-### 2. Basic Setup
+### 2. Authorise the App
+
+Authentication uses two classes. `AuthHelper` runs the OAuth 2.0 flow with PKCE: it builds the URL that sends the user to Etsy, and exchanges the code Etsy sends back for tokens. `EtsyClient` then calls the API with those tokens.
+
+```typescript
+import { AuthHelper } from '@profplum700/etsy-v3-api-client';
+
+const auth = new AuthHelper({
+  keystring: process.env.ETSY_API_KEY!,
+  redirectUri: 'http://localhost:3000/callback',
+  scopes: ['listings_r', 'shops_r', 'transactions_r']
+});
+
+// Step 1: send the user to Etsy to approve the app
+const authUrl = await auth.getAuthUrl();
+
+// Step 2: Etsy redirects to your redirect URI with `code` and `state` in the
+// query string. Use the same AuthHelper: it holds the PKCE code verifier and
+// rejects a state that doesn't match.
+await auth.setAuthorizationCode(code, state);
+const tokens = await auth.getAccessToken();
+```
+
+Keep the tokens: the access token lasts an hour, and the refresh token lets the client get new ones. The [authentication guide](./authentication.md) covers the full flow in a web server, and how to save the tokens.
+
+### 3. Create the Client
 
 ```typescript
 import { EtsyClient } from '@profplum700/etsy-v3-api-client';
 
 const client = new EtsyClient({
-  apiKey: process.env.ETSY_API_KEY!,
-  redirectUri: 'http://localhost:3000/callback',
-  scopes: [
-    'listings_r',
-    'listings_w',
-    'shops_r',
-    'transactions_r'
-  ]
+  keystring: process.env.ETSY_API_KEY!,
+  sharedSecret: process.env.ETSY_SHARED_SECRET!,
+  accessToken: tokens.access_token,
+  refreshToken: tokens.refresh_token,
+  expiresAt: tokens.expires_at
 });
 ```
 
-### 3. Authentication Flow
-
-The library uses OAuth 2.0 with PKCE for authentication.
-
-```typescript
-// Step 1: Get the authorization URL
-const authUrl = await client.getAuthorizationUrl();
-console.log('Visit this URL to authorize:', authUrl);
-
-// Step 2: After user authorizes, exchange the code for tokens
-// (The authorization code is in the redirect URI query params)
-const code = 'authorization_code_from_redirect';
-await client.exchangeAuthorizationCode(code);
-
-// Step 3: You're now authenticated! Tokens are automatically stored
-const shop = await client.getShopByOwnerUserId();
-console.log('Shop:', shop);
-```
+The client refreshes the access token when it expires. Etsy invalidates the old refresh token on each refresh, so to keep working across restarts, save every refreshed set (see [Token Storage](#token-storage)).
 
 ### 4. Making API Calls
 
-Once authenticated, you can make API calls:
-
 ```typescript
-// Get your shop details
-const shop = await client.getShopByOwnerUserId();
+// The authorised user's shop
+const shop = await client.getShop();
 console.log('Shop name:', shop.shop_name);
 
-// Get active listings
+// Active listings
 const listings = await client.getListingsByShop(shop.shop_id.toString(), {
   state: 'active',
   limit: 25
 });
+console.log('Active listings:', listings.length);
 
-console.log('Active listings:', listings.results.length);
-
-// Get recent orders
+// Recent paid orders
 const receipts = await client.getShopReceipts(shop.shop_id.toString(), {
   was_paid: true,
   limit: 10
 });
-
-console.log('Recent orders:', receipts.results.length);
+console.log('Recent orders:', receipts.length);
 ```
 
 ## Complete Example
@@ -95,7 +98,7 @@ The authentication guide's [complete authentication example](./authentication.md
 
 The library supports multiple storage backends. `EtsyClient` takes a single config object and does not accept a storage object, so you connect a storage through the config: load the saved tokens when you create the client, and save every refreshed set through `refreshSaveAsync`. Etsy invalidates the old refresh token on each refresh, so a refresh that is never saved locks the app out on the next start.
 
-The examples below use `createClientFromStorage`, a helper defined in the authentication guide's [Token Storage Options](./authentication.md#token-storage-options) section. It works with any `TokenStorage`.
+The examples below use `createClientFromStorage`, a helper defined in the authentication guide's [Token Storage Options](./authentication.md#token-storage-options) section. Copy the helper and its imports into the file with your storage example. It works with any `TokenStorage`.
 
 On the first run the storage is empty, and `createClientFromStorage` throws `No saved tokens`. Save the tokens from the OAuth flow to the same storage once, with `await storage.save(tokens)`, as the authentication guide's [complete example](./authentication.md#complete-authentication-example) does in its callback. Later starts load them from there.
 
@@ -161,70 +164,106 @@ class DatabaseTokenStorage implements TokenStorage {
 
 ## Configuration Options
 
+The main `EtsyClientConfig` fields (see `src/types.ts` for every field):
+
 ```typescript
 interface EtsyClientConfig {
   // Required
-  apiKey: string;              // Your Etsy API key
-  redirectUri: string;         // OAuth redirect URI
-  scopes: string[];           // OAuth scopes
+  keystring: string;        // Your app's keystring
+  sharedSecret: string;     // Your app's shared secret
+  accessToken: string;      // From AuthHelper.getAccessToken()
+  refreshToken: string;
+  expiresAt: Date;
+
+  // Saving refreshed tokens (see Token Storage)
+  refreshSaveAsync?: (accessToken: string, refreshToken: string, expiresAt: Date) => void | Promise<void>;
+  // Required with refreshSaveAsync: without it client.clearTokens() throws
+  // TOKEN_CLEAR_CALLBACK_REQUIRED and the saved tokens stay in storage
+  refreshClearAsync?: () => Promise<void>;
+  tokenRefreshTimeoutMs?: number;           // Token refresh deadline (default: 30000)
 
   // Optional
-  baseUrl?: string;           // API base URL (default: https://openapi.etsy.com/v3)
-  rateLimit?: {
-    maxRequests: number;      // Max requests per window (default: 10)
-    windowMs: number;         // Time window in ms (default: 1000)
+  baseUrl?: string;         // Default: https://api.etsy.com/v3/application
+  rateLimiting?: {
+    enabled: boolean;               // On unless set to false
+    minRequestInterval?: number;    // ms between requests (default: 200); sets the pace
+    maxRequestsPerDay?: number;     // Default: 5000
+    maxRetries?: number;            // Retries after a 429 (default: 3)
+    // ...and backoff, warning threshold and onApproachingLimit settings
   };
-  cache?: {
-    enabled: boolean;         // Enable caching (default: false)
-    ttl: number;             // Cache TTL in ms (default: 300000)
+  caching?: {
+    enabled: boolean;       // On unless set to false
+    ttl?: number;           // Seconds (default: 3600)
+    storage?: CacheStorage; // Default: in-memory
   };
-  timeout?: number;           // Request timeout in ms (default: 30000)
+  tokenRotation?: TokenRotationConfig;  // Rotate tokens before they expire
 }
 ```
 
 ## Rate Limiting
 
-The library includes built-in rate limiting:
+Rate limiting is on by default. Etsy sets quotas per API key, shown in the Etsy Developer Portal and in response headers. The client follows those headers, and until it has seen them it uses fallback limits of 5 requests per second and 5,000 per day. It spaces requests to stay under them, but each client counts only its own requests: separate clients, or separate processes, don't share counts, so you can still get a 429.
+
+- **Per second:** a read that gets a 429 is retried with backoff, up to `maxRetries`. A write that gets a 429 throws `EtsyRateLimitError` instead, because replaying it could apply the change twice.
+- **Per day:** the client doesn't wait for the daily quota. When it runs out, either by the client's own count or because Etsy's 429 says none are left today, the call throws `EtsyRateLimitError` with `errorType: 'qpd_exhausted'` and a `retryAfter` in seconds, reads included. Catch it and try again later.
+
+To change the fallback limits:
 
 ```typescript
 const client = new EtsyClient({
-  apiKey: process.env.ETSY_API_KEY!,
-  redirectUri: 'http://localhost:3000/callback',
-  scopes: ['listings_r'],
-  rateLimit: {
-    maxRequests: 10,  // Max 10 requests
-    windowMs: 1000    // Per second
+  ...config,
+  rateLimiting: {
+    enabled: true,
+    // Spacing between requests until Etsy's headers say otherwise. This sets the
+    // pace; maxRequestsPerSecond doesn't change it.
+    minRequestInterval: 250, // ms, so at most 4 per second (default 200)
+    maxRequestsPerDay: 5000,
+    onApproachingLimit: (remaining, total, percentageUsed) => {
+      console.warn(`${percentageUsed}% of today's quota used`);
+    }
   }
 });
+
+console.log('Requests left today:', client.getRemainingRequests());
 ```
 
 ## Caching
 
-Enable response caching to improve performance:
+Successful GET responses are cached in memory by default, for an hour. Change the lifetime with `ttl`, in seconds, or turn caching off:
 
 ```typescript
 const client = new EtsyClient({
-  apiKey: process.env.ETSY_API_KEY!,
-  redirectUri: 'http://localhost:3000/callback',
-  scopes: ['listings_r'],
-  cache: {
+  ...config,
+  caching: {
     enabled: true,
-    ttl: 300000  // 5 minutes
+    ttl: 300 // 5 minutes
   }
 });
+
+await client.clearCache(); // drop everything cached so far
 ```
+
+Set `caching: { enabled: false }` when you need every read to reach Etsy.
 
 ## Error Handling
 
 ```typescript
-import { EtsyApiError } from '@profplum700/etsy-v3-api-client';
+import {
+  EtsyApiError,
+  EtsyAuthError,
+  EtsyRateLimitError
+} from '@profplum700/etsy-v3-api-client';
 
 try {
-  const shop = await client.getShop('invalid-shop-id');
+  const shop = await client.getShop('123456');
 } catch (error) {
-  if (error instanceof EtsyApiError) {
-    console.error('API Error:', error.message);
-    console.error('Status Code:', error.statusCode);
+  if (error instanceof EtsyAuthError) {
+    // e.g. REAUTH_REQUIRED: Etsy refused the refresh token; authorise again
+    console.error('Auth error:', error.code, error.message);
+  } else if (error instanceof EtsyRateLimitError) {
+    console.error('Rate limited; retry after (seconds):', error.retryAfter);
+  } else if (error instanceof EtsyApiError) {
+    console.error('API error:', error.statusCode, error.message);
     console.error('Response:', error.response);
   } else {
     console.error('Unexpected error:', error);
@@ -242,28 +281,32 @@ try {
 
 ## Common Patterns
 
-### Check if Authenticated
+### Check the Token
 
 ```typescript
-const isAuthenticated = await client.isAuthenticated();
-if (!isAuthenticated) {
-  console.log('Please authenticate first');
+const tokens = client.getCurrentTokens();
+
+if (!tokens) {
+  // No tokens (for example after clearTokens()): calls throw NO_TOKENS
+  console.log('Not connected; send the user through the OAuth flow again');
+} else if (client.isTokenExpired()) {
+  console.log('The access token has expired; the next call refreshes it');
 }
 ```
 
 ### Refresh Tokens
 
-Tokens are automatically refreshed when they expire. You can also manually refresh:
+Tokens are refreshed automatically when they expire. You can also refresh now:
 
 ```typescript
-await client.refreshAccessToken();
+await client.refreshToken();
 ```
 
-### Get Current User's Shop
+### Disconnect
 
 ```typescript
-const shop = await client.getShopByOwnerUserId();
-console.log('Your shop ID:', shop.shop_id);
+// Clears the tokens, calls refreshClearAsync and empties the cache
+await client.clearTokens();
 ```
 
 ## Troubleshooting
@@ -273,5 +316,5 @@ For common issues and solutions, see the [Troubleshooting Guide](../troubleshoot
 ## Support
 
 - [GitHub Issues](https://github.com/profplum700/etsy-v3-api-client/issues)
-- [API Reference](../api-reference/README.md)
+- [README](../../README.md)
 - [Examples](../../examples/)

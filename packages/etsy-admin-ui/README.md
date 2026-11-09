@@ -21,10 +21,14 @@ npm install @profplum700/etsy-admin-ui @profplum700/etsy-react @profplum700/etsy
 
 ## Quick Start
 
+> **Trusted environments only.** These components use `@profplum700/etsy-react`, whose hooks call `EtsyClient` methods in the browser. `EtsyClient` requires your Etsy app's shared secret and sends it with every API request, so anyone who can load your app can read the secret from its JavaScript. Use the hooks only where everyone who can load the app may hold the secret, such as an internal tool for your own team. In a public web app, call Etsy from your server instead (see [Browser Usage](https://github.com/profplum700/etsy-v3-api-client#browser-usage)). A server-proxy mode for the hooks is tracked in [#107](https://github.com/profplum700/etsy-v3-api-client/issues/107).
+
+`client` below is an `EtsyClient`, created as shown in the [`@profplum700/etsy-react` Quick Start](https://github.com/profplum700/etsy-v3-api-client/tree/master/packages/etsy-react#quick-start).
+
 ```tsx
 import React from 'react';
 import { EtsyProvider } from '@profplum700/etsy-react';
-import { EtsyClient } from '@profplum700/etsy-v3-api-client';
+import { client } from './etsy-client'; // see the etsy-react Quick Start
 import {
   Layout,
   ShopDashboard,
@@ -35,10 +39,6 @@ import {
 
 // Import default styles (optional)
 import '@profplum700/etsy-admin-ui/dist/styles/default.css';
-
-const client = new EtsyClient({
-  apiKey: process.env.ETSY_API_KEY,
-});
 
 function App() {
   return (
@@ -286,7 +286,7 @@ Add dark mode support:
 ```tsx
 import React, { useState } from 'react';
 import { EtsyProvider } from '@profplum700/etsy-react';
-import { EtsyClient } from '@profplum700/etsy-v3-api-client';
+import { client } from './etsy-client'; // see the etsy-react Quick Start
 import {
   Layout,
   Header,
@@ -298,10 +298,6 @@ import {
   InventoryTracker,
 } from '@profplum700/etsy-admin-ui';
 import '@profplum700/etsy-admin-ui/dist/styles/default.css';
-
-const client = new EtsyClient({
-  apiKey: process.env.ETSY_API_KEY,
-});
 
 function AdminApp() {
   const [activeView, setActiveView] = useState('dashboard');
@@ -374,6 +370,8 @@ import type {
 All components are mobile-responsive and adapt to different screen sizes automatically.
 
 ## Browser Support
+
+Trusted environments only, because the components need your shared secret in the browser (see [Quick Start](#quick-start)).
 
 - Modern browsers (Chrome, Firefox, Safari, Edge)
 - Mobile browsers (iOS Safari, Chrome Mobile)

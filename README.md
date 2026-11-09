@@ -4,13 +4,13 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/%3C%2F%3E-TypeScript-%230074c1.svg)](http://www.typescriptlang.org/)
 
-A modern, universal TypeScript/JavaScript client for the Etsy Open API v3 with full OAuth 2.0 PKCE authentication support. Works seamlessly in both browser and Node.js environments.
+A modern, universal TypeScript/JavaScript client for the Etsy Open API v3 with full OAuth 2.0 PKCE authentication support. It ships builds for Node.js, browsers and Web Workers. Every API call sends your app's shared secret, so a public web app makes its Etsy calls from a server (see [Browser Usage](#browser-usage)).
 
 This repository is heavily based on the official Etsy OpenAPI specification (`https://www.etsy.com/openapi/generated/oas/3.0.0.json`), as referenced in Etsy's API documentation (`https://developers.etsy.com/documentation/reference`).
 
 ## 🚀 Features
 
-- **Universal Compatibility**: Works in browsers, Node.js, and Web Workers
+- **Universal Builds**: ESM, CommonJS and browser bundles for Node.js, browsers and Web Workers. API calls need your shared secret, so public web apps make them from a server
 - **OAuth 2.0 PKCE Authentication**: Full support for secure authentication flow
 - **TypeScript First**: Complete type definitions with IntelliSense support
 - **Rate Limiting**: Built-in request throttling to respect API limits
@@ -87,6 +87,8 @@ console.log('User:', user);
 ```
 
 ### Browser Usage
+
+Etsy expects your keystring and shared secret together in the `x-api-key` header of every API call, and `EtsyClient` requires the shared secret. Anything shipped to a browser is public, so in a public web app keep `EtsyClient` on your server and have the page call your own routes (see the [browser example](#browser-example)). Load the browser bundle only in a trusted environment, such as an internal tool that only your team can reach:
 
 ```html
 <script type="module">
@@ -414,7 +416,7 @@ Cache keys are built from the request alone, not from the Etsy account. Do not s
 ## 🌐 Environment Support
 
 ### Browser
-- Modern browsers with ES2020+ support
+- Modern browsers with ES2020+ support, for trusted environments only, because API calls need your shared secret (see [Browser Usage](#browser-usage))
 - Web Workers
 - Service Workers
 
@@ -677,9 +679,9 @@ async function authenticateAndFetchData() {
 }
 ```
 
-### Simple Browser Example
+### Browser Example
 
-Here's a complete working example for browser environments:
+A public web page must not hold your shared secret, so the server runs the OAuth flow and makes the API calls, and the page only talks to your server. The server here is the authentication guide's [complete authentication example](docs/guides/authentication.md#complete-authentication-example): `/auth/etsy` starts the login, Etsy redirects back to `/callback`, and `/dashboard` returns the shop and its first 10 active listings. Its routes sit behind your app's own authentication. That example's callback ends with `res.redirect('/dashboard')`, which returns JSON; when you serve this page, change it to redirect to this page's path instead.
 
 ```html
 <!DOCTYPE html>
@@ -687,181 +689,63 @@ Here's a complete working example for browser environments:
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Etsy API Client - Browser Example</title>
+    <title>Etsy Shop Dashboard</title>
 </head>
 <body>
-    <div id="app">
-        <h1>Etsy API Browser Example</h1>
-        <button id="loginBtn">Login with Etsy</button>
-        <div id="userInfo" style="display: none;">
-            <h2>User Information</h2>
-            <div id="userData"></div>
-            <button id="getShopsBtn">Get My Shops</button>
-            <div id="shopsData"></div>
-        </div>
-    </div>
+    <h1>Etsy Shop Dashboard</h1>
+    <!-- A plain link: the server creates the PKCE verifier and checks the state -->
+    <a id="connect" href="/auth/etsy" hidden>Connect your Etsy shop</a>
+    <section id="shop" hidden>
+        <h2 id="shopName"></h2>
+        <p id="listingCount"></p>
+        <ul id="listings"></ul>
+    </section>
 
     <script type="module">
-        import { AuthHelper, EtsyClient, ETSY_SCOPES } from 'https://unpkg.com/@profplum700/etsy-v3-api-client@1.0.0/dist/browser.esm.js';
+        // The page loads no Etsy library and holds no keys or tokens
+        const res = await fetch('/dashboard', {
+            credentials: 'include',
+            headers: { Accept: 'application/json' },
+            redirect: 'manual' // the server redirects to /auth/etsy when not connected
+        }).catch(() => null); // fetch rejects when the server can't be reached
 
-        // Replace with your actual API key
-        const API_KEY = 'your-api-key-here';
-        const REDIRECT_URI = window.location.origin + window.location.pathname;
+        if (!res) {
+            document.getElementById('listingCount').textContent =
+                "Couldn't reach the server. Reload the page to try again.";
+            document.getElementById('shop').hidden = false;
+        } else if (res.type === 'opaqueredirect') {
+            // Not connected yet: the server redirected to /auth/etsy
+            document.getElementById('connect').hidden = false;
+        } else if (!res.ok) {
+            // A server or Etsy error: show it rather than asking to reconnect
+            document.getElementById('listingCount').textContent =
+                `Couldn't load the shop (HTTP ${res.status})`;
+            document.getElementById('shop').hidden = false;
+        } else {
+            const { shop, activeListings, listings } = await res.json();
+            document.getElementById('shopName').textContent = shop;
+            document.getElementById('listingCount').textContent =
+                `Showing ${activeListings} active listings`;
 
-        let authHelper;
-        let client;
-
-        // Initialize auth helper
-        function initAuth() {
-            authHelper = new AuthHelper({
-                keystring: API_KEY,
-                redirectUri: REDIRECT_URI,
-                scopes: [
-                    ETSY_SCOPES.SHOPS_READ,
-                    ETSY_SCOPES.LISTINGS_READ,
-                    ETSY_SCOPES.PROFILE_READ
-                ]
-            });
-        }
-
-        // Handle login button click
-        document.getElementById('loginBtn').addEventListener('click', async () => {
-            const authUrl = await authHelper.getAuthUrl();
-            window.location.href = authUrl;
-        });
-
-        // Handle OAuth callback
-        async function handleCallback() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const code = urlParams.get('code');
-            const state = urlParams.get('state');
-
-            if (code && state) {
-                try {
-                    const expectedState = await authHelper.getState();
-                    
-                    if (state === expectedState) {
-                        await authHelper.setAuthorizationCode(code, state);
-                        const tokens = await authHelper.getAccessToken();
-                        
-                        // Create client
-                        client = new EtsyClient({
-                            keystring: API_KEY,
-                            accessToken: tokens.access_token,
-                            refreshToken: tokens.refresh_token,
-                            expiresAt: tokens.expires_at,
-                            rateLimiting: { enabled: true },
-                            caching: { enabled: true, ttl: 300 }
-                        });
-
-                        // Store tokens in localStorage for persistence
-                        localStorage.setItem('etsy_tokens', JSON.stringify(tokens));
-                        
-                        // Clear URL parameters
-                        window.history.replaceState({}, document.title, window.location.pathname);
-                        
-                        // Show user info
-                        await showUserInfo();
-                    } else {
-                        console.error('State mismatch');
-                    }
-                } catch (error) {
-                    console.error('Authentication failed:', error);
-                    alert('Authentication failed. Please try again.');
-                }
+            // textContent, not innerHTML: listing titles come from Etsy users
+            const list = document.getElementById('listings');
+            for (const listing of listings) {
+                const item = document.createElement('li');
+                item.textContent = listing.title;
+                list.append(item);
             }
+            document.getElementById('shop').hidden = false;
         }
-
-        // Show user information
-        async function showUserInfo() {
-            try {
-                const user = await client.getUser();
-                
-                document.getElementById('loginBtn').style.display = 'none';
-                document.getElementById('userInfo').style.display = 'block';
-                document.getElementById('userData').innerHTML = `
-                    <p><strong>User ID:</strong> ${user.user_id}</p>
-                    <p><strong>Login Name:</strong> ${user.login_name || 'N/A'}</p>
-                    <p><strong>Primary Email:</strong> ${user.primary_email || 'N/A'}</p>
-                `;
-            } catch (error) {
-                console.error('Failed to get user info:', error);
-                alert('Failed to get user information.');
-            }
-        }
-
-        // Get user shops
-        document.getElementById('getShopsBtn').addEventListener('click', async () => {
-            try {
-                const shops = await client.getUserShops();
-                
-                if (shops.length > 0) {
-                    const shopsHtml = shops.map(shop => `
-                        <div style="border: 1px solid #ccc; padding: 10px; margin: 10px 0;">
-                            <h3>${shop.shop_name}</h3>
-                            <p><strong>Shop ID:</strong> ${shop.shop_id}</p>
-                            <p><strong>Title:</strong> ${shop.title || 'N/A'}</p>
-                            <p><strong>URL:</strong> <a href="${shop.url}" target="_blank">${shop.url}</a></p>
-                        </div>
-                    `).join('');
-                    
-                    document.getElementById('shopsData').innerHTML = `
-                        <h3>Your Shops (${shops.length})</h3>
-                        ${shopsHtml}
-                    `;
-                } else {
-                    document.getElementById('shopsData').innerHTML = '<p>No shops found.</p>';
-                }
-            } catch (error) {
-                console.error('Failed to get shops:', error);
-                alert('Failed to get shop information.');
-            }
-        });
-
-        // Check for existing tokens on page load
-        async function checkExistingAuth() {
-            const storedTokens = localStorage.getItem('etsy_tokens');
-            
-            if (storedTokens) {
-                try {
-                    const tokens = JSON.parse(storedTokens);
-                    
-                    // Check if tokens are still valid
-                    if (new Date(tokens.expires_at) > new Date()) {
-                        client = new EtsyClient({
-                            keystring: API_KEY,
-                            ...tokens,
-                            rateLimiting: { enabled: true },
-                            caching: { enabled: true, ttl: 300 }
-                        });
-                        
-                        await showUserInfo();
-                    } else {
-                        // Tokens expired, clear them
-                        localStorage.removeItem('etsy_tokens');
-                    }
-                } catch (error) {
-                    console.error('Failed to restore session:', error);
-                    localStorage.removeItem('etsy_tokens');
-                }
-            }
-        }
-
-        // Initialize the application
-        initAuth();
-        await handleCallback();
-        await checkExistingAuth();
     </script>
 </body>
 </html>
 ```
 
 This example demonstrates:
-- Complete OAuth 2.0 flow in the browser
-- Token persistence using localStorage
-- Error handling for authentication failures
-- Making API calls to get user and shop information
-- Automatic session restoration on page reload
+- Keeping the shared secret, the tokens and the OAuth flow on the server
+- A page that only calls your own routes
+- Showing a connect link when the shop isn't connected yet
+- Rendering Etsy data with `textContent`, so user-written titles can't inject HTML
 
 ### React Hook Example
 
