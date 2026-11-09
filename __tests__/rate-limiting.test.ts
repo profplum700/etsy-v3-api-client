@@ -986,6 +986,53 @@ describe('EtsyRateLimiter', () => {
     });
   });
 
+  describe('maxRequestsPerSecond pacing', () => {
+    it('derives the request spacing from maxRequestsPerSecond', () => {
+      expect(new EtsyRateLimiter({ maxRequestsPerSecond: 1 }).getConfig().minRequestInterval).toBe(1000);
+      expect(new EtsyRateLimiter({ maxRequestsPerSecond: 3 }).getConfig().minRequestInterval).toBe(334);
+    });
+
+    it('keeps an explicit minRequestInterval when maxRequestsPerSecond is not set', () => {
+      expect(new EtsyRateLimiter({ minRequestInterval: 50 }).getConfig().minRequestInterval).toBe(50);
+    });
+
+    it('uses the stricter of the two caps when both are set', () => {
+      expect(
+        new EtsyRateLimiter({ maxRequestsPerSecond: 2, minRequestInterval: 100 }).getConfig().minRequestInterval
+      ).toBe(500);
+      expect(
+        new EtsyRateLimiter({ maxRequestsPerSecond: 10, minRequestInterval: 300 }).getConfig().minRequestInterval
+      ).toBe(300);
+    });
+
+    it('ignores a non-positive maxRequestsPerSecond', () => {
+      expect(new EtsyRateLimiter({ maxRequestsPerSecond: 0 }).getConfig().minRequestInterval).toBe(200);
+    });
+
+    it('spaces requests at the rate maxRequestsPerSecond sets', async () => {
+      const rateLimiter = new EtsyRateLimiter({ maxRequestsPerSecond: 2 });
+      const startedAt = Date.now();
+      const dispatchTimes: number[] = [];
+      const requests = Array.from({ length: 3 }, async () => {
+        await rateLimiter.waitForRateLimit();
+        dispatchTimes.push(Date.now());
+      });
+
+      await vi.runAllTimersAsync();
+      await Promise.all(requests);
+
+      expect(dispatchTimes).toEqual([0, 500, 1000].map((offset) => startedAt + offset));
+    });
+
+    it("lets Etsy's per-second header override the configured spacing", async () => {
+      const rateLimiter = new EtsyRateLimiter({ maxRequestsPerSecond: 1 });
+      rateLimiter.updateFromHeaders({ 'x-limit-per-second': '10', 'x-remaining-this-second': '9' });
+      expect(rateLimiter.getTimeUntilNextRequest()).toBe(0);
+      await rateLimiter.waitForRateLimit();
+      expect(rateLimiter.getTimeUntilNextRequest()).toBeLessThanOrEqual(100);
+    });
+  });
+
   describe('new config defaults', () => {
     it('should have new config fields with defaults', () => {
       const rateLimiter = new EtsyRateLimiter();
