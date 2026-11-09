@@ -608,6 +608,7 @@ interface EtsyClientConfig {
     maxRequestsPerSecond?: number;      // Requests per second limit
     maxRequestsPerDay?: number;         // Daily request limit  
     minRequestInterval?: number;        // Minimum interval between requests (ms)
+    limiter?: EtsyRateLimiter;          // Share one limiter between clients of one API key; replaces the options above
   };
   
   caching?: {

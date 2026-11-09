@@ -1,4 +1,4 @@
-import { EtsyClient } from '@profplum700/etsy-v3-api-client';
+import { EtsyClient, EtsyRateLimiter } from '@profplum700/etsy-v3-api-client';
 import { cookies } from 'next/headers';
 
 export interface EtsyServerClientConfig {
@@ -11,6 +11,21 @@ export interface EtsyServerClientConfig {
 }
 
 export let serverClientConfig: EtsyServerClientConfig | null = null;
+
+// One rate limiter per API key for this server process. Clients are built per
+// request, so without this each request would start with a fresh local quota.
+// It can't see other processes or serverless instances: Etsy's own limits and
+// 429 responses still apply across them.
+const rateLimiters = new Map<string, EtsyRateLimiter>();
+
+function getSharedRateLimiter(keystring: string): EtsyRateLimiter {
+  let limiter = rateLimiters.get(keystring);
+  if (!limiter) {
+    limiter = new EtsyRateLimiter();
+    rateLimiters.set(keystring, limiter);
+  }
+  return limiter;
+}
 
 /**
  * Configure the Etsy server client
@@ -87,5 +102,6 @@ export async function createEtsyServerClient(config: EtsyServerClientConfig): Pr
     refreshToken: tokens.refreshToken,
     expiresAt: new Date(tokens.expiresAt),
     refreshSave,
+    rateLimiting: { enabled: true, limiter: getSharedRateLimiter(apiKey) },
   });
 }

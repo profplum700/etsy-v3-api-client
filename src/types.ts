@@ -2,6 +2,8 @@
  * Core types for the Etsy API v3 client
  */
 
+import type { EtsyRateLimiter } from './rate-limiting';
+
 // ============================================================================
 // Configuration Types
 // ============================================================================
@@ -66,6 +68,16 @@ export interface EtsyClientConfig {
     qpdWarningThreshold?: number;
     /** Callback fired when daily remaining falls below threshold */
     onApproachingLimit?: (remainingRequests: number, totalLimit: number, percentageUsed: number) => void;
+    /**
+     * An existing rate limiter to use instead of building one from the options
+     * above, which are then ignored. Share one limiter between clients that use
+     * the same API key, such as per-request clients on a server, so their
+     * requests count against one local quota. The limiter's own configuration
+     * applies, and `onApproachingRateLimit()` on any client changes it for all of
+     * them. It only counts requests in this process; Etsy's limits still apply
+     * across processes. Ignored when `enabled` is false.
+     */
+    limiter?: EtsyRateLimiter;
   };
   caching?: {
     enabled: boolean;
