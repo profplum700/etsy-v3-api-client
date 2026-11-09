@@ -80,6 +80,14 @@ describe('EtsyClient request paths', () => {
     ['getShopReceipt', (c: EtsyClient) => c.getShopReceipt('1', TRAVERSAL)],
     ['updateListing', (c: EtsyClient) => c.updateListing('1', TRAVERSAL, { title: 'x' })],
     ['getListingTranslation', (c: EtsyClient) => c.getListingTranslation('1', '2', TRAVERSAL)],
+    ['uploadListingImage', (c: EtsyClient) => c.uploadListingImage('1', TRAVERSAL, new Blob(['x']))],
+    ['uploadListingFile', (c: EtsyClient) => c.uploadListingFile('1', TRAVERSAL, new Blob(['x']), { name: 'f.pdf' })],
+    ['uploadListingVideo', (c: EtsyClient) => c.uploadListingVideo('1', TRAVERSAL, new Blob(['x']), { name: 'v.mp4' })],
+    [
+      'updateListingProperty',
+      (c: EtsyClient) =>
+        c.updateListingProperty({ shopId: '1', listingId: TRAVERSAL, propertyId: 3, valueIds: [1], values: ['a'] }),
+    ],
   ])('%s keeps a traversal ID inside its own path', async (_name, callIt) => {
     await callIt(client()).catch(() => undefined);
 
@@ -113,8 +121,11 @@ describe('EtsyClient request paths', () => {
 describe('src/client.ts', () => {
   it('builds every request path with path``', () => {
     const source = readFileSync(new URL('../src/client.ts', import.meta.url), 'utf8');
-    // A template literal that starts with "/" and is not tagged with path.
+    // A template literal that starts with "/" and is not tagged with path...
     const untagged = source.match(/(?<![\w$`])`\/[^`]*\$\{/g) ?? [];
     expect(untagged).toEqual([]);
+    // ...or one that puts a raw path after the base URL instead of path``.
+    const rawAfterBase = source.match(/`\$\{this\.baseUrl\}\/[^`]*`/g) ?? [];
+    expect(rawAfterBase).toEqual([]);
   });
 });

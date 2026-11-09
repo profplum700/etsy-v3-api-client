@@ -1185,7 +1185,7 @@ export class EtsyClient {
     if (params?.is_watermarked !== undefined) formData.append('is_watermarked', params.is_watermarked.toString());
     if (params?.alt_text) formData.append('alt_text', params.alt_text);
 
-    const url = `${this.baseUrl}/shops/${shopId}/listings/${listingId}/images`;
+    const url = `${this.baseUrl}${path`/shops/${shopId}/listings/${listingId}/images`}`;
     const response = await this.fetchOnceWithRateLimit(url, {
       method: 'POST',
       headers: {
@@ -1803,7 +1803,7 @@ export class EtsyClient {
       body.append('scale_id', scaleId.toString());
     }
 
-    const url = `${this.baseUrl}/shops/${shopId}/listings/${listingId}/properties/${propertyId}`;
+    const url = `${this.baseUrl}${path`/shops/${shopId}/listings/${listingId}/properties/${propertyId}`}`;
     const response = await this.fetchOnceWithRateLimit(url, {
       method: 'PUT',
       headers: {
@@ -2107,7 +2107,7 @@ export class EtsyClient {
     if (params?.rank !== undefined) formData.append('rank', params.rank.toString());
     if (params?.listing_file_id !== undefined) formData.append('listing_file_id', params.listing_file_id.toString());
 
-    const url = `${this.baseUrl}/shops/${shopId}/listings/${listingId}/files`;
+    const url = `${this.baseUrl}${path`/shops/${shopId}/listings/${listingId}/files`}`;
     const response = await this.fetchOnceWithRateLimit(url, {
       method: 'POST',
       headers: {
@@ -2195,7 +2195,7 @@ export class EtsyClient {
     if (params?.name) formData.append('name', params.name);
     if (params?.video_id !== undefined) formData.append('video_id', params.video_id.toString());
 
-    const url = `${this.baseUrl}/shops/${shopId}/listings/${listingId}/videos`;
+    const url = `${this.baseUrl}${path`/shops/${shopId}/listings/${listingId}/videos`}`;
     const response = await this.fetchOnceWithRateLimit(url, {
       method: 'POST',
       headers: {
