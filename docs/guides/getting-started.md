@@ -186,8 +186,8 @@ interface EtsyClientConfig {
   baseUrl?: string;         // Default: https://api.etsy.com/v3/application
   rateLimiting?: {
     enabled: boolean;               // On unless set to false
-    maxRequestsPerSecond?: number;  // Spaces requests ceil(1000 / n) ms apart (default: 5)
-    minRequestInterval?: number;    // ms between requests (default: 200); the longer gap wins
+    maxRequestsPerSecond?: number;  // Spaces request slots ceil(1000 / n) ms apart (default: 5)
+    minRequestInterval?: number;    // ms between requests (200 when neither is set); the longer gap wins
     maxRequestsPerDay?: number;     // Default: 5000
     maxRetries?: number;            // Retries after a 429 (default: 3)
     // ...and backoff, warning threshold and onApproachingLimit settings
@@ -216,7 +216,7 @@ const client = new EtsyClient({
   rateLimiting: {
     enabled: true,
     // Spacing between requests until Etsy's headers say otherwise.
-    maxRequestsPerSecond: 4, // requests at least 250 ms apart (default 5)
+    maxRequestsPerSecond: 4, // reserves request slots at least 250 ms apart (default 5)
     // Or set minRequestInterval in ms; if you set both, the longer gap applies.
     maxRequestsPerDay: 5000,
     onApproachingLimit: (remaining, total, percentageUsed) => {
