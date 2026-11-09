@@ -53,6 +53,29 @@ interface RequiredRateLimitConfig {
   onApproachingLimit?: ApproachingLimitCallback;
 }
 
+/**
+ * Fallback spacing between requests, used until Etsy's headers report a
+ * per-second limit. Honours both caps the caller set: `minRequestInterval`
+ * directly, and `maxRequestsPerSecond` as `ceil(1000 / maxRequestsPerSecond)`.
+ * When both are set, the longer interval (the stricter cap) wins.
+ */
+function resolveMinRequestInterval(overrides: Partial<RateLimitConfig>): number {
+  const fromRate =
+    overrides.maxRequestsPerSecond !== undefined && overrides.maxRequestsPerSecond > 0
+      ? Math.ceil(1000 / overrides.maxRequestsPerSecond)
+      : undefined;
+  // A NaN, infinite or negative interval would turn spacing off, or stall it:
+  // treat it as unset, as a non-positive maxRequestsPerSecond is.
+  const explicit =
+    overrides.minRequestInterval !== undefined &&
+    Number.isFinite(overrides.minRequestInterval) &&
+    overrides.minRequestInterval >= 0
+      ? overrides.minRequestInterval
+      : undefined;
+  if (explicit !== undefined && fromRate !== undefined) return Math.max(explicit, fromRate);
+  return explicit ?? fromRate ?? ETSY_RATE_LIMITS.MIN_REQUEST_INTERVAL;
+}
+
 export class EtsyRateLimiter {
   // Local rolling-window fallback; the server's headers are authoritative.
   private requestTimestamps: number[] = [];
@@ -90,7 +113,6 @@ export class EtsyRateLimiter {
       // Etsy API defaults (see ETSY_RATE_LIMITS)
       maxRequestsPerDay: ETSY_RATE_LIMITS.MAX_REQUESTS_PER_DAY,
       maxRequestsPerSecond: ETSY_RATE_LIMITS.MAX_REQUESTS_PER_SECOND,
-      minRequestInterval: ETSY_RATE_LIMITS.MIN_REQUEST_INTERVAL,
       // Retry/backoff defaults
       maxRetries: 3,
       baseDelayMs: 1000,
@@ -98,7 +120,8 @@ export class EtsyRateLimiter {
       jitter: 0.1,
       qpdWarningThreshold: 80,
       onApproachingLimit: undefined,
-      ...overrides
+      ...overrides,
+      minRequestInterval: resolveMinRequestInterval(overrides)
     };
   }
 

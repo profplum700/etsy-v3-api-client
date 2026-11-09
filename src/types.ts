@@ -556,9 +556,9 @@ export type ApproachingLimitCallback = (
 export interface RateLimitConfig {
   /** Rolling 24-hour request cap (default fallback: 5000). Etsy's actual app quota is available in the Developer Portal and response headers. */
   maxRequestsPerDay: number;
-  /** Per-second request cap (default fallback: 5). Etsy's actual app quota is available in the Developer Portal and response headers. */
+  /** Per-second request cap (default fallback: 5). Sets the spacing between requests to `ceil(1000 / maxRequestsPerSecond)` ms until Etsy's headers report the app's own limit. Etsy's actual app quota is available in the Developer Portal and response headers. */
   maxRequestsPerSecond: number;
-  /** Minimum milliseconds between requests (default: 200, i.e. 1000 / 5 QPS). */
+  /** Minimum milliseconds between requests (default: 200, i.e. 1000 / 5 QPS). When `maxRequestsPerSecond` is also set, the longer of the two intervals applies. */
   minRequestInterval: number;
 
   // Retry behavior

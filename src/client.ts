@@ -225,8 +225,11 @@ export class EtsyClient {
     if (this.rateLimitingEnabled) {
       this.rateLimiter = new EtsyRateLimiter({
         maxRequestsPerDay: config.rateLimiting?.maxRequestsPerDay || ETSY_RATE_LIMITS.MAX_REQUESTS_PER_DAY,
-        maxRequestsPerSecond: config.rateLimiting?.maxRequestsPerSecond || ETSY_RATE_LIMITS.MAX_REQUESTS_PER_SECOND,
-        minRequestInterval: config.rateLimiting?.minRequestInterval ?? ETSY_RATE_LIMITS.MIN_REQUEST_INTERVAL,
+        // Pass only what the caller set: the limiter derives the request spacing
+        // from maxRequestsPerSecond and/or minRequestInterval, and a filled-in
+        // default here would hide the caller's maxRequestsPerSecond.
+        maxRequestsPerSecond: config.rateLimiting?.maxRequestsPerSecond || undefined,
+        minRequestInterval: config.rateLimiting?.minRequestInterval,
         // New retry and callback options
         maxRetries: config.rateLimiting?.maxRetries,
         baseDelayMs: config.rateLimiting?.baseDelayMs,
