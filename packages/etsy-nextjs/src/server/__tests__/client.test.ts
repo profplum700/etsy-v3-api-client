@@ -27,9 +27,10 @@ vi.mock('@profplum700/etsy-v3-api-client', () => ({
     constructed.push(config);
     this.config = config;
   }),
+  EtsyRateLimiter: vi.fn(function () {}),
 }));
 
-import { configureEtsyServerClient, getEtsyServerClient } from '../client';
+import { configureEtsyServerClient, createEtsyServerClient, getEtsyServerClient } from '../client';
 
 function signInAs(user: string): void {
   requestCookies = new Map([
@@ -70,6 +71,27 @@ describe('getEtsyServerClient', () => {
 
     expect(constructed[0]).toMatchObject({ keystring: 'key', sharedSecret: 'secret' });
     expect(constructed[0].expiresAt).toEqual(new Date('2030-01-01T00:00:00.000Z'));
+  });
+
+  it('shares one rate limiter across requests for the same API key', async () => {
+    signInAs('alice');
+    await getEtsyServerClient();
+    signInAs('bob');
+    await getEtsyServerClient();
+
+    const [alice, bob] = constructed.map((config) => config.rateLimiting as { enabled: boolean; limiter: unknown });
+    expect(alice.enabled).toBe(true);
+    expect(alice.limiter).toBeDefined();
+    expect(bob.limiter).toBe(alice.limiter);
+  });
+
+  it('keeps a separate rate limiter for each API key', async () => {
+    signInAs('alice');
+    await createEtsyServerClient({ apiKey: 'key', sharedSecret: 'secret' });
+    await createEtsyServerClient({ apiKey: 'other-key', sharedSecret: 'other-secret' });
+
+    const [first, second] = constructed.map((config) => (config.rateLimiting as { limiter: unknown }).limiter);
+    expect(second).not.toBe(first);
   });
 
   it('throws when the request has no token cookie', async () => {

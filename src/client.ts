@@ -222,7 +222,10 @@ export class EtsyClient {
     this.rateLimitingEnabled = config.rateLimiting?.enabled !== false;
     
     // Set up rate limiting
-    if (this.rateLimitingEnabled) {
+    if (this.rateLimitingEnabled && config.rateLimiting?.limiter) {
+      // A limiter shared with other clients of the same API key.
+      this.rateLimiter = config.rateLimiting.limiter;
+    } else if (this.rateLimitingEnabled) {
       this.rateLimiter = new EtsyRateLimiter({
         maxRequestsPerDay: config.rateLimiting?.maxRequestsPerDay || ETSY_RATE_LIMITS.MAX_REQUESTS_PER_DAY,
         // Pass only what the caller set: the limiter derives the request spacing
@@ -2896,7 +2899,8 @@ export class EtsyClient {
   }
 
   /**
-   * Set callback to be notified when approaching daily rate limit
+   * Set callback to be notified when approaching daily rate limit.
+   * With a shared `rateLimiting.limiter`, this changes it for every client using it.
    * @param callback - Function called when usage exceeds warning threshold
    * @param threshold - Optional percentage threshold (0-100), default 80
    */

@@ -202,7 +202,7 @@ configureEtsyServerClient({
 });
 ```
 
-`getEtsyServerClient()` builds a new client for each call, from the tokens in the current request's cookies, so each user gets their own client. Each client also has its own rate limiter, so the client's local per-second and per-day throttle doesn't count across requests. Etsy's own limits still apply: reads are retried after a `429`, and writes throw `EtsyRateLimitError`. Sharing one limiter across requests is tracked in [#110](https://github.com/profplum700/etsy-v3-api-client/issues/110).
+`getEtsyServerClient()` builds a new client for each call, from the tokens in the current request's cookies, so each user gets their own client. The clients share one rate limiter per API key, so the client's local per-second and per-day throttle counts requests across the whole server process. It can't see other processes or serverless instances, which each keep their own count. Etsy's own limits apply across all of them: reads are retried after a `429`, and writes throw `EtsyRateLimitError`.
 
 ### 2. Use in Server Components
 
