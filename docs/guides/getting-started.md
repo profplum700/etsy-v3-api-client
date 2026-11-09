@@ -186,7 +186,7 @@ interface EtsyClientConfig {
   baseUrl?: string;         // Default: https://api.etsy.com/v3/application
   rateLimiting?: {
     enabled: boolean;               // On unless set to false
-    maxRequestsPerSecond?: number;  // Default: 5
+    minRequestInterval?: number;    // ms between requests (default: 200); sets the pace
     maxRequestsPerDay?: number;     // Default: 5000
     maxRetries?: number;            // Retries after a 429 (default: 3)
     // ...and backoff, warning threshold and onApproachingLimit settings
@@ -202,14 +202,21 @@ interface EtsyClientConfig {
 
 ## Rate Limiting
 
-Rate limiting is on by default. Etsy sets quotas per API key, shown in the Etsy Developer Portal and in response headers. The client follows those headers, and until it has seen them it uses fallback limits of 5 requests per second and 5,000 per day. It queues requests to stay under them, but each client counts only its own requests: separate clients, or separate processes, don't share counts, so you can still get a 429. A read that gets a 429 is retried with backoff, up to `maxRetries`. A write that gets a 429 throws `EtsyRateLimitError` instead, because replaying it could apply the change twice. To change the limits:
+Rate limiting is on by default. Etsy sets quotas per API key, shown in the Etsy Developer Portal and in response headers. The client follows those headers, and until it has seen them it uses fallback limits of 5 requests per second and 5,000 per day. It spaces requests to stay under them, but each client counts only its own requests: separate clients, or separate processes, don't share counts, so you can still get a 429.
+
+- **Per second:** a read that gets a 429 is retried with backoff, up to `maxRetries`. A write that gets a 429 throws `EtsyRateLimitError` instead, because replaying it could apply the change twice.
+- **Per day:** the client doesn't wait for the daily quota. When it runs out, either by the client's own count or because Etsy's 429 says none are left today, the call throws `EtsyRateLimitError` with `errorType: 'qpd_exhausted'` and a `retryAfter` in seconds, reads included. Catch it and try again later.
+
+To change the fallback limits:
 
 ```typescript
 const client = new EtsyClient({
   ...config,
   rateLimiting: {
     enabled: true,
-    maxRequestsPerSecond: 5,
+    // Spacing between requests until Etsy's headers say otherwise. This sets the
+    // pace; maxRequestsPerSecond doesn't change it.
+    minRequestInterval: 250, // ms, so at most 4 per second (default 200)
     maxRequestsPerDay: 5000,
     onApproachingLimit: (remaining, total, percentageUsed) => {
       console.warn(`${percentageUsed}% of today's quota used`);

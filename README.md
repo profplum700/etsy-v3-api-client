@@ -707,9 +707,13 @@ A public web page must not hold your shared secret, so the server runs the OAuth
             credentials: 'include',
             headers: { Accept: 'application/json' },
             redirect: 'manual' // the server redirects to /auth/etsy when not connected
-        });
+        }).catch(() => null); // fetch rejects when the server can't be reached
 
-        if (res.type === 'opaqueredirect') {
+        if (!res) {
+            document.getElementById('listingCount').textContent =
+                "Couldn't reach the server. Reload the page to try again.";
+            document.getElementById('shop').hidden = false;
+        } else if (res.type === 'opaqueredirect') {
             // Not connected yet: the server redirected to /auth/etsy
             document.getElementById('connect').hidden = false;
         } else if (!res.ok) {
