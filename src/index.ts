@@ -31,6 +31,18 @@ export {
 export { EtsyRateLimiter, defaultRateLimiter, ETSY_RATE_LIMITS } from './rate-limiting';
 
 // ============================================================================
+// Server Proxy Exports (keep the shared secret off the browser)
+// ============================================================================
+
+export { ETSY_PROXY_METHODS, createEtsyProxyHandler, createEtsyProxyClient } from './proxy';
+export type {
+  EtsyProxyMethod,
+  EtsyProxyTarget,
+  EtsyProxyHandlerOptions,
+  EtsyProxyClientOptions,
+} from './proxy';
+
+// ============================================================================
 // Request Queue Exports
 // ============================================================================
 

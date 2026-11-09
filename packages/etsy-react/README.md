@@ -12,9 +12,64 @@ npm install @profplum700/etsy-react @profplum700/etsy-v3-api-client
 
 ## Quick Start
 
-> **Trusted environments only.** These hooks call `EtsyClient` methods in the browser. `EtsyClient` requires your Etsy app's shared secret and sends it with every API request, so anyone who can load your app can read the secret from its JavaScript. Use the hooks only where everyone who can load the app may hold the secret, such as an internal tool for your own team. In a public web app, call Etsy from your server instead (see [Browser Usage](https://github.com/profplum700/etsy-v3-api-client#browser-usage)). A server-proxy mode for these hooks is tracked in [#107](https://github.com/profplum700/etsy-v3-api-client/issues/107).
+The hooks need a client. In a public web app, use the proxy client. It sends each call to a route on your server, and that route runs it with `EtsyClient`, so your shared secret and the user's tokens stay on the server:
 
-Create the client once. The tokens come from your OAuth flow (see the [authentication guide](https://github.com/profplum700/etsy-v3-api-client/blob/master/docs/guides/authentication.md)):
+```tsx
+// etsy-client.ts
+import { createEtsyProxyClient } from '@profplum700/etsy-v3-api-client';
+
+export const client = createEtsyProxyClient({ endpoint: '/api/etsy' });
+```
+
+Then add the route on your server:
+
+- **Next.js:** use `createEtsyApiRoute()` from [`@profplum700/etsy-nextjs`](https://github.com/profplum700/etsy-v3-api-client/tree/master/packages/etsy-nextjs#createetsyapirouteconfig). It builds each request's client from the user's token cookies:
+
+  ```typescript
+  // app/api/etsy/route.ts
+  import '@/lib/etsy-server'; // calls configureEtsyServerClient()
+  import { createEtsyApiRoute } from '@profplum700/etsy-nextjs';
+
+  export const { POST } = createEtsyApiRoute();
+  ```
+
+- **Any server that speaks the Fetch API** (Remix, Hono, Bun, Deno, Cloudflare Workers): use `createEtsyProxyHandler()`. Give it a function that builds a client for the user who sent the request:
+
+  ```typescript
+  import { EtsyClient, createEtsyProxyHandler } from '@profplum700/etsy-v3-api-client';
+
+  export const handleEtsy = createEtsyProxyHandler({
+    getClient: async (request) => {
+      const user = await getSessionUser(request);   // your app's authentication
+      if (!user) return null;                       // answers 401, EtsyAuthError code NO_TOKENS
+      const tokens = await loadEtsyTokens(user.id); // your token storage
+      return new EtsyClient({
+        keystring: process.env.ETSY_API_KEY!,
+        sharedSecret: process.env.ETSY_SHARED_SECRET!,
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+        expiresAt: tokens.expiresAt,
+        refreshSaveAsync: (access, refresh, expires) => saveEtsyTokens(user.id, access, refresh, expires),
+        refreshClearAsync: () => clearEtsyTokens(user.id),
+      });
+    },
+  });
+  ```
+
+Build a new client for each request. A client shared between requests would act on one user's Etsy account for everyone.
+
+The route:
+
+- runs only the methods these hooks use;
+- accepts only `POST` from your own origin, so other sites can't make a signed-in user's browser change their shop;
+- never caches responses;
+- returns Etsy errors with their type.
+
+So a hook's `error` is an `EtsyApiError`, an `EtsyAuthError` (check `code`, for example `REAUTH_REQUIRED`) or an `EtsyRateLimitError` (check `retryAfter`), just as with `EtsyClient`.
+
+### Trusted environments: `EtsyClient` in the browser
+
+`EtsyClient` sends your shared secret with every request, so in a browser anyone who can load your app can read the secret from its JavaScript. Pass an `EtsyClient` straight to `EtsyProvider` only where everyone who can load the app may hold the secret, such as an internal tool for your own team. The tokens come from your OAuth flow (see the [authentication guide](https://github.com/profplum700/etsy-v3-api-client/blob/master/docs/guides/authentication.md)):
 
 ```tsx
 // etsy-client.ts
@@ -24,7 +79,7 @@ import { tokens, saveTokens, clearTokens } from './token-store'; // your own tok
 export const client = new EtsyClient({
   // Bundlers only expose prefixed variables to browser code. This uses Vite
   // (import.meta.env.VITE_*); with Create React App use process.env.REACT_APP_*.
-  // Either way the values end up in the bundle: see the warning above.
+  // Either way the values end up in the bundle.
   keystring: import.meta.env.VITE_ETSY_API_KEY,
   sharedSecret: import.meta.env.VITE_ETSY_SHARED_SECRET,
   accessToken: tokens.access_token,
@@ -85,10 +140,18 @@ function ShopDashboard() {
 ### Context Hooks
 
 #### `useEtsyClient()`
-Get the Etsy client instance from context.
+Get the client from the nearest `EtsyProvider`.
 
 ```tsx
 const client = useEtsyClient();
+```
+
+It's typed as `EtsyClient`. A proxy client has only the methods the hooks use, so with one, ask for the narrower type:
+
+```tsx
+import type { EtsyReactClient } from '@profplum700/etsy-react';
+
+const client = useEtsyClient<EtsyReactClient>();
 ```
 
 ### Query Hooks
@@ -290,6 +353,8 @@ import type {
   UseMutationOptions,
   UseMutationResult,
   UsePaginatedQueryResult,
+  EtsyReactClient,       // what EtsyProvider accepts: the methods the hooks call
+  EtsyReactClientMethod, // the names of those methods
 } from '@profplum700/etsy-react';
 ```
 

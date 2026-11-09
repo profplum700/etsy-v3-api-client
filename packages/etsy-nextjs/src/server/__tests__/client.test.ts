@@ -22,7 +22,9 @@ vi.mock('next/headers', () => ({
 }));
 
 const constructed: Array<Record<string, unknown>> = [];
-vi.mock('@profplum700/etsy-v3-api-client', () => ({
+vi.mock('@profplum700/etsy-v3-api-client', async () => ({
+  EtsyAuthError: (await vi.importActual<typeof import('@profplum700/etsy-v3-api-client')>('@profplum700/etsy-v3-api-client'))
+    .EtsyAuthError,
   EtsyClient: vi.fn(function (this: Record<string, unknown>, config: Record<string, unknown>) {
     constructed.push(config);
     this.config = config;
@@ -96,6 +98,10 @@ describe('getEtsyServerClient', () => {
 
   it('throws when the request has no token cookie', async () => {
     requestCookies = new Map();
-    await expect(getEtsyServerClient()).rejects.toThrow('No authentication tokens found in cookies');
+    await expect(getEtsyServerClient()).rejects.toMatchObject({
+      name: 'EtsyAuthError',
+      code: 'NO_TOKENS',
+      message: 'No authentication tokens found in cookies',
+    });
   });
 });
