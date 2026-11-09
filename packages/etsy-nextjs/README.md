@@ -46,6 +46,10 @@ This package provides three separate entry points to ensure optimal bundle sizes
    - Optimized for browser environments
    - Exports: `EtsyNextClientProvider`, `useEtsyNextClient`
 
+4. **`@profplum700/etsy-nextjs/middleware`** (Middleware-Only)
+   - Imports only `next/server`, so it runs on the Edge runtime
+   - Exports: `createEtsyMiddleware`
+
 ### 🎯 Why Separate Entry Points?
 
 The main entry point now exports **only server-side code** to prevent React Context code (createContext, useContext) from being bundled with API routes. This eliminates the "createContext is not a function" build error that occurred when Next.js tried to analyze API routes during build time.
@@ -223,7 +227,19 @@ export default async function ShopPage({ params }: { params: { shopId: string } 
 }
 ```
 
-> **Token refresh needs a Server Action or Route Handler.** The client refreshes the tokens when the access token is within a minute of expiring (it lasts an hour), and also once after Etsy answers `401`. Either way it saves the new tokens with `cookies().set()`. Next.js allows that only in Server Actions and Route Handlers, so a refresh during a Server Component render fails with `EtsyAuthError` code `TOKEN_SAVE_FAILED`. Etsy has already invalidated the old refresh token by then, so the user has to authorise again. Until this is fixed, make the calls that may refresh from a Server Action, or from a Route Handler that the browser calls directly (for example with `fetch` in a Client Component). Both send the new `Set-Cookie` back to the browser. A Route Handler that a Server Component fetches on the server does not: its `Set-Cookie` goes to that server-side fetch, so the browser keeps the old cookie with a refresh token Etsy has already invalidated.
+> **Add the token refresh middleware when Server Components call Etsy.** The client refreshes the tokens itself when the access token is within a minute of expiring (it lasts an hour), and saves the new ones with `cookies().set()`. Next.js allows that only in Server Actions, Route Handlers and middleware, so a refresh during a Server Component render fails with `EtsyAuthError` code `TOKEN_SAVE_FAILED`, and Etsy has already invalidated the old refresh token, so the user has to authorise again. [`createEtsyMiddleware()`](#createetsymiddlewareconfig) refreshes tokens that are close to expiry before the page renders, so the client in your Server Component starts with a fresh token:
+
+```typescript
+// middleware.ts
+import { createEtsyMiddleware } from '@profplum700/etsy-nextjs/middleware';
+
+export const middleware = createEtsyMiddleware({ apiKey: process.env.ETSY_API_KEY! });
+
+// Run it on the pages whose Server Components call Etsy.
+export const config = { matcher: ['/shop/:path*', '/dashboard/:path*'] };
+```
+
+> The client can still refresh during render in two rare cases: when Etsy answers `401` (for example, the user revoked access), and when the middleware's own refresh failed, for example on a network error. Calls made from Server Actions, or from Route Handlers the browser calls directly, can always save a refresh. A Route Handler that a Server Component fetches on the server can't: its `Set-Cookie` goes to that server-side fetch, not to the browser.
 
 ### 3. Create API Routes
 
@@ -359,6 +375,25 @@ interface OAuthTokenResponse {
   scope?: string;
 }
 ```
+
+#### `createEtsyMiddleware(config)`
+
+Create Next.js middleware that refreshes the user's Etsy tokens before Server Components render. Import it from `@profplum700/etsy-nextjs/middleware`.
+
+```typescript
+interface EtsyMiddlewareConfig {
+  apiKey: string;                // Your Etsy keystring (refreshing needs no shared secret)
+  cookieName?: string;           // Combined token cookie (default: 'etsy-tokens')
+  refreshWithinSeconds?: number; // Refresh when the token expires within this window (default: 300, minimum: 60)
+}
+```
+
+- Requests without a token cookie, or with a token that isn't close to expiry, pass through unchanged.
+- A refreshed token is sent to the browser with `Set-Cookie` and passed on to the rest of the request, so Server Components see it straight away.
+- Concurrent requests carrying the same refresh token share one refresh within a server process, because Etsy accepts each refresh token only once.
+- If Etsy refuses the refresh, the request passes through with its cookies unchanged and the error is logged.
+- Set `cookieName` to the same value you pass to `configureEtsyServerClient()`.
+- The middleware can't read the configuration from `configureEtsyServerClient()`, because Next.js runs middleware in its own module scope. Pass `apiKey` to it directly.
 
 ### Client-Side
 

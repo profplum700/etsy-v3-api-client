@@ -65,4 +65,8 @@ export default [
   // Server-only entry point
   createBuildConfig('src/server.ts', 'server'),
   createDtsConfig('src/server.ts', 'server'),
+
+  // Middleware entry point (next/server only, runs on the Edge runtime)
+  createBuildConfig('src/middleware.ts', 'middleware'),
+  createDtsConfig('src/middleware.ts', 'middleware'),
 ];
