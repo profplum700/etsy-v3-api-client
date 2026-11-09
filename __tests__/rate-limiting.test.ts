@@ -1009,6 +1009,15 @@ describe('EtsyRateLimiter', () => {
       expect(new EtsyRateLimiter({ maxRequestsPerSecond: 0 }).getConfig().minRequestInterval).toBe(200);
     });
 
+    it('ignores a NaN, infinite or negative minRequestInterval', () => {
+      for (const minRequestInterval of [Number.NaN, Number.POSITIVE_INFINITY, -1]) {
+        expect(
+          new EtsyRateLimiter({ maxRequestsPerSecond: 2, minRequestInterval }).getConfig().minRequestInterval
+        ).toBe(500);
+        expect(new EtsyRateLimiter({ minRequestInterval }).getConfig().minRequestInterval).toBe(200);
+      }
+    });
+
     it('spaces requests at the rate maxRequestsPerSecond sets', async () => {
       const rateLimiter = new EtsyRateLimiter({ maxRequestsPerSecond: 2 });
       const startedAt = Date.now();

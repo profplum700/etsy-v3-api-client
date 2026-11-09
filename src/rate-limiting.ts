@@ -64,7 +64,14 @@ function resolveMinRequestInterval(overrides: Partial<RateLimitConfig>): number 
     overrides.maxRequestsPerSecond !== undefined && overrides.maxRequestsPerSecond > 0
       ? Math.ceil(1000 / overrides.maxRequestsPerSecond)
       : undefined;
-  const explicit = overrides.minRequestInterval;
+  // A NaN, infinite or negative interval would turn spacing off, or stall it:
+  // treat it as unset, as a non-positive maxRequestsPerSecond is.
+  const explicit =
+    overrides.minRequestInterval !== undefined &&
+    Number.isFinite(overrides.minRequestInterval) &&
+    overrides.minRequestInterval >= 0
+      ? overrides.minRequestInterval
+      : undefined;
   if (explicit !== undefined && fromRate !== undefined) return Math.max(explicit, fromRate);
   return explicit ?? fromRate ?? ETSY_RATE_LIMITS.MIN_REQUEST_INTERVAL;
 }

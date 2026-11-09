@@ -821,8 +821,8 @@ const client = new EtsyClient({
   rateLimiting: {
     enabled: true,
     maxRequestsPerDay: 4000, // Lower than default 5,000
-    maxRequestsPerSecond: 3, // Lower than default 5
-    minRequestInterval: 200, // 200ms between requests
+    maxRequestsPerSecond: 3, // Lower than default 5: requests at least 334ms apart (ceil(1000 / 3))
+    minRequestInterval: 500, // Optional: when both are set, the longer gap applies, so 500ms here
   },
 });
 ```
