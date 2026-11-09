@@ -261,11 +261,35 @@ export async function GET() {
 }
 ```
 
-`createEtsyApiRoute()` is not implemented yet: its handlers answer `501 Not Implemented`. A generic proxy route is tracked in [#107](https://github.com/profplum700/etsy-v3-api-client/issues/107).
+To use the `@profplum700/etsy-react` hooks in Client Components instead of writing a route per operation, mount [`createEtsyApiRoute()`](#createetsyapirouteconfig) once. See step 4.
 
 ### 4. Use in Client Components
 
-Client Components run in the browser, and `EtsyClient` sends your app's shared secret with every request, so don't create an `EtsyClient` there. Call your own Route Handlers instead:
+Client Components run in the browser, and `EtsyClient` sends your app's shared secret with every request, so don't create an `EtsyClient` there. Either use the `@profplum700/etsy-react` hooks with the proxy client, which calls one route on your server:
+
+```typescript
+// app/api/etsy/route.ts
+import '@/lib/etsy-server'; // calls configureEtsyServerClient()
+import { createEtsyApiRoute } from '@profplum700/etsy-nextjs';
+
+export const { POST } = createEtsyApiRoute();
+```
+
+```tsx
+// app/providers.tsx
+'use client';
+
+import { EtsyProvider } from '@profplum700/etsy-react';
+import { createEtsyProxyClient } from '@profplum700/etsy-v3-api-client';
+
+const client = createEtsyProxyClient({ endpoint: '/api/etsy' });
+
+export function Providers({ children }: { children: React.ReactNode }) {
+  return <EtsyProvider client={client}>{children}</EtsyProvider>;
+}
+```
+
+Or call your own Route Handlers:
 
 ```typescript
 'use client';
@@ -325,23 +349,36 @@ const client = await createEtsyServerClient({
 
 #### `createEtsyApiRoute(config)`
 
-Not implemented yet: every handler answers `501 Not Implemented`. Write your own Route Handlers that call `getEtsyServerClient()` (see [Quick Start](#3-create-api-routes)). A generic proxy route is tracked in [#107](https://github.com/profplum700/etsy-v3-api-client/issues/107).
+Create the server side of the proxy that the `@profplum700/etsy-react` hooks use through `createEtsyProxyClient()`. For each request it:
+
+1. builds a client from that user's token cookies with `getEtsyServerClient()`;
+2. runs one allowlisted method;
+3. returns the result, or the Etsy error with its type and code.
+
+Call `configureEtsyServerClient()` first.
+
+```typescript
+// app/api/etsy/route.ts
+import '@/lib/etsy-server';
+import { createEtsyApiRoute } from '@profplum700/etsy-nextjs';
+
+export const { POST } = createEtsyApiRoute();
+```
 
 ```typescript
 interface EtsyApiRouteConfig {
-  apiKey: string;
-  redirectUri?: string;
-  scopes?: string[];
-  rateLimit?: {
-    requests: number;
-    window: number; // in milliseconds
-  };
-  cache?: {
-    enabled: boolean;
-    ttl: number; // in seconds
-  };
+  methods?: EtsyProxyMethod[];          // Allow fewer methods (default: every method the hooks use)
+  allowedOrigins?: string[];            // Other origins to accept, e.g. behind a reverse proxy that changes the host
+  onError?: (error: unknown) => void;   // Non-Etsy errors before a 500 (default: console.error)
 }
 ```
+
+- It accepts only `POST` from your own origin, so other sites can't make a signed-in user's browser change their shop.
+- It never caches responses.
+- A user with no token cookie gets `401` with `EtsyAuthError` code `NO_TOKENS`.
+- Refreshed tokens are saved, because Route Handlers may set cookies.
+- The old `apiKey`, `redirectUri`, `scopes`, `rateLimit` and `cache` options are still accepted, but ignored.
+- Before this version, every handler answered `501 Not Implemented`.
 
 #### `createOAuthRoute()`
 
@@ -399,7 +436,7 @@ interface EtsyMiddlewareConfig {
 
 #### `<EtsyNextClientProvider>`
 
-Provider component for client-side Etsy client. It takes a full `EtsyClient`, which needs your shared secret in the browser, so use it only in trusted environments such as an internal tool for your own team. In a public app, call your own Route Handlers instead (see [Quick Start](#4-use-in-client-components)).
+Provider component for client-side Etsy client. It takes a full `EtsyClient`, which needs your shared secret in the browser, so use it only in trusted environments such as an internal tool for your own team. In a public app, use the `@profplum700/etsy-react` hooks with the proxy client (see [Quick Start](#4-use-in-client-components)).
 
 ```tsx
 <EtsyNextClientProvider client={client} apiEndpoint="/api/etsy">

@@ -1,3 +1,5 @@
+import type { EtsyClient } from '@profplum700/etsy-v3-api-client';
+
 export interface UseQueryOptions<T> {
   enabled?: boolean;
   refetchInterval?: number;
@@ -34,3 +36,28 @@ export interface UsePaginatedQueryResult<T> extends UseQueryResult<T[]> {
   currentPage: number;
   totalPages: number | null;
 }
+
+/**
+ * The methods the hooks call. `EtsyProvider` accepts any object with them:
+ * an `EtsyClient` in a trusted environment, or in a public web app the proxy
+ * client from `createEtsyProxyClient()` in `@profplum700/etsy-v3-api-client`,
+ * which forwards each call to your server so the shared secret stays there.
+ */
+export type EtsyReactClientMethod =
+  | 'getShop'
+  | 'getShopSections'
+  | 'getListingsByShop'
+  | 'getListing'
+  | 'getShopReceipts'
+  | 'getShopReceipt'
+  | 'updateListing'
+  | 'createDraftListing'
+  | 'deleteListing'
+  | 'updateListingInventory'
+  | 'uploadListingImage'
+  | 'deleteListingImage'
+  | 'updateShopReceipt'
+  | 'createShopShippingProfile';
+
+/** A client the hooks can use. See `EtsyReactClientMethod`. */
+export type EtsyReactClient = Pick<EtsyClient, EtsyReactClientMethod>;

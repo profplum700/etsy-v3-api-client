@@ -88,7 +88,7 @@ console.log('User:', user);
 
 ### Browser Usage
 
-Etsy expects your keystring and shared secret together in the `x-api-key` header of every API call, and `EtsyClient` requires the shared secret. Anything shipped to a browser is public, so in a public web app keep `EtsyClient` on your server and have the page call your own routes (see the [browser example](#browser-example)). Load the browser bundle only in a trusted environment, such as an internal tool that only your team can reach:
+Etsy expects your keystring and shared secret together in the `x-api-key` header of every API call, and `EtsyClient` requires the shared secret. Anything shipped to a browser is public, so in a public web app keep `EtsyClient` on your server and have the page call your own routes (see the [browser example](#browser-example)). To skip writing a route per call, use the server proxy: `createEtsyProxyClient()` in the page sends each call to one route on your server, and `createEtsyProxyHandler()` runs it there with an `EtsyClient` for that user (see [`@profplum700/etsy-react`](packages/etsy-react#quick-start)). Load the browser bundle only in a trusted environment, such as an internal tool that only your team can reach:
 
 ```html
 <script type="module">
@@ -750,7 +750,7 @@ This example demonstrates:
 
 ### React Hook Example
 
-`EtsyClient` sends your shared secret with every request, and anything in a React bundle (including `REACT_APP_*` variables) is public. So keep the client on your server, behind your app's own authentication, and have React call your own routes. The [authentication guide's complete example](docs/guides/authentication.md#complete-authentication-example) shows such a server; its `/dashboard` route returns the shop and listings.
+`EtsyClient` sends your shared secret with every request, and anything in a React bundle (including `REACT_APP_*` variables) is public. So keep the client on your server, behind your app's own authentication, and have React call your own routes. The [authentication guide's complete example](docs/guides/authentication.md#complete-authentication-example) shows such a server; its `/dashboard` route returns the shop and listings. For ready-made hooks backed by a server route, use [`@profplum700/etsy-react`](packages/etsy-react#quick-start) with `createEtsyProxyClient()`.
 
 ```typescript
 import { useState, useEffect } from 'react';

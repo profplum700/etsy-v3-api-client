@@ -1,4 +1,4 @@
-import { EtsyClient, EtsyRateLimiter } from '@profplum700/etsy-v3-api-client';
+import { EtsyAuthError, EtsyClient, EtsyRateLimiter } from '@profplum700/etsy-v3-api-client';
 import { cookies } from 'next/headers';
 
 export interface EtsyServerClientConfig {
@@ -66,14 +66,14 @@ export async function createEtsyServerClient(config: EtsyServerClientConfig): Pr
   const tokenData = cookieStore.get(tokenCookieName);
 
   if (!tokenData) {
-    throw new Error('No authentication tokens found in cookies');
+    throw new EtsyAuthError('No authentication tokens found in cookies', 'NO_TOKENS');
   }
 
   let tokens: { accessToken: string; refreshToken: string; expiresAt: string };
   try {
     tokens = JSON.parse(tokenData.value);
   } catch {
-    throw new Error('Invalid token data in cookies');
+    throw new EtsyAuthError('Invalid token data in cookies', 'NO_TOKENS');
   }
 
   // Save tokens callback

@@ -29,4 +29,6 @@ export type {
   UseMutationOptions,
   UseMutationResult,
   UsePaginatedQueryResult,
+  EtsyReactClient,
+  EtsyReactClientMethod,
 } from './types';
