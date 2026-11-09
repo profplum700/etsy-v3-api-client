@@ -49,6 +49,44 @@ export type EtsyProxyTarget = Pick<EtsyClient, EtsyProxyMethod>;
 
 /** No proxied method takes more arguments than this. */
 const MAX_ARGS = 4;
+
+/**
+ * The leading arguments of each method that are Etsy IDs. `EtsyClient` puts
+ * them in the request path, so a value like `../../listings/123` would reach
+ * a different endpoint than the method allows. Each must be a plain numeric
+ * ID. `optional` IDs may also be left out.
+ */
+const ID_ARGS: Record<EtsyProxyMethod, ReadonlyArray<'required' | 'optional'>> = {
+  getShop: ['optional'],
+  getShopSections: ['optional'],
+  getListingsByShop: ['optional'],
+  getListing: ['required'],
+  getShopReceipts: ['required'],
+  getShopReceipt: ['required', 'required'],
+  updateListing: ['required', 'required'],
+  createDraftListing: ['required'],
+  deleteListing: ['required'],
+  updateListingInventory: ['required'],
+  uploadListingImage: ['required', 'required'],
+  deleteListingImage: ['required', 'required', 'required'],
+  updateShopReceipt: ['required', 'required'],
+  createShopShippingProfile: ['required'],
+};
+
+/** Whether `value` is a plain Etsy ID: digits only, as a string or a non-negative integer. */
+function isEtsyId(value: unknown): boolean {
+  if (typeof value === 'number') return Number.isSafeInteger(value) && value >= 0;
+  return typeof value === 'string' && /^[0-9]+$/.test(value);
+}
+
+/** Whether every ID argument of `method` is a plain Etsy ID (or left out, where optional). */
+function hasValidIds(method: EtsyProxyMethod, args: unknown[]): boolean {
+  return ID_ARGS[method].every((kind, index) => {
+    const value = args[index];
+    if (value === undefined || value === null) return kind === 'optional';
+    return isEtsyId(value);
+  });
+}
 /** Marks a Blob argument sent as a separate multipart field. */
 const BLOB_MARKER = '$etsyProxyBlob';
 
@@ -89,18 +127,19 @@ export interface EtsyProxyHandlerOptions {
   onError?: (error: unknown) => void;
 }
 
+/** A JSON response that is never cached: proxy results are one user's private data. */
 function jsonResponse(body: unknown, status: number, headers: Record<string, string> = {}): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: {
       'Content-Type': 'application/json',
-      // Results are one user's private data.
       'Cache-Control': 'no-store',
       ...headers,
     },
   });
 }
 
+/** A JSON error response in the wire format `createEtsyProxyClient()` reads. */
 function errorResponse(error: SerializedError, status: number, headers?: Record<string, string>): Response {
   return jsonResponse({ error }, status, headers);
 }
@@ -216,7 +255,7 @@ export function createEtsyProxyHandler(options: EtsyProxyHandlerOptions): (reque
     if (typeof method !== 'string' || !allowed.has(method)) {
       return errorResponse({ name: 'Error', message: `Method not allowed: ${String(method)}` }, 400);
     }
-    if (!Array.isArray(args) || args.length > MAX_ARGS) {
+    if (!Array.isArray(args) || args.length > MAX_ARGS || !hasValidIds(method as EtsyProxyMethod, args)) {
       return errorResponse({ name: 'Error', message: 'Invalid arguments' }, 400);
     }
 
@@ -289,6 +328,7 @@ function deserializeError(error: SerializedError | undefined, status: number): E
 export function createEtsyProxyClient(options: EtsyProxyClientOptions): EtsyProxyTarget {
   const doFetch = options.fetch ?? ((input: RequestInfo | URL, init?: RequestInit): Promise<Response> => fetch(input, init));
 
+  /** Send one call to the proxy route and return its result, or throw the error it reports. */
   async function call(method: EtsyProxyMethod, args: unknown[]): Promise<unknown> {
     const hasBlob = typeof Blob !== 'undefined' && args.some((arg) => arg instanceof Blob);
     let body: BodyInit;

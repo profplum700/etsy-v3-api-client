@@ -232,6 +232,35 @@ describe('Etsy server proxy', () => {
     });
 
     it.each([
+      ['a path in an image ID', 'deleteListingImage', ['1', '2', '../../../../../listings/123']],
+      ['a path in a shop ID', 'getShopReceipts', ['../users/me']],
+      ['an encoded path in a listing ID', 'deleteListing', ['%2e%2e%2f123']],
+      ['a non-numeric ID', 'getListing', ['abc']],
+      ['a negative ID', 'getListing', [-1]],
+      ['an object as an ID', 'deleteListing', [{ toString: '1' }]],
+      ['a missing required ID', 'getListing', []],
+    ])('refuses %s before calling Etsy', async (_label, method, args) => {
+      const client = fakeClient();
+      const getClient = vi.fn(() => client as unknown as EtsyProxyTarget);
+      const handler = createEtsyProxyHandler({ getClient });
+
+      const response = await handler(post({ method, args }));
+
+      expect(response.status).toBe(400);
+      expect(getClient).not.toHaveBeenCalled();
+    });
+
+    it('accepts numeric IDs as strings or numbers, and leaves out optional ones', async () => {
+      const client = fakeClient();
+      const handler = createEtsyProxyHandler({ getClient: () => client as unknown as EtsyProxyTarget });
+
+      expect((await handler(post({ method: 'deleteListingImage', args: ['1', 2, '3'] }))).status).toBe(200);
+      expect((await handler(post({ method: 'getShop', args: [] }))).status).toBe(200);
+      expect((await handler(post({ method: 'getListingsByShop', args: [null, { limit: 5 }] }))).status).toBe(200);
+      expect(client.deleteListingImage).toHaveBeenCalledWith('1', 2, '3');
+    });
+
+    it.each([
       ['a body that is not JSON', 'not json'],
       ['arguments that are not an array', { method: 'getShop', args: 'x' }],
       ['too many arguments', { method: 'getShop', args: [1, 2, 3, 4, 5] }],

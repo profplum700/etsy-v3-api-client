@@ -105,6 +105,26 @@ describe('createEtsyApiRoute', () => {
     expect(etsyFetch).not.toHaveBeenCalled();
   });
 
+  it('answers 401 NO_TOKENS when the token cookie cannot be read', async () => {
+    requestCookies = new Map([['etsy-tokens', 'not json']]);
+    const { POST } = createEtsyApiRoute();
+
+    const response = await POST(call('getShop', ['1']));
+
+    expect(response.status).toBe(401);
+    expect((await response.json()).error).toMatchObject({ name: 'EtsyAuthError', code: 'NO_TOKENS' });
+  });
+
+  it('refuses a path in an ID argument', async () => {
+    signInAs('alice');
+    const { POST } = createEtsyApiRoute({ methods: ['deleteListingImage'] });
+
+    const response = await POST(call('deleteListingImage', ['1', '2', '../../../../../listings/123']));
+
+    expect(response.status).toBe(400);
+    expect(etsyFetch).not.toHaveBeenCalled();
+  });
+
   it("passes Etsy's errors on with their status", async () => {
     signInAs('alice');
     etsyFetch.mockResolvedValueOnce(new Response('{"error":"Listing not found"}', { status: 404, statusText: 'Not Found' }));
