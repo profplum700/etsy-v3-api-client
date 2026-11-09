@@ -21,6 +21,11 @@
       "types": "./dist/server.d.ts",
       "import": "./dist/server.esm.js",
       "require": "./dist/server.cjs"
+    },
+    "./middleware": {
+      "types": "./dist/middleware.d.ts",
+      "import": "./dist/middleware.esm.js",
+      "require": "./dist/middleware.cjs"
     }
   },
   "files": [

@@ -2,42 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { AuthHelper } from '@profplum700/etsy-v3-api-client';
 import { serverClientConfig } from './client';
+import { COOKIE_NAMES, getCookieOptions, tokenCookieWrites } from './cookies';
+import { requestTokenRefresh } from './refresh';
 
-/**
- * OAuth token response from Etsy
- */
-export interface OAuthTokenResponse {
-  access_token: string;
-  refresh_token: string;
-  token_type: string;
-  expires_in: number;
-  scope?: string;
-}
+export type { OAuthTokenResponse } from './refresh';
 
-/**
- * Cookie names for OAuth state and tokens
- */
-const COOKIE_NAMES = {
-  ACCESS_TOKEN: 'etsy_access_token',
-  REFRESH_TOKEN: 'etsy_refresh_token',
-  TOKEN_TYPE: 'etsy_token_type',
-  EXPIRES_AT: 'etsy_expires_at',
-  STATE: 'etsy_oauth_state',
-  CODE_VERIFIER: 'etsy_code_verifier',
-  TOKENS: 'etsy-tokens', // Combined tokens cookie (for compatibility)
-} as const;
-
-type CookieOptions = {
-  httpOnly: boolean;
-  secure: boolean;
-  sameSite: 'lax';
-  path: string;
-  maxAge: number;
-};
-
-/**
- * Cookie options for secure storage
- */
 /**
  * Resolve a post-login or post-logout redirect taken from the query string.
  * Only paths on this app's own origin are allowed, so the routes can't be used
@@ -54,14 +23,6 @@ export function resolveSameOriginRedirect(target: string | null, requestUrl: str
   const resolved = new URL(target, requestUrl);
   return resolved.origin === fallback.origin ? resolved : fallback;
 }
-
-const getCookieOptions = (maxAge?: number): CookieOptions => ({
-  httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'lax',
-  path: '/',
-  maxAge: maxAge || 60 * 60 * 24 * 30, // 30 days default
-});
 
 /**
  * Creates OAuth route handlers for Etsy authentication
@@ -242,26 +203,18 @@ async function handleCallback(request: NextRequest): Promise<NextResponse> {
     await authHelper.setAuthorizationCode(code, state);
     const tokens = await authHelper.getAccessToken();
 
-    // Store tokens in cookies
+    // Store tokens in the separate cookies and the combined one the server client reads
     const expiresAt = tokens.expires_at;
-    const maxAge = Math.floor((expiresAt.getTime() - Date.now()) / 1000);
-
-    cookieStore.set(COOKIE_NAMES.ACCESS_TOKEN, tokens.access_token, getCookieOptions(maxAge));
-    cookieStore.set(COOKIE_NAMES.REFRESH_TOKEN, tokens.refresh_token, getCookieOptions());
-    cookieStore.set(COOKIE_NAMES.TOKEN_TYPE, tokens.token_type, getCookieOptions());
-    cookieStore.set(COOKIE_NAMES.EXPIRES_AT, expiresAt.toISOString(), getCookieOptions());
-
-    // Also store in combined format for compatibility with existing server client
-    const combinedTokens = {
-      accessToken: tokens.access_token,
-      refreshToken: tokens.refresh_token,
-      expiresAt: expiresAt.toISOString(),
-    };
-    cookieStore.set(
-      serverClientConfig.cookieName || COOKIE_NAMES.TOKENS,
-      JSON.stringify(combinedTokens),
-      getCookieOptions()
+    const writes = tokenCookieWrites(
+      {
+        accessToken: tokens.access_token,
+        refreshToken: tokens.refresh_token,
+        tokenType: tokens.token_type,
+        expiresAt,
+      },
+      serverClientConfig.cookieName
     );
+    for (const [name, value, options] of writes) cookieStore.set(name, value, options);
 
     // Clear temporary OAuth cookies
     cookieStore.delete(COOKIE_NAMES.STATE);
@@ -317,48 +270,20 @@ async function handleRefresh(_request: NextRequest): Promise<NextResponse> {
   const { apiKey } = serverClientConfig;
 
   try {
-    // Make refresh token request to Etsy API
-    const body = new URLSearchParams({
-      grant_type: 'refresh_token',
-      client_id: apiKey,
-      refresh_token: refreshToken,
-    });
-
-    const response = await fetch('https://api.etsy.com/v3/public/oauth/token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Accept': 'application/json',
-      },
-      body: body.toString(),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Token refresh failed: ${response.status} ${errorText}`);
-    }
-
-    const tokenResponse: OAuthTokenResponse = await response.json();
+    const tokenResponse = await requestTokenRefresh(apiKey, refreshToken);
     const expiresAt = new Date(Date.now() + tokenResponse.expires_in * 1000);
-    const maxAge = tokenResponse.expires_in;
 
-    // Update cookies with new tokens
-    cookieStore.set(COOKIE_NAMES.ACCESS_TOKEN, tokenResponse.access_token, getCookieOptions(maxAge));
-    cookieStore.set(COOKIE_NAMES.REFRESH_TOKEN, tokenResponse.refresh_token, getCookieOptions());
-    cookieStore.set(COOKIE_NAMES.TOKEN_TYPE, tokenResponse.token_type, getCookieOptions());
-    cookieStore.set(COOKIE_NAMES.EXPIRES_AT, expiresAt.toISOString(), getCookieOptions());
-
-    // Update combined tokens cookie
-    const combinedTokens = {
-      accessToken: tokenResponse.access_token,
-      refreshToken: tokenResponse.refresh_token,
-      expiresAt: expiresAt.toISOString(),
-    };
-    cookieStore.set(
-      serverClientConfig.cookieName || COOKIE_NAMES.TOKENS,
-      JSON.stringify(combinedTokens),
-      getCookieOptions()
+    // Update the separate cookies and the combined one the server client reads
+    const writes = tokenCookieWrites(
+      {
+        accessToken: tokenResponse.access_token,
+        refreshToken: tokenResponse.refresh_token,
+        tokenType: tokenResponse.token_type,
+        expiresAt,
+      },
+      serverClientConfig.cookieName
     );
+    for (const [name, value, options] of writes) cookieStore.set(name, value, options);
 
     return NextResponse.json({
       success: true,
