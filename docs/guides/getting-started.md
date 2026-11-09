@@ -177,7 +177,9 @@ interface EtsyClientConfig {
 
   // Saving refreshed tokens (see Token Storage)
   refreshSaveAsync?: (accessToken: string, refreshToken: string, expiresAt: Date) => void | Promise<void>;
-  refreshClearAsync?: () => Promise<void>;  // Called by client.clearTokens()
+  // Required with refreshSaveAsync: without it client.clearTokens() throws
+  // TOKEN_CLEAR_CALLBACK_REQUIRED and the saved tokens stay in storage
+  refreshClearAsync?: () => Promise<void>;
   tokenRefreshTimeoutMs?: number;           // Token refresh deadline (default: 30000)
 
   // Optional
@@ -200,7 +202,7 @@ interface EtsyClientConfig {
 
 ## Rate Limiting
 
-Rate limiting is on by default, using Etsy's limits of 5 requests per second and 5000 per day. The client queues requests to stay under them. A read that gets a 429 is retried with backoff, up to `maxRetries`. A write that gets a 429 throws `EtsyRateLimitError` instead, because replaying it could apply the change twice. To change the limits:
+Rate limiting is on by default. Etsy sets quotas per API key, shown in the Etsy Developer Portal and in response headers. The client follows those headers, and until it has seen them it uses fallback limits of 5 requests per second and 5,000 per day. It queues requests to stay under them, but each client counts only its own requests: separate clients, or separate processes, don't share counts, so you can still get a 429. A read that gets a 429 is retried with backoff, up to `maxRetries`. A write that gets a 429 throws `EtsyRateLimitError` instead, because replaying it could apply the change twice. To change the limits:
 
 ```typescript
 const client = new EtsyClient({
@@ -275,11 +277,14 @@ try {
 ### Check the Token
 
 ```typescript
-if (client.isTokenExpired()) {
+const tokens = client.getCurrentTokens();
+
+if (!tokens) {
+  // No tokens (for example after clearTokens()): calls throw NO_TOKENS
+  console.log('Not connected; send the user through the OAuth flow again');
+} else if (client.isTokenExpired()) {
   console.log('The access token has expired; the next call refreshes it');
 }
-
-const tokens = client.getCurrentTokens(); // null after clearTokens()
 ```
 
 ### Refresh Tokens

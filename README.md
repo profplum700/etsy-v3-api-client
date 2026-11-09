@@ -681,7 +681,7 @@ async function authenticateAndFetchData() {
 
 ### Browser Example
 
-A public web page must not hold your shared secret, so the server runs the OAuth flow and makes the API calls, and the page only talks to your server. The server here is the authentication guide's [complete authentication example](docs/guides/authentication.md#complete-authentication-example): `/auth/etsy` starts the login, Etsy redirects back to `/callback`, and `/dashboard` returns the shop and its active listings. Its routes sit behind your app's own authentication.
+A public web page must not hold your shared secret, so the server runs the OAuth flow and makes the API calls, and the page only talks to your server. The server here is the authentication guide's [complete authentication example](docs/guides/authentication.md#complete-authentication-example): `/auth/etsy` starts the login, Etsy redirects back to `/callback`, and `/dashboard` returns the shop and its first 10 active listings. Its routes sit behind your app's own authentication. That example's callback ends with `res.redirect('/dashboard')`, which returns JSON; when you serve this page, change it to redirect to this page's path instead.
 
 ```html
 <!DOCTYPE html>
@@ -709,14 +709,19 @@ A public web page must not hold your shared secret, so the server runs the OAuth
             redirect: 'manual' // the server redirects to /auth/etsy when not connected
         });
 
-        if (!res.ok) {
-            // Not connected yet (an opaque redirect), or the request failed
+        if (res.type === 'opaqueredirect') {
+            // Not connected yet: the server redirected to /auth/etsy
             document.getElementById('connect').hidden = false;
+        } else if (!res.ok) {
+            // A server or Etsy error: show it rather than asking to reconnect
+            document.getElementById('listingCount').textContent =
+                `Couldn't load the shop (HTTP ${res.status})`;
+            document.getElementById('shop').hidden = false;
         } else {
             const { shop, activeListings, listings } = await res.json();
             document.getElementById('shopName').textContent = shop;
             document.getElementById('listingCount').textContent =
-                `${activeListings} active listings`;
+                `Showing ${activeListings} active listings`;
 
             // textContent, not innerHTML: listing titles come from Etsy users
             const list = document.getElementById('listings');

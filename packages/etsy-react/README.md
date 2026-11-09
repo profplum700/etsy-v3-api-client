@@ -19,17 +19,23 @@ Create the client once. The tokens come from your OAuth flow (see the [authentic
 ```tsx
 // etsy-client.ts
 import { EtsyClient } from '@profplum700/etsy-v3-api-client';
-import { tokens, saveTokens } from './token-store'; // your own token storage
+import { tokens, saveTokens, clearTokens } from './token-store'; // your own token storage
 
 export const client = new EtsyClient({
-  keystring: process.env.ETSY_API_KEY!,
-  sharedSecret: process.env.ETSY_SHARED_SECRET!,
+  // Bundlers only expose prefixed variables to browser code. This uses Vite
+  // (import.meta.env.VITE_*); with Create React App use process.env.REACT_APP_*.
+  // Either way the values end up in the bundle: see the warning above.
+  keystring: import.meta.env.VITE_ETSY_API_KEY,
+  sharedSecret: import.meta.env.VITE_ETSY_SHARED_SECRET,
   accessToken: tokens.access_token,
   refreshToken: tokens.refresh_token,
   expiresAt: tokens.expires_at,
   // Etsy invalidates the old refresh token on each refresh, so save every
   // new set: (accessToken, refreshToken, expiresAt) => Promise<void>
   refreshSaveAsync: saveTokens,
+  // Delete the saved tokens when client.clearTokens() is called. Required with
+  // refreshSaveAsync, or clearTokens() throws TOKEN_CLEAR_CALLBACK_REQUIRED.
+  refreshClearAsync: clearTokens,
 });
 ```
 
