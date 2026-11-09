@@ -38,6 +38,23 @@ type CookieOptions = {
 /**
  * Cookie options for secure storage
  */
+/**
+ * Resolve a post-login or post-logout redirect taken from the query string.
+ * Only paths on this app's own origin are allowed, so the routes can't be used
+ * to send users to another site (an open redirect). Anything else falls back
+ * to the site root.
+ */
+export function resolveSameOriginRedirect(target: string | null, requestUrl: string): URL {
+  const fallback = new URL('/', requestUrl);
+  // A single leading slash: rejects absolute URLs, scheme-relative "//host"
+  // and "/\host" (browsers treat a backslash like a slash there).
+  if (!target || !target.startsWith('/') || target.startsWith('//') || target.startsWith('/\\')) {
+    return fallback;
+  }
+  const resolved = new URL(target, requestUrl);
+  return resolved.origin === fallback.origin ? resolved : fallback;
+}
+
 const getCookieOptions = (maxAge?: number): CookieOptions => ({
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
@@ -251,7 +268,7 @@ async function handleCallback(request: NextRequest): Promise<NextResponse> {
     cookieStore.delete(COOKIE_NAMES.CODE_VERIFIER);
 
     // Redirect to success page or return JSON
-    const successUrl = searchParams.get('success_url') || '/';
+    const successUrl = resolveSameOriginRedirect(searchParams.get('success_url'), request.url);
 
     const acceptHeader = request.headers.get('accept') || '';
     if (acceptHeader.includes('application/json')) {
@@ -261,7 +278,7 @@ async function handleCallback(request: NextRequest): Promise<NextResponse> {
         scope: tokens.scope,
       });
     } else {
-      return NextResponse.redirect(new URL(successUrl, request.url));
+      return NextResponse.redirect(successUrl);
     }
   } catch (error) {
     console.error('Token exchange error:', error);
@@ -382,12 +399,12 @@ async function handleLogout(request: NextRequest): Promise<NextResponse> {
 
   // Redirect to home or return JSON
   const { searchParams } = new URL(request.url);
-  const redirectUrl = searchParams.get('redirect_url') || '/';
+  const redirectUrl = resolveSameOriginRedirect(searchParams.get('redirect_url'), request.url);
 
   const acceptHeader = request.headers.get('accept') || '';
   if (acceptHeader.includes('application/json')) {
     return NextResponse.json({ success: true });
   } else {
-    return NextResponse.redirect(new URL(redirectUrl, request.url));
+    return NextResponse.redirect(redirectUrl);
   }
 }

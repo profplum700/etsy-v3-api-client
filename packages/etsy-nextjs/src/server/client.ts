@@ -10,7 +10,6 @@ export interface EtsyServerClientConfig {
   encryptionKey?: string;
 }
 
-let serverClientInstance: EtsyClient | null = null;
 export let serverClientConfig: EtsyServerClientConfig | null = null;
 
 /**
@@ -22,8 +21,12 @@ export function configureEtsyServerClient(config: EtsyServerClientConfig): void 
 }
 
 /**
- * Get or create the Etsy server client instance
- * This function is designed for use in Next.js Server Components
+ * Create an Etsy client for the current request, from the configuration set by
+ * `configureEtsyServerClient()` and the tokens in this request's cookies.
+ *
+ * Each call returns a new client. A Next.js server handles many users in one
+ * process, so a client must never be shared between requests: it would carry
+ * one user's tokens into another user's request.
  */
 export async function getEtsyServerClient(): Promise<EtsyClient> {
   if (!serverClientConfig) {
@@ -32,57 +35,7 @@ export async function getEtsyServerClient(): Promise<EtsyClient> {
     );
   }
 
-  // Create a new client instance if needed
-  if (!serverClientInstance) {
-    const { apiKey, sharedSecret } = serverClientConfig;
-
-    // Load tokens from cookies
-    const cookieStore = await cookies();
-    const cookieName = serverClientConfig.cookieName || 'etsy-tokens';
-    const tokenData = cookieStore.get(cookieName);
-
-    if (!tokenData) {
-      throw new Error('No authentication tokens found in cookies');
-    }
-
-    let tokens: { accessToken: string; refreshToken: string; expiresAt: string };
-    try {
-      tokens = JSON.parse(tokenData.value);
-    } catch {
-      throw new Error('Invalid token data in cookies');
-    }
-
-    // Save tokens callback
-    const refreshSave = async (accessToken: string, refreshToken: string, expiresAt: Date): Promise<void> => {
-      const cookieStore = await cookies();
-      const cookieName = serverClientConfig?.cookieName || 'etsy-tokens';
-      cookieStore.set(
-        cookieName,
-        JSON.stringify({
-          accessToken,
-          refreshToken,
-          expiresAt: expiresAt.toISOString(),
-        }),
-        {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax',
-          maxAge: 60 * 60 * 24 * 90, // 90 days
-        }
-      );
-    };
-
-    serverClientInstance = new EtsyClient({
-      keystring: apiKey,
-      sharedSecret,
-      accessToken: tokens.accessToken,
-      refreshToken: tokens.refreshToken,
-      expiresAt: new Date(tokens.expiresAt),
-      refreshSave,
-    });
-  }
-
-  return serverClientInstance;
+  return createEtsyServerClient(serverClientConfig);
 }
 
 /**

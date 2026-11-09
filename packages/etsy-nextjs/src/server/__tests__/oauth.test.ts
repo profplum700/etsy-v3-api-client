@@ -219,6 +219,46 @@ describe('createOAuthRoute', () => {
       expect(json).toHaveProperty('expiresAt');
     });
 
+    async function completeLogin(successUrl: string): Promise<Response> {
+      (global.fetch as MockedFunction<typeof fetch>).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          access_token: 'test-access-token',
+          refresh_token: 'test-refresh-token',
+          token_type: 'Bearer',
+          expires_in: 3600,
+        }),
+      } as Response);
+
+      const handler = createOAuthRoute();
+      const authorizeResponse = await handler(
+        new NextRequest('http://localhost:3000/api/etsy/auth/authorize', {
+          headers: { accept: 'application/json' },
+        })
+      );
+      const { state } = await authorizeResponse.json();
+
+      return handler(
+        new NextRequest(
+          `http://localhost:3000/api/etsy/auth/callback?code=test-code&state=${state}` +
+            `&success_url=${encodeURIComponent(successUrl)}`,
+          { headers: { accept: 'text/html' } }
+        )
+      );
+    }
+
+    it('redirects to a same-origin success_url after login', async () => {
+      const response = await completeLogin('/dashboard?tab=orders');
+      expect(response.status).toBe(307);
+      expect(response.headers.get('location')).toBe('http://localhost:3000/dashboard?tab=orders');
+    });
+
+    it('ignores an off-site success_url after login', async () => {
+      const response = await completeLogin('https://evil.example/phish');
+      expect(response.status).toBe(307);
+      expect(response.headers.get('location')).toBe('http://localhost:3000/');
+    });
+
     it('should reject mismatched state', async () => {
       const handler = createOAuthRoute();
       const request = new NextRequest(
@@ -311,6 +351,33 @@ describe('createOAuthRoute', () => {
 
       const response = await handler(request);
       expect(response.status).toBe(307); // Redirect status
+      expect(response.headers.get('location')).toBe('http://localhost:3000/');
+    });
+
+    it('keeps a same-origin redirect_url path', async () => {
+      const handler = createOAuthRoute();
+      const request = new NextRequest(
+        'http://localhost:3000/api/etsy/auth/logout?redirect_url=%2Fsigned-out%3Fbye%3D1',
+        { method: 'POST', headers: { accept: 'text/html' } }
+      );
+
+      const response = await handler(request);
+      expect(response.headers.get('location')).toBe('http://localhost:3000/signed-out?bye=1');
+    });
+
+    it.each([
+      'https://evil.example/phish',
+      '//evil.example/phish',
+      '/\\evil.example/phish',
+      'javascript:alert(1)',
+    ])('ignores an off-site redirect_url (%s)', async (target) => {
+      const handler = createOAuthRoute();
+      const request = new NextRequest(
+        `http://localhost:3000/api/etsy/auth/logout?redirect_url=${encodeURIComponent(target)}`,
+        { method: 'POST', headers: { accept: 'text/html' } }
+      );
+
+      const response = await handler(request);
       expect(response.headers.get('location')).toBe('http://localhost:3000/');
     });
   });

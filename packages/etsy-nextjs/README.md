@@ -13,7 +13,7 @@ npm install @profplum700/etsy-nextjs @profplum700/etsy-v3-api-client
 ## Features
 
 - Server Components support
-- API Routes helpers
+- OAuth route handlers (PKCE)
 - Automatic rate limiting
 - Built-in caching
 - Cookie-based token storage
@@ -159,6 +159,7 @@ import { configureEtsyServerClient } from '@profplum700/etsy-nextjs';
 
 configureEtsyServerClient({
   apiKey: process.env.ETSY_API_KEY!,
+  sharedSecret: process.env.ETSY_SHARED_SECRET!,
   redirectUri: process.env.ETSY_REDIRECT_URI!, // e.g., http://localhost:3000/api/etsy/auth/callback
   scopes: [
     'listings_r',    // Read listings
@@ -195,10 +196,13 @@ import { configureEtsyServerClient } from '@profplum700/etsy-nextjs/server';
 
 configureEtsyServerClient({
   apiKey: process.env.ETSY_API_KEY!,
+  sharedSecret: process.env.ETSY_SHARED_SECRET!,
   redirectUri: process.env.ETSY_REDIRECT_URI!,
   scopes: ['listings_r', 'listings_w', 'shops_r'],
 });
 ```
+
+`getEtsyServerClient()` builds a new client for each call, from the tokens in the current request's cookies, so each user gets their own client. Each client also has its own rate limiter, so the client's local per-second and per-day throttle doesn't count across requests. Etsy's own limits still apply: reads are retried after a `429`, and writes throw `EtsyRateLimitError`. Sharing one limiter across requests is tracked in [#110](https://github.com/profplum700/etsy-v3-api-client/issues/110).
 
 ### 2. Use in Server Components
 
@@ -219,55 +223,48 @@ export default async function ShopPage({ params }: { params: { shopId: string } 
 }
 ```
 
+> **Token refresh needs a Server Action or Route Handler.** The client refreshes the tokens when the access token is within a minute of expiring (it lasts an hour), and also once after Etsy answers `401`. Either way it saves the new tokens with `cookies().set()`. Next.js allows that only in Server Actions and Route Handlers, so a refresh during a Server Component render fails with `EtsyAuthError` code `TOKEN_SAVE_FAILED`. Etsy has already invalidated the old refresh token by then, so the user has to authorise again. Until this is fixed, make the calls that may refresh from a Server Action, or from a Route Handler that the browser calls directly (for example with `fetch` in a Client Component). Both send the new `Set-Cookie` back to the browser. A Route Handler that a Server Component fetches on the server does not: its `Set-Cookie` goes to that server-side fetch, so the browser keeps the old cookie with a refresh token Etsy has already invalidated.
+
 ### 3. Create API Routes
 
-```typescript
-// app/api/etsy/[...path]/route.ts
-import { createEtsyApiRoute } from '@profplum700/etsy-nextjs/server';
+Write a Route Handler for each operation your app needs. Each one creates a client for the current request:
 
-export const { GET, POST, PUT, DELETE } = createEtsyApiRoute({
-  apiKey: process.env.ETSY_API_KEY!,
-  rateLimit: {
-    requests: 100,
-    window: 60000, // 1 minute
-  },
-  cache: {
-    enabled: true,
-    ttl: 300, // 5 minutes
-  },
-});
+```typescript
+// app/api/shop/route.ts
+import { NextResponse } from 'next/server';
+import { getEtsyServerClient } from '@profplum700/etsy-nextjs/server';
+
+export async function GET() {
+  try {
+    const client = await getEtsyServerClient();
+    const shop = await client.getShop(); // the signed-in user's shop
+    return NextResponse.json({ shop_id: shop.shop_id, title: shop.title });
+  } catch {
+    return NextResponse.json({ error: 'Failed to fetch shop' }, { status: 500 });
+  }
+}
 ```
 
+`createEtsyApiRoute()` is not implemented yet: its handlers answer `501 Not Implemented`. A generic proxy route is tracked in [#107](https://github.com/profplum700/etsy-v3-api-client/issues/107).
+
 ### 4. Use in Client Components
+
+Client Components run in the browser, and `EtsyClient` sends your app's shared secret with every request, so don't create an `EtsyClient` there. Call your own Route Handlers instead:
 
 ```typescript
 'use client';
 
-import { EtsyNextClientProvider, useEtsyNextClient } from '@profplum700/etsy-nextjs/client';
-import { EtsyClient } from '@profplum700/etsy-v3-api-client';
+import { useState } from 'react';
 
-const client = new EtsyClient({
-  apiKey: process.env.NEXT_PUBLIC_ETSY_API_KEY!,
-});
+export function ShopButton() {
+  const [title, setTitle] = useState<string | null>(null);
 
-export default function App({ children }) {
-  return (
-    <EtsyNextClientProvider client={client} apiEndpoint="/api/etsy">
-      {children}
-    </EtsyNextClientProvider>
-  );
-}
-
-function MyComponent() {
-  const { client } = useEtsyNextClient();
-
-  // Use the client in your component
   const handleFetch = async () => {
-    const shop = await client.getShop('123');
-    console.log(shop);
+    const res = await fetch('/api/shop'); // the Route Handler from step 3
+    if (res.ok) setTitle((await res.json()).title);
   };
 
-  return <button onClick={handleFetch}>Fetch Shop</button>;
+  return <button onClick={handleFetch}>{title ?? 'Fetch Shop'}</button>;
 }
 ```
 
@@ -281,7 +278,8 @@ Configure the global Etsy server client.
 
 ```typescript
 interface EtsyServerClientConfig {
-  apiKey: string;
+  apiKey: string;        // Your app's keystring
+  sharedSecret: string;  // Your app's shared secret
   redirectUri?: string;
   scopes?: string[];
   cookieName?: string;
@@ -291,7 +289,7 @@ interface EtsyServerClientConfig {
 
 #### `getEtsyServerClient()`
 
-Get the configured Etsy server client instance. Use in Server Components and Server Actions.
+Create an Etsy client for the current request, from the configuration and the tokens in this request's cookies. Each call returns a new client. Use it in Route Handlers, Server Actions and Server Components (see the token refresh note in [Quick Start](#2-use-in-server-components)).
 
 ```typescript
 const client = await getEtsyServerClient();
@@ -302,15 +300,16 @@ const client = await getEtsyServerClient();
 Create a new Etsy server client with custom configuration.
 
 ```typescript
-const client = createEtsyServerClient({
+const client = await createEtsyServerClient({
   apiKey: process.env.ETSY_API_KEY!,
+  sharedSecret: process.env.ETSY_SHARED_SECRET!,
   redirectUri: process.env.ETSY_REDIRECT_URI!,
 });
 ```
 
 #### `createEtsyApiRoute(config)`
 
-Create API route handlers with built-in rate limiting and caching.
+Not implemented yet: every handler answers `501 Not Implemented`. Write your own Route Handlers that call `getEtsyServerClient()` (see [Quick Start](#3-create-api-routes)). A generic proxy route is tracked in [#107](https://github.com/profplum700/etsy-v3-api-client/issues/107).
 
 ```typescript
 interface EtsyApiRouteConfig {
@@ -365,7 +364,7 @@ interface OAuthTokenResponse {
 
 #### `<EtsyNextClientProvider>`
 
-Provider component for client-side Etsy client.
+Provider component for client-side Etsy client. It takes a full `EtsyClient`, which needs your shared secret in the browser, so use it only in trusted environments such as an internal tool for your own team. In a public app, call your own Route Handlers instead (see [Quick Start](#4-use-in-client-components)).
 
 ```tsx
 <EtsyNextClientProvider client={client} apiEndpoint="/api/etsy">
@@ -391,7 +390,7 @@ import { getEtsyServerClient } from '@profplum700/etsy-nextjs/server';
 
 export default async function ListingsPage() {
   const client = await getEtsyServerClient();
-  const response = await client.getListingsByShop('123', {
+  const listings = await client.getListingsByShop('123', {
     state: 'active',
     limit: 25,
   });
@@ -400,7 +399,7 @@ export default async function ListingsPage() {
     <div>
       <h1>Listings</h1>
       <ul>
-        {response.results.map((listing) => (
+        {listings.map((listing) => (
           <li key={listing.listing_id}>{listing.title}</li>
         ))}
       </ul>
@@ -409,7 +408,7 @@ export default async function ListingsPage() {
 }
 ```
 
-### API Route with Rate Limiting
+### API Route
 
 ```typescript
 // app/api/shop/[shopId]/route.ts
@@ -453,49 +452,16 @@ export async function updateListing(shopId: string, listingId: string, updates: 
 }
 ```
 
-### Static Site Generation (SSG)
+### Static and Cached Pages
 
-```typescript
-// app/shop/[shopId]/page.tsx
-import { getEtsyServerClient } from '@profplum700/etsy-nextjs/server';
-
-export async function generateStaticParams() {
-  // Generate paths for your shops
-  return [
-    { shopId: '123' },
-    { shopId: '456' },
-  ];
-}
-
-export default async function ShopPage({ params }: { params: { shopId: string } }) {
-  const client = await getEtsyServerClient();
-  const shop = await client.getShop(params.shopId);
-
-  return <div>{shop.title}</div>;
-}
-```
-
-### Incremental Static Regeneration (ISR)
-
-```typescript
-// app/listings/page.tsx
-import { getEtsyServerClient } from '@profplum700/etsy-nextjs/server';
-
-export const revalidate = 3600; // Revalidate every hour
-
-export default async function ListingsPage() {
-  const client = await getEtsyServerClient();
-  const response = await client.getListingsByShop('123');
-
-  return <div>{/* Render listings */}</div>;
-}
-```
+`getEtsyServerClient()` reads the request's cookies, so a page that uses it renders for each request and can't be generated statically. For a page built from your own shop's data, create the client from tokens you store on the server (see [Token Storage Options](https://github.com/profplum700/etsy-v3-api-client/blob/master/docs/guides/authentication.md#token-storage-options)), not from a visitor's cookies.
 
 ## Environment Variables
 
 ```env
 # Required
 ETSY_API_KEY=your_api_key
+ETSY_SHARED_SECRET=your_shared_secret
 
 # Optional
 ETSY_REDIRECT_URI=http://localhost:3000/auth/callback
