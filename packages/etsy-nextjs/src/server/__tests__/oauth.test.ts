@@ -247,6 +247,31 @@ describe('createOAuthRoute', () => {
       );
     }
 
+    it('stores the tokens in the separate cookies and the combined one', async () => {
+      const handler = createOAuthRoute();
+      const authorizeResponse = await handler(
+        new NextRequest('http://localhost:3000/api/etsy/auth/authorize', {
+          headers: { accept: 'application/json' },
+        })
+      );
+      const { state } = await authorizeResponse.json();
+
+      await handler(
+        new NextRequest(`http://localhost:3000/api/etsy/auth/callback?code=test-code&state=${state}`, {
+          headers: { accept: 'application/json' },
+        })
+      );
+
+      expect(cookieStore.get('etsy_access_token')?.value).toBe('mock-access-token');
+      expect(cookieStore.get('etsy_refresh_token')?.value).toBe('mock-refresh-token');
+      expect(cookieStore.get('etsy_token_type')?.value).toBe('Bearer');
+      expect(JSON.parse(cookieStore.get('etsy-tokens')!.value)).toMatchObject({
+        accessToken: 'mock-access-token',
+        refreshToken: 'mock-refresh-token',
+      });
+      expect(cookieStore.has('etsy_oauth_state')).toBe(false);
+    });
+
     it('redirects to a same-origin success_url after login', async () => {
       const response = await completeLogin('/dashboard?tab=orders');
       expect(response.status).toBe(307);
@@ -324,6 +349,62 @@ describe('createOAuthRoute', () => {
         expect(response.status).toBe(200);
         expect(json.success).toBe(true);
       }
+    });
+  });
+
+  describe('refresh handler with a stored refresh token', () => {
+    // Earlier tests can leave a queued fetch response unused.
+    beforeEach(() => {
+      (global.fetch as MockedFunction<typeof fetch>).mockReset();
+    });
+
+    it('sends the refresh token to Etsy and stores the new tokens', async () => {
+      cookieStore.set('etsy_refresh_token', { value: 'stored-refresh-token' });
+      (global.fetch as MockedFunction<typeof fetch>).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          access_token: 'new-access-token',
+          refresh_token: 'new-refresh-token',
+          token_type: 'Bearer',
+          expires_in: 3600,
+        }),
+      } as Response);
+
+      const response = await createOAuthRoute()(
+        new NextRequest('http://localhost:3000/api/etsy/auth/refresh', { method: 'POST' })
+      );
+
+      expect(response.status).toBe(200);
+      const [url, init] = (global.fetch as MockedFunction<typeof fetch>).mock.calls[0];
+      expect(url).toBe('https://api.etsy.com/v3/public/oauth/token');
+      expect(Object.fromEntries(new URLSearchParams(String(init?.body)))).toEqual({
+        grant_type: 'refresh_token',
+        client_id: 'test-api-key',
+        refresh_token: 'stored-refresh-token',
+      });
+      expect(cookieStore.get('etsy_refresh_token')?.value).toBe('new-refresh-token');
+      expect(JSON.parse(cookieStore.get('etsy-tokens')!.value)).toMatchObject({
+        accessToken: 'new-access-token',
+        refreshToken: 'new-refresh-token',
+      });
+    });
+
+    it('answers 500 and keeps the cookies when Etsy refuses the refresh', async () => {
+      cookieStore.set('etsy_refresh_token', { value: 'stored-refresh-token' });
+      (global.fetch as MockedFunction<typeof fetch>).mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        text: async () => '{"error":"invalid_grant"}',
+      } as Response);
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const response = await createOAuthRoute()(
+        new NextRequest('http://localhost:3000/api/etsy/auth/refresh', { method: 'POST' })
+      );
+
+      expect(response.status).toBe(500);
+      expect((await response.json()).details).toContain('Token refresh failed: 400');
+      expect(cookieStore.get('etsy_refresh_token')?.value).toBe('stored-refresh-token');
     });
   });
 

@@ -23,7 +23,7 @@ npm install @profplum700/etsy-nextjs @profplum700/etsy-v3-api-client
 
 ## Package Structure
 
-This package provides three separate entry points to ensure optimal bundle sizes and prevent build errors:
+This package provides four separate entry points to ensure optimal bundle sizes and prevent build errors:
 
 ### 📦 Entry Points
 

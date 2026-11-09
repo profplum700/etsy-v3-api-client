@@ -26,6 +26,11 @@ const CLIENT_REFRESH_BUFFER_SECONDS = 60;
 // browser (a page and its prefetches) must share one refresh, not race.
 const refreshesInFlight = new Map<string, Promise<StoredTokens>>();
 
+/**
+ * Read the refresh token and access-token expiry from the combined token
+ * cookie. Returns null when the cookie is missing or can't be parsed, so the
+ * request passes through untouched.
+ */
 function readStoredTokens(request: NextRequest, cookieName: string): { refreshToken: string; expiresAt: number } | null {
   const raw = request.cookies.get(cookieName)?.value;
   if (!raw) return null;
@@ -39,6 +44,10 @@ function readStoredTokens(request: NextRequest, cookieName: string): { refreshTo
   }
 }
 
+/**
+ * Refresh with Etsy, sharing one request between concurrent callers that hold
+ * the same refresh token.
+ */
 function refreshOnce(apiKey: string, refreshToken: string): Promise<StoredTokens> {
   let pending = refreshesInFlight.get(refreshToken);
   if (!pending) {
