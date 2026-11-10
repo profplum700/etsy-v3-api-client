@@ -51,10 +51,11 @@ export type EtsyProxyTarget = Pick<EtsyClient, EtsyProxyMethod>;
 const MAX_ARGS = 4;
 
 /**
- * The leading arguments of each method that are Etsy IDs. `EtsyClient` puts
- * them in the request path, so a value like `../../listings/123` would reach
- * a different endpoint than the method allows. Each must be a plain numeric
- * ID. `optional` IDs may also be left out.
+ * The leading arguments of each method that are Etsy IDs. Each must be a
+ * plain numeric ID; `optional` IDs may also be left out. `EtsyClient` encodes
+ * path segments (#117), so a value like `../../listings/123` can't reach
+ * another endpoint. This check is defence in depth: it refuses bad input
+ * before a client is built or Etsy is called.
  */
 const ID_ARGS: Record<EtsyProxyMethod, ReadonlyArray<'required' | 'optional'>> = {
   getShop: ['optional'],

@@ -100,6 +100,7 @@ import {
 import { TokenManager } from './auth/token-manager';
 import { EtsyRateLimiter, ETSY_RATE_LIMITS } from './rate-limiting';
 import { assertFetchSupport, isNode } from './utils/environment';
+import { path } from './utils/path';
 import {
   BulkOperationManager,
   BulkOperationConfig,
@@ -584,7 +585,7 @@ export class EtsyClient {
    */
   public async getShop(shopId?: string): Promise<EtsyShop> {
     if (shopId) {
-      return this.makeRequest<EtsyShop>(`/shops/${shopId}`);
+      return this.makeRequest<EtsyShop>(path`/shops/${shopId}`);
     }
     
     // Get current user's shop
@@ -593,14 +594,14 @@ export class EtsyClient {
       throw new EtsyApiError('User does not have a shop', 404);
     }
     
-    return this.makeRequest<EtsyShop>(`/shops/${user.shop_id}`);
+    return this.makeRequest<EtsyShop>(path`/shops/${user.shop_id}`);
   }
 
   /**
    * Get shop by owner user ID
    */
   public async getShopByOwnerUserId(userId: string): Promise<EtsyShop> {
-    return this.makeRequest<EtsyShop>(`/users/${userId}/shops`);
+    return this.makeRequest<EtsyShop>(path`/users/${userId}/shops`);
   }
 
   // ============================================================================
@@ -622,7 +623,7 @@ export class EtsyClient {
     }
 
     const response = await this.makeRequest<EtsyApiResponse<EtsyShopSection>>(
-      `/shops/${targetShopId}/sections`
+      path`/shops/${targetShopId}/sections`
     );
 
     this.logger.info(`Found ${response.results.length} shop sections`);
@@ -633,7 +634,7 @@ export class EtsyClient {
    * Get single shop section
    */
   public async getShopSection(shopId: string, sectionId: string): Promise<EtsyShopSection> {
-    return this.makeRequest<EtsyShopSection>(`/shops/${shopId}/sections/${sectionId}`);
+    return this.makeRequest<EtsyShopSection>(path`/shops/${shopId}/sections/${sectionId}`);
   }
 
   // ============================================================================
@@ -669,7 +670,7 @@ export class EtsyClient {
     }
 
     const response = await this.makeRequest<EtsyApiResponse<EtsyListing>>(
-      `/shops/${targetShopId}/listings?${searchParams.toString()}`
+      path`/shops/${targetShopId}/listings?${searchParams.toString()}`
     );
 
     return response.results;
@@ -703,7 +704,7 @@ export class EtsyClient {
     }
     const query = searchParams.toString();
     const suffix = query ? `?${query}` : '';
-    return this.makeRequest<EtsyListing>(`/listings/${listingId}${suffix}`);
+    return this.makeRequest<EtsyListing>(path`/listings/${listingId}${suffix}`);
   }
 
   /**
@@ -728,7 +729,7 @@ export class EtsyClient {
     }
 
     const response = await this.makeRequest<EtsyApiResponse<EtsyListing>>(
-      `/listings/active?${searchParams.toString()}`
+      path`/listings/active?${searchParams.toString()}`
     );
 
     return response.results;
@@ -739,7 +740,7 @@ export class EtsyClient {
    */
   public async getListingImages(listingId: string): Promise<EtsyListingImage[]> {
     const response = await this.makeRequest<EtsyApiResponse<EtsyListingImage>>(
-      `/listings/${listingId}/images`
+      path`/listings/${listingId}/images`
     );
 
     return response.results;
@@ -765,7 +766,7 @@ export class EtsyClient {
     const query = searchParams.toString();
     const suffix = query ? `?${query}` : '';
     return this.makeRequest<EtsyListingInventory>(
-      `/listings/${listingId}/inventory${suffix}`
+      path`/listings/${listingId}/inventory${suffix}`
     );
   }
 
@@ -794,7 +795,7 @@ export class EtsyClient {
     }
 
     const response = await this.makeRequest<EtsyApiResponse<EtsyReview>>(
-      `/listings/${listingId}/reviews?${searchParams.toString()}`
+      path`/listings/${listingId}/reviews?${searchParams.toString()}`
     );
 
     return response.results;
@@ -821,7 +822,7 @@ export class EtsyClient {
     }
 
     const response = await this.makeRequest<EtsyApiResponse<EtsyReview>>(
-      `/shops/${shopId}/reviews?${searchParams.toString()}`
+      path`/shops/${shopId}/reviews?${searchParams.toString()}`
     );
 
     return response.results;
@@ -849,7 +850,7 @@ export class EtsyClient {
   public async getUserShops(): Promise<EtsyShop[]> {
     const user = await this.getUser();
     const response = await this.makeRequest<EtsyApiResponse<EtsyShop>>(
-      `/users/${user.user_id}/shops`
+      path`/users/${user.user_id}/shops`
     );
     return response.results || [];
   }
@@ -881,7 +882,7 @@ export class EtsyClient {
 
     const body = this.buildFormBody(params);
     return this.makeRequest<EtsyShop>(
-      `/shops/${shopId}`,
+      path`/shops/${shopId}`,
       {
         method: 'PUT',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -899,7 +900,7 @@ export class EtsyClient {
   public async createShopSection(shopId: string, params: CreateShopSectionParams): Promise<EtsyShopSection> {
     const body = this.buildFormBody(params);
     return this.makeRequest<EtsyShopSection>(
-      `/shops/${shopId}/sections`,
+      path`/shops/${shopId}/sections`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -921,7 +922,7 @@ export class EtsyClient {
   ): Promise<EtsyShopSection> {
     const body = this.buildFormBody(params);
     return this.makeRequest<EtsyShopSection>(
-      `/shops/${shopId}/sections/${sectionId}`,
+      path`/shops/${shopId}/sections/${sectionId}`,
       {
         method: 'PUT',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -938,7 +939,7 @@ export class EtsyClient {
    */
   public async deleteShopSection(shopId: string, sectionId: string): Promise<void> {
     await this.makeRequest<void>(
-      `/shops/${shopId}/sections/${sectionId}`,
+      path`/shops/${shopId}/sections/${sectionId}`,
       { method: 'DELETE' },
       false
     );
@@ -977,7 +978,7 @@ export class EtsyClient {
     const query = legacy !== undefined ? `?legacy=${legacy}` : '';
     const body = this.buildFormBody(params);
     return this.makeRequest<EtsyListing>(
-      `/shops/${shopId}/listings${query}`,
+      path`/shops/${shopId}/listings${query}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -1017,7 +1018,7 @@ export class EtsyClient {
     const query = legacy !== undefined ? `?legacy=${legacy}` : '';
     const body = this.buildFormBody(params);
     return this.makeRequest<EtsyListing>(
-      `/shops/${shopId}/listings/${listingId}${query}`,
+      path`/shops/${shopId}/listings/${listingId}${query}`,
       {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -1034,7 +1035,7 @@ export class EtsyClient {
    */
   public async deleteListing(listingId: string): Promise<void> {
     await this.makeRequest<void>(
-      `/listings/${listingId}`,
+      path`/listings/${listingId}`,
       { method: 'DELETE' },
       false
     );
@@ -1151,7 +1152,7 @@ export class EtsyClient {
         : {}),
     };
     return this.makeRequest<EtsyListingInventory>(
-      `/listings/${listingId}/inventory${query}`,
+      path`/listings/${listingId}/inventory${query}`,
       {
         method: 'PUT',
         body: JSON.stringify(body)
@@ -1184,7 +1185,7 @@ export class EtsyClient {
     if (params?.is_watermarked !== undefined) formData.append('is_watermarked', params.is_watermarked.toString());
     if (params?.alt_text) formData.append('alt_text', params.alt_text);
 
-    const url = `${this.baseUrl}/shops/${shopId}/listings/${listingId}/images`;
+    const url = `${this.baseUrl}${path`/shops/${shopId}/listings/${listingId}/images`}`;
     const response = await this.fetchOnceWithRateLimit(url, {
       method: 'POST',
       headers: {
@@ -1215,7 +1216,7 @@ export class EtsyClient {
     imageId: string
   ): Promise<EtsyListingImage> {
     return this.makeRequest<EtsyListingImage>(
-      `/listings/${listingId}/images/${imageId}`
+      path`/listings/${listingId}/images/${imageId}`
     );
   }
 
@@ -1230,7 +1231,7 @@ export class EtsyClient {
     imageId: string
   ): Promise<void> {
     await this.makeRequest<void>(
-      `/shops/${shopId}/listings/${listingId}/images/${imageId}`,
+      path`/shops/${shopId}/listings/${listingId}/images/${imageId}`,
       { method: 'DELETE' },
       false
     );
@@ -1363,7 +1364,7 @@ export class EtsyClient {
     if (params?.legacy !== undefined) searchParams.set('legacy', params.legacy.toString());
 
     const response = await this.makeRequest<EtsyApiResponse<EtsyShopReceipt>>(
-      `/shops/${shopId}/receipts?${searchParams.toString()}`
+      path`/shops/${shopId}/receipts?${searchParams.toString()}`
     );
 
     return response.results;
@@ -1386,7 +1387,7 @@ export class EtsyClient {
     const query = searchParams.toString();
     const suffix = query ? `?${query}` : '';
     return this.makeRequest<EtsyShopReceipt>(
-      `/shops/${shopId}/receipts/${receiptId}${suffix}`
+      path`/shops/${shopId}/receipts/${receiptId}${suffix}`
     );
   }
 
@@ -1405,7 +1406,7 @@ export class EtsyClient {
     const query = legacy !== undefined ? `?legacy=${legacy}` : '';
     const body = this.buildFormBody(params);
     return this.makeRequest<EtsyShopReceipt>(
-      `/shops/${shopId}/receipts/${receiptId}${query}`,
+      path`/shops/${shopId}/receipts/${receiptId}${query}`,
       {
         method: 'PUT',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -1433,7 +1434,7 @@ export class EtsyClient {
     const suffix = query ? `?${query}` : '';
     const response = await this.makeRequest<
       EtsyApiResponse<EtsyShopReceiptTransaction>
-    >(`/shops/${shopId}/receipts/${receiptId}/transactions${suffix}`);
+    >(path`/shops/${shopId}/receipts/${receiptId}/transactions${suffix}`);
 
     return response.results;
   }
@@ -1448,7 +1449,7 @@ export class EtsyClient {
     transactionId: string
   ): Promise<EtsyShopReceiptTransaction> {
     return this.makeRequest<EtsyShopReceiptTransaction>(
-      `/shops/${shopId}/transactions/${transactionId}`
+      path`/shops/${shopId}/transactions/${transactionId}`
     );
   }
 
@@ -1463,7 +1464,7 @@ export class EtsyClient {
    */
   public async getShopShippingProfiles(shopId: string): Promise<EtsyShippingProfile[]> {
     const response = await this.makeRequest<EtsyApiResponse<EtsyShippingProfile>>(
-      `/shops/${shopId}/shipping-profiles`
+      path`/shops/${shopId}/shipping-profiles`
     );
 
     return response.results;
@@ -1480,7 +1481,7 @@ export class EtsyClient {
   ): Promise<EtsyShippingProfile> {
     const body = this.buildFormBody(params);
     return this.makeRequest<EtsyShippingProfile>(
-      `/shops/${shopId}/shipping-profiles`,
+      path`/shops/${shopId}/shipping-profiles`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -1500,7 +1501,7 @@ export class EtsyClient {
     profileId: string
   ): Promise<EtsyShippingProfile> {
     return this.makeRequest<EtsyShippingProfile>(
-      `/shops/${shopId}/shipping-profiles/${profileId}`
+      path`/shops/${shopId}/shipping-profiles/${profileId}`
     );
   }
 
@@ -1516,7 +1517,7 @@ export class EtsyClient {
   ): Promise<EtsyShippingProfile> {
     const body = this.buildFormBody(params);
     return this.makeRequest<EtsyShippingProfile>(
-      `/shops/${shopId}/shipping-profiles/${profileId}`,
+      path`/shops/${shopId}/shipping-profiles/${profileId}`,
       {
         method: 'PUT',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -1533,7 +1534,7 @@ export class EtsyClient {
    */
   public async deleteShopShippingProfile(shopId: string, profileId: string): Promise<void> {
     await this.makeRequest<void>(
-      `/shops/${shopId}/shipping-profiles/${profileId}`,
+      path`/shops/${shopId}/shipping-profiles/${profileId}`,
       { method: 'DELETE' },
       false
     );
@@ -1559,7 +1560,7 @@ export class EtsyClient {
     const query = searchParams.toString();
     const suffix = query ? `?${query}` : '';
     const response = await this.makeRequest<EtsyApiResponse<EtsyShippingProfileDestination>>(
-      `/shops/${shopId}/shipping-profiles/${profileId}/destinations${suffix}`
+      path`/shops/${shopId}/shipping-profiles/${profileId}/destinations${suffix}`
     );
 
     return response.results;
@@ -1577,7 +1578,7 @@ export class EtsyClient {
   ): Promise<EtsyShippingProfileDestination> {
     const body = this.buildFormBody(params);
     return this.makeRequest<EtsyShippingProfileDestination>(
-      `/shops/${shopId}/shipping-profiles/${profileId}/destinations`,
+      path`/shops/${shopId}/shipping-profiles/${profileId}/destinations`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -1600,7 +1601,7 @@ export class EtsyClient {
   ): Promise<EtsyShippingProfileDestination> {
     const body = this.buildFormBody(params);
     return this.makeRequest<EtsyShippingProfileDestination>(
-      `/shops/${shopId}/shipping-profiles/${profileId}/destinations/${destinationId}`,
+      path`/shops/${shopId}/shipping-profiles/${profileId}/destinations/${destinationId}`,
       {
         method: 'PUT',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -1621,7 +1622,7 @@ export class EtsyClient {
     destinationId: string
   ): Promise<void> {
     await this.makeRequest<void>(
-      `/shops/${shopId}/shipping-profiles/${profileId}/destinations/${destinationId}`,
+      path`/shops/${shopId}/shipping-profiles/${profileId}/destinations/${destinationId}`,
       { method: 'DELETE' },
       false
     );
@@ -1637,7 +1638,7 @@ export class EtsyClient {
     profileId: string
   ): Promise<EtsyShippingProfileUpgrade[]> {
     const response = await this.makeRequest<EtsyApiResponse<EtsyShippingProfileUpgrade>>(
-      `/shops/${shopId}/shipping-profiles/${profileId}/upgrades`
+      path`/shops/${shopId}/shipping-profiles/${profileId}/upgrades`
     );
 
     return response.results;
@@ -1662,7 +1663,7 @@ export class EtsyClient {
     const query = legacy !== undefined ? `?legacy=${legacy}` : '';
     const body = this.buildFormBody(params);
     return this.makeRequest<EtsyShopReceiptShipment>(
-      `/shops/${shopId}/receipts/${receiptId}/tracking${query}`,
+      path`/shops/${shopId}/receipts/${receiptId}/tracking${query}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -1692,7 +1693,7 @@ export class EtsyClient {
     if (params.offset !== undefined) searchParams.set('offset', params.offset.toString());
 
     const response = await this.makeRequest<EtsyApiResponse<EtsyPaymentAccountLedgerEntry>>(
-      `/shops/${shopId}/payment-account/ledger-entries?${searchParams.toString()}`
+      path`/shops/${shopId}/payment-account/ledger-entries?${searchParams.toString()}`
     );
 
     return response.results;
@@ -1708,7 +1709,7 @@ export class EtsyClient {
     entryId: string
   ): Promise<EtsyPaymentAccountLedgerEntry> {
     return this.makeRequest<EtsyPaymentAccountLedgerEntry>(
-      `/shops/${shopId}/payment-account/ledger-entries/${entryId}`
+      path`/shops/${shopId}/payment-account/ledger-entries/${entryId}`
     );
   }
 
@@ -1724,7 +1725,7 @@ export class EtsyClient {
     const searchParams = new URLSearchParams();
     searchParams.set('payment_ids', paymentIds.join(','));
     const response = await this.makeRequest<EtsyApiResponse<EtsyPayment>>(
-      `/shops/${shopId}/payments?${searchParams.toString()}`
+      path`/shops/${shopId}/payments?${searchParams.toString()}`
     );
     return response.results;
   }
@@ -1767,7 +1768,7 @@ export class EtsyClient {
    */
   public async getPropertiesByTaxonomyId(taxonomyId: number): Promise<EtsyBuyerTaxonomyProperty[]> {
     const response = await this.makeRequest<EtsyApiResponse<EtsyBuyerTaxonomyProperty>>(
-      `/seller-taxonomy/nodes/${taxonomyId}/properties`
+      path`/seller-taxonomy/nodes/${taxonomyId}/properties`
     );
     return response.results;
   }
@@ -1779,7 +1780,7 @@ export class EtsyClient {
    */
   public async getListingProperties(shopId: string, listingId: string): Promise<EtsyListingProperty[]> {
     const response = await this.makeRequest<EtsyApiResponse<EtsyListingProperty>>(
-      `/shops/${shopId}/listings/${listingId}/properties`
+      path`/shops/${shopId}/listings/${listingId}/properties`
     );
     return response.results;
   }
@@ -1802,7 +1803,7 @@ export class EtsyClient {
       body.append('scale_id', scaleId.toString());
     }
 
-    const url = `${this.baseUrl}/shops/${shopId}/listings/${listingId}/properties/${propertyId}`;
+    const url = `${this.baseUrl}${path`/shops/${shopId}/listings/${listingId}/properties/${propertyId}`}`;
     const response = await this.fetchOnceWithRateLimit(url, {
       method: 'PUT',
       headers: {
@@ -1835,7 +1836,7 @@ export class EtsyClient {
    */
   public async getShopProductionPartners(shopId: string): Promise<EtsyShopProductionPartner[]> {
     const response = await this.makeRequest<EtsyApiResponse<EtsyShopProductionPartner>>(
-      `/shops/${shopId}/production-partners`
+      path`/shops/${shopId}/production-partners`
     );
     return response.results;
   }
@@ -1855,7 +1856,7 @@ export class EtsyClient {
   ): Promise<EtsyShopProcessingProfile> {
     const body = this.buildFormBody(params);
     return this.makeRequest<EtsyShopProcessingProfile>(
-      `/shops/${shopId}/readiness-state-definitions`,
+      path`/shops/${shopId}/readiness-state-definitions`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -1880,7 +1881,7 @@ export class EtsyClient {
     const query = searchParams.toString();
     const suffix = query ? `?${query}` : '';
     const response = await this.makeRequest<EtsyApiResponse<EtsyShopProcessingProfile>>(
-      `/shops/${shopId}/readiness-state-definitions${suffix}`
+      path`/shops/${shopId}/readiness-state-definitions${suffix}`
     );
     return response.results;
   }
@@ -1895,7 +1896,7 @@ export class EtsyClient {
     definitionId: string
   ): Promise<EtsyShopProcessingProfile> {
     return this.makeRequest<EtsyShopProcessingProfile>(
-      `/shops/${shopId}/readiness-state-definitions/${definitionId}`
+      path`/shops/${shopId}/readiness-state-definitions/${definitionId}`
     );
   }
 
@@ -1911,7 +1912,7 @@ export class EtsyClient {
   ): Promise<EtsyShopProcessingProfile> {
     const body = this.buildFormBody(params);
     return this.makeRequest<EtsyShopProcessingProfile>(
-      `/shops/${shopId}/readiness-state-definitions/${definitionId}`,
+      path`/shops/${shopId}/readiness-state-definitions/${definitionId}`,
       {
         method: 'PUT',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -1931,7 +1932,7 @@ export class EtsyClient {
     definitionId: string
   ): Promise<void> {
     await this.makeRequest<void>(
-      `/shops/${shopId}/readiness-state-definitions/${definitionId}`,
+      path`/shops/${shopId}/readiness-state-definitions/${definitionId}`,
       { method: 'DELETE' },
       false
     );
@@ -1952,7 +1953,7 @@ export class EtsyClient {
   ): Promise<EtsyShopReturnPolicy> {
     const body = this.buildFormBody(params);
     return this.makeRequest<EtsyShopReturnPolicy>(
-      `/shops/${shopId}/policies/return`,
+      path`/shops/${shopId}/policies/return`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -1969,7 +1970,7 @@ export class EtsyClient {
    */
   public async getShopReturnPolicies(shopId: string): Promise<EtsyShopReturnPolicy[]> {
     const response = await this.makeRequest<EtsyApiResponse<EtsyShopReturnPolicy>>(
-      `/shops/${shopId}/policies/return`
+      path`/shops/${shopId}/policies/return`
     );
     return response.results;
   }
@@ -1984,7 +1985,7 @@ export class EtsyClient {
     returnPolicyId: string
   ): Promise<EtsyShopReturnPolicy> {
     return this.makeRequest<EtsyShopReturnPolicy>(
-      `/shops/${shopId}/policies/return/${returnPolicyId}`
+      path`/shops/${shopId}/policies/return/${returnPolicyId}`
     );
   }
 
@@ -2000,7 +2001,7 @@ export class EtsyClient {
   ): Promise<EtsyShopReturnPolicy> {
     const body = this.buildFormBody(params);
     return this.makeRequest<EtsyShopReturnPolicy>(
-      `/shops/${shopId}/policies/return/${returnPolicyId}`,
+      path`/shops/${shopId}/policies/return/${returnPolicyId}`,
       {
         method: 'PUT',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -2020,7 +2021,7 @@ export class EtsyClient {
     returnPolicyId: string
   ): Promise<void> {
     await this.makeRequest<void>(
-      `/shops/${shopId}/policies/return/${returnPolicyId}`,
+      path`/shops/${shopId}/policies/return/${returnPolicyId}`,
       { method: 'DELETE' },
       false
     );
@@ -2037,7 +2038,7 @@ export class EtsyClient {
   ): Promise<EtsyShopReturnPolicy> {
     const body = this.buildFormBody(params);
     return this.makeRequest<EtsyShopReturnPolicy>(
-      `/shops/${shopId}/policies/return/consolidate`,
+      path`/shops/${shopId}/policies/return/consolidate`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -2058,7 +2059,7 @@ export class EtsyClient {
    */
   public async getHolidayPreferences(shopId: string): Promise<EtsyShopHolidayPreference[]> {
     const response = await this.makeRequest<EtsyApiResponse<EtsyShopHolidayPreference>>(
-      `/shops/${shopId}/holiday-preferences`
+      path`/shops/${shopId}/holiday-preferences`
     );
     return response.results;
   }
@@ -2075,7 +2076,7 @@ export class EtsyClient {
   ): Promise<EtsyShopHolidayPreference> {
     const body = this.buildFormBody(params);
     return this.makeRequest<EtsyShopHolidayPreference>(
-      `/shops/${shopId}/holiday-preferences/${holidayId}`,
+      path`/shops/${shopId}/holiday-preferences/${holidayId}`,
       {
         method: 'PUT',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -2106,7 +2107,7 @@ export class EtsyClient {
     if (params?.rank !== undefined) formData.append('rank', params.rank.toString());
     if (params?.listing_file_id !== undefined) formData.append('listing_file_id', params.listing_file_id.toString());
 
-    const url = `${this.baseUrl}/shops/${shopId}/listings/${listingId}/files`;
+    const url = `${this.baseUrl}${path`/shops/${shopId}/listings/${listingId}/files`}`;
     const response = await this.fetchOnceWithRateLimit(url, {
       method: 'POST',
       headers: {
@@ -2137,7 +2138,7 @@ export class EtsyClient {
     listingId: string
   ): Promise<EtsyListingFile[]> {
     const response = await this.makeRequest<EtsyApiResponse<EtsyListingFile>>(
-      `/shops/${shopId}/listings/${listingId}/files`
+      path`/shops/${shopId}/listings/${listingId}/files`
     );
     return response.results;
   }
@@ -2153,7 +2154,7 @@ export class EtsyClient {
     fileId: string
   ): Promise<EtsyListingFile> {
     return this.makeRequest<EtsyListingFile>(
-      `/shops/${shopId}/listings/${listingId}/files/${fileId}`
+      path`/shops/${shopId}/listings/${listingId}/files/${fileId}`
     );
   }
 
@@ -2168,7 +2169,7 @@ export class EtsyClient {
     fileId: string
   ): Promise<void> {
     await this.makeRequest<void>(
-      `/shops/${shopId}/listings/${listingId}/files/${fileId}`,
+      path`/shops/${shopId}/listings/${listingId}/files/${fileId}`,
       { method: 'DELETE' },
       false
     );
@@ -2194,7 +2195,7 @@ export class EtsyClient {
     if (params?.name) formData.append('name', params.name);
     if (params?.video_id !== undefined) formData.append('video_id', params.video_id.toString());
 
-    const url = `${this.baseUrl}/shops/${shopId}/listings/${listingId}/videos`;
+    const url = `${this.baseUrl}${path`/shops/${shopId}/listings/${listingId}/videos`}`;
     const response = await this.fetchOnceWithRateLimit(url, {
       method: 'POST',
       headers: {
@@ -2221,7 +2222,7 @@ export class EtsyClient {
    */
   public async getListingVideos(listingId: string): Promise<EtsyListingVideo[]> {
     const response = await this.makeRequest<EtsyApiResponse<EtsyListingVideo>>(
-      `/listings/${listingId}/videos`
+      path`/listings/${listingId}/videos`
     );
     return response.results;
   }
@@ -2235,7 +2236,7 @@ export class EtsyClient {
     videoId: string
   ): Promise<EtsyListingVideo> {
     return this.makeRequest<EtsyListingVideo>(
-      `/listings/${listingId}/videos/${videoId}`
+      path`/listings/${listingId}/videos/${videoId}`
     );
   }
 
@@ -2250,7 +2251,7 @@ export class EtsyClient {
     videoId: string
   ): Promise<void> {
     await this.makeRequest<void>(
-      `/shops/${shopId}/listings/${listingId}/videos/${videoId}`,
+      path`/shops/${shopId}/listings/${listingId}/videos/${videoId}`,
       { method: 'DELETE' },
       false
     );
@@ -2268,7 +2269,7 @@ export class EtsyClient {
     listingId: string
   ): Promise<EtsyListingPersonalization> {
     return this.makeRequest<EtsyListingPersonalization>(
-      `/listings/${listingId}/personalization`
+      path`/listings/${listingId}/personalization`
     );
   }
 
@@ -2291,7 +2292,7 @@ export class EtsyClient {
       ? '?supports_multiple_personalization_questions=true'
       : '';
     return this.makeRequest<EtsyListingPersonalization>(
-      `/shops/${shopId}/listings/${listingId}/personalization${query}`,
+      path`/shops/${shopId}/listings/${listingId}/personalization${query}`,
       {
         method: 'POST',
         body: JSON.stringify(body)
@@ -2310,7 +2311,7 @@ export class EtsyClient {
     listingId: string
   ): Promise<void> {
     await this.makeRequest<void>(
-      `/shops/${shopId}/listings/${listingId}/personalization`,
+      path`/shops/${shopId}/listings/${listingId}/personalization`,
       { method: 'DELETE' },
       false
     );
@@ -2333,7 +2334,7 @@ export class EtsyClient {
   ): Promise<EtsyListingTranslation> {
     const body = this.buildFormBody(params);
     return this.makeRequest<EtsyListingTranslation>(
-      `/shops/${shopId}/listings/${listingId}/translations/${language}`,
+      path`/shops/${shopId}/listings/${listingId}/translations/${language}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -2354,7 +2355,7 @@ export class EtsyClient {
     language: string
   ): Promise<EtsyListingTranslation> {
     return this.makeRequest<EtsyListingTranslation>(
-      `/shops/${shopId}/listings/${listingId}/translations/${language}`
+      path`/shops/${shopId}/listings/${listingId}/translations/${language}`
     );
   }
 
@@ -2371,7 +2372,7 @@ export class EtsyClient {
   ): Promise<EtsyListingTranslation> {
     const body = this.buildFormBody(params);
     return this.makeRequest<EtsyListingTranslation>(
-      `/shops/${shopId}/listings/${listingId}/translations/${language}`,
+      path`/shops/${shopId}/listings/${listingId}/translations/${language}`,
       {
         method: 'PUT',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -2395,7 +2396,7 @@ export class EtsyClient {
     listingId: string
   ): Promise<EtsyListingVariationImage[]> {
     const response = await this.makeRequest<EtsyApiResponse<EtsyListingVariationImage>>(
-      `/shops/${shopId}/listings/${listingId}/variation-images`
+      path`/shops/${shopId}/listings/${listingId}/variation-images`
     );
     return response.results;
   }
@@ -2411,7 +2412,7 @@ export class EtsyClient {
     params: UpdateVariationImagesParams
   ): Promise<EtsyListingVariationImage[]> {
     const response = await this.makeRequest<EtsyApiResponse<EtsyListingVariationImage>>(
-      `/shops/${shopId}/listings/${listingId}/variation-images`,
+      path`/shops/${shopId}/listings/${listingId}/variation-images`,
       {
         method: 'POST',
         body: JSON.stringify(params)
@@ -2443,7 +2444,7 @@ export class EtsyClient {
     const query = searchParams.toString();
     const suffix = query ? `?${query}` : '';
     const response = await this.makeRequest<EtsyApiResponse<EtsyListing>>(
-      `/shops/${shopId}/listings/active${suffix}`
+      path`/shops/${shopId}/listings/active${suffix}`
     );
     return response.results;
   }
@@ -2463,7 +2464,7 @@ export class EtsyClient {
     const query = searchParams.toString();
     const suffix = query ? `?${query}` : '';
     const response = await this.makeRequest<EtsyApiResponse<EtsyListing>>(
-      `/shops/${shopId}/listings/featured${suffix}`
+      path`/shops/${shopId}/listings/featured${suffix}`
     );
     return response.results;
   }
@@ -2480,7 +2481,7 @@ export class EtsyClient {
     if (params.includes) searchParams.set('includes', params.includes.join(','));
     if (params.legacy !== undefined) searchParams.set('legacy', params.legacy.toString());
     const response = await this.makeRequest<EtsyApiResponse<EtsyListing>>(
-      `/listings/batch?${searchParams.toString()}`
+      path`/listings/batch?${searchParams.toString()}`
     );
     return response.results;
   }
@@ -2502,7 +2503,7 @@ export class EtsyClient {
     const query = searchParams.toString();
     const suffix = query ? `?${query}` : '';
     const response = await this.makeRequest<EtsyApiResponse<EtsyListing>>(
-      `/shops/${shopId}/receipts/${receiptId}/listings${suffix}`
+      path`/shops/${shopId}/receipts/${receiptId}/listings${suffix}`
     );
     return response.results;
   }
@@ -2516,7 +2517,7 @@ export class EtsyClient {
     propertyId: string
   ): Promise<EtsyListingProperty> {
     return this.makeRequest<EtsyListingProperty>(
-      `/listings/${listingId}/properties/${propertyId}`
+      path`/listings/${listingId}/properties/${propertyId}`
     );
   }
 
@@ -2531,7 +2532,7 @@ export class EtsyClient {
     propertyId: string
   ): Promise<void> {
     await this.makeRequest<void>(
-      `/shops/${shopId}/listings/${listingId}/properties/${propertyId}`,
+      path`/shops/${shopId}/listings/${listingId}/properties/${propertyId}`,
       { method: 'DELETE' },
       false
     );
@@ -2546,7 +2547,7 @@ export class EtsyClient {
     productId: string
   ): Promise<EtsyListingProduct> {
     return this.makeRequest<EtsyListingProduct>(
-      `/listings/${listingId}/inventory/products/${productId}`
+      path`/listings/${listingId}/inventory/products/${productId}`
     );
   }
 
@@ -2560,7 +2561,7 @@ export class EtsyClient {
     offeringId: string
   ): Promise<EtsyListingOffering> {
     return this.makeRequest<EtsyListingOffering>(
-      `/listings/${listingId}/products/${productId}/offerings/${offeringId}`
+      path`/listings/${listingId}/products/${productId}/offerings/${offeringId}`
     );
   }
 
@@ -2580,7 +2581,7 @@ export class EtsyClient {
     if (params.sort_order) searchParams.set('sort_order', params.sort_order);
     if (params.legacy !== undefined) searchParams.set('legacy', params.legacy.toString());
     const response = await this.makeRequest<EtsyApiResponse<EtsyListing>>(
-      `/shops/${shopId}/shop-sections/listings?${searchParams.toString()}`
+      path`/shops/${shopId}/shop-sections/listings?${searchParams.toString()}`
     );
     return response.results;
   }
@@ -2599,7 +2600,7 @@ export class EtsyClient {
     const query = searchParams.toString();
     const suffix = query ? `?${query}` : '';
     const response = await this.makeRequest<EtsyApiResponse<EtsyListing>>(
-      `/shops/${shopId}/policies/return/${returnPolicyId}/listings${suffix}`
+      path`/shops/${shopId}/policies/return/${returnPolicyId}/listings${suffix}`
     );
     return response.results;
   }
@@ -2618,7 +2619,7 @@ export class EtsyClient {
     if (params.limit !== undefined) searchParams.set('limit', params.limit.toString());
     if (params.offset !== undefined) searchParams.set('offset', params.offset.toString());
     const response = await this.makeRequest<EtsyApiResponse<EtsyShop>>(
-      `/shops?${searchParams.toString()}`
+      path`/shops?${searchParams.toString()}`
     );
     return response.results;
   }
@@ -2639,7 +2640,7 @@ export class EtsyClient {
   ): Promise<EtsyShippingProfileUpgrade> {
     const body = this.buildFormBody(params);
     return this.makeRequest<EtsyShippingProfileUpgrade>(
-      `/shops/${shopId}/shipping-profiles/${profileId}/upgrades`,
+      path`/shops/${shopId}/shipping-profiles/${profileId}/upgrades`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -2662,7 +2663,7 @@ export class EtsyClient {
   ): Promise<EtsyShippingProfileUpgrade> {
     const body = this.buildFormBody(params);
     return this.makeRequest<EtsyShippingProfileUpgrade>(
-      `/shops/${shopId}/shipping-profiles/${profileId}/upgrades/${upgradeId}`,
+      path`/shops/${shopId}/shipping-profiles/${profileId}/upgrades/${upgradeId}`,
       {
         method: 'PUT',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -2683,7 +2684,7 @@ export class EtsyClient {
     upgradeId: string
   ): Promise<void> {
     await this.makeRequest<void>(
-      `/shops/${shopId}/shipping-profiles/${profileId}/upgrades/${upgradeId}`,
+      path`/shops/${shopId}/shipping-profiles/${profileId}/upgrades/${upgradeId}`,
       { method: 'DELETE' },
       false
     );
@@ -2697,7 +2698,7 @@ export class EtsyClient {
     const searchParams = new URLSearchParams();
     searchParams.set('origin_country_iso', originCountryIso);
     const response = await this.makeRequest<EtsyApiResponse<EtsyShippingCarrier>>(
-      `/shipping-carriers?${searchParams.toString()}`
+      path`/shipping-carriers?${searchParams.toString()}`
     );
     return response.results;
   }
@@ -2723,7 +2724,7 @@ export class EtsyClient {
     const query = searchParams.toString();
     const suffix = query ? `?${query}` : '';
     const response = await this.makeRequest<EtsyApiResponse<EtsyShopReceiptTransaction>>(
-      `/shops/${shopId}/listings/${listingId}/transactions${suffix}`
+      path`/shops/${shopId}/listings/${listingId}/transactions${suffix}`
     );
     return response.results;
   }
@@ -2744,7 +2745,7 @@ export class EtsyClient {
     const query = searchParams.toString();
     const suffix = query ? `?${query}` : '';
     const response = await this.makeRequest<EtsyApiResponse<EtsyShopReceiptTransaction>>(
-      `/shops/${shopId}/transactions${suffix}`
+      path`/shops/${shopId}/transactions${suffix}`
     );
     return response.results;
   }
@@ -2765,7 +2766,7 @@ export class EtsyClient {
     const searchParams = new URLSearchParams();
     searchParams.set('ledger_entry_ids', params.ledger_entry_ids.join(','));
     const response = await this.makeRequest<EtsyApiResponse<EtsyPayment>>(
-      `/shops/${shopId}/payment-account/ledger-entries/payments?${searchParams.toString()}`
+      path`/shops/${shopId}/payment-account/ledger-entries/payments?${searchParams.toString()}`
     );
     return response.results;
   }
@@ -2780,7 +2781,7 @@ export class EtsyClient {
     receiptId: string
   ): Promise<EtsyPayment[]> {
     const response = await this.makeRequest<EtsyApiResponse<EtsyPayment>>(
-      `/shops/${shopId}/receipts/${receiptId}/payments`
+      path`/shops/${shopId}/receipts/${receiptId}/payments`
     );
     return response.results;
   }
@@ -2814,7 +2815,7 @@ export class EtsyClient {
    */
   public async getUserAddress(userAddressId: string): Promise<EtsyUserAddress> {
     return this.makeRequest<EtsyUserAddress>(
-      `/user/addresses/${userAddressId}`
+      path`/user/addresses/${userAddressId}`
     );
   }
 
@@ -2828,7 +2829,7 @@ export class EtsyClient {
    */
   public async deleteUserAddress(userAddressId: string): Promise<void> {
     await this.makeRequest<void>(
-      `/user/addresses/${userAddressId}`,
+      path`/user/addresses/${userAddressId}`,
       { method: 'DELETE' },
       false
     );
@@ -2846,7 +2847,7 @@ export class EtsyClient {
     taxonomyId: number
   ): Promise<EtsyBuyerTaxonomyProperty[]> {
     const response = await this.makeRequest<EtsyApiResponse<EtsyBuyerTaxonomyProperty>>(
-      `/buyer-taxonomy/nodes/${taxonomyId}/properties`
+      path`/buyer-taxonomy/nodes/${taxonomyId}/properties`
     );
     return response.results;
   }
