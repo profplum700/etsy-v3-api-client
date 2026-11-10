@@ -1,5 +1,7 @@
 # AGENTS.md — Etsy API v3 Client
 
+This codebase is yours: what it's for and how it's built are your call, and you'll keep building on it.
+
 ## Purpose
 
 This repository is a TypeScript/JavaScript client library for the Etsy Open API v3. It provides OAuth 2.0 PKCE helpers, a universal Etsy client for browser/Node/Web Worker environments, package integrations under `packages/*`, examples, and documentation generated around the Etsy v3 API surface.
