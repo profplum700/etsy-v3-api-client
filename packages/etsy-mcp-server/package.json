@@ -44,8 +44,8 @@
     "node": ">=24.0.0"
   },
   "dependencies": {
-    "@modelcontextprotocol/server": "^2.3.0",
-    "@napi-rs/keyring": "^2.1.0",
+    "@modelcontextprotocol/server": "^2.4.0",
+    "@napi-rs/keyring": "^2.1.2",
     "@profplum700/etsy-v3-api-client": "workspace:^4.1.0",
     "open": "^11.0.4",
     "zod": "^4.6.6"
@@ -54,6 +54,6 @@
     "access": "public"
   },
   "devDependencies": {
-    "@modelcontextprotocol/client": "^2.3.1"
+    "@modelcontextprotocol/client": "^2.4.0"
   }
 }

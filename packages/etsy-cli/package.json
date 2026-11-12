@@ -59,17 +59,17 @@
     "commander": "^15.0.0",
     "chalk": "^6.0.1",
     "ora": "^9.4.1",
-    "inquirer": "^14.2.3",
+    "inquirer": "^14.2.5",
     "table": "^6.9.0"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^29.0.3",
     "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-node-resolve": "^16.0.3",
-    "@rollup/plugin-typescript": "^12.3.0",
+    "@rollup/plugin-typescript": "^12.3.1",
     "@types/inquirer": "^9.0.7",
-    "@types/node": "^26.6.2",
-    "rollup": "^4.63.1",
+    "@types/node": "^26.6.6",
+    "rollup": "^4.66.0",
     "rollup-plugin-dts": "^6.5.1",
     "rollup-plugin-preserve-shebang": "^1.0.1",
     "typescript": "^5.9.3"
