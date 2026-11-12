@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Merge gate for this repo (AGENTS.md, "Pull Requests and Merging"): squash-merge a
 # pull request through the REST API, but only if every CI check run on its exact head
-# commit succeeded (or was skipped) and the required `test` job ran. Never use
-# `gh pr merge`; it bypasses this check.
+# commit succeeded (or was skipped), no commit status is failing or pending, and the
+# required `test` job ran. Never use `gh pr merge`; it bypasses this check.
 #
 #   scripts/merge.sh <pr-number> [--dry-run]
 set -euo pipefail
@@ -34,11 +34,19 @@ runs="$(gh api --paginate "repos/$repo/commits/$sha/check-runs?per_page=100" \
 printf '%s\n' "$runs" | grep -q '^test	' || refuse "has no CI job named 'test' on ${sha:0:7} yet."
 while IFS=$'\t' read -r name result; do
   [ -n "$name" ] || continue
+  # CodeRabbit's own check is advisory and reports neutral; its review threads are answered by hand.
+  [ "$name" != "CodeRabbit" ] || continue
   case "$result" in
     completed/success|completed/skipped) ;;
     *) refuse "check '$name' on ${sha:0:7} is $result, not success." ;;
   esac
 done <<< "$runs"
+
+# Commit statuses (for example the one spec-candidate.yml posts) are separate from check runs.
+read -r status_state status_count < <(gh api "repos/$repo/commits/$sha/status" --jq '"\(.state) \(.total_count)"')
+if [ "$status_count" != "0" ] && [ "$status_state" != "success" ]; then
+  refuse "has commit status '$status_state' on ${sha:0:7}, not success."
+fi
 
 echo "PR #$pr at ${sha:0:7}: every CI check passed."
 if [ "$dry_run" = "--dry-run" ]; then
