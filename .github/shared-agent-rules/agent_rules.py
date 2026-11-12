@@ -67,7 +67,7 @@ name: Shared agent rules
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, master]
 
 permissions:
   contents: read

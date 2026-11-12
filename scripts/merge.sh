@@ -7,8 +7,15 @@
 #   scripts/merge.sh <pr-number> [--dry-run]
 set -euo pipefail
 
-pr="${1:?usage: scripts/merge.sh <pr-number> [--dry-run]}"
-dry_run="${2:-}"
+usage="usage: scripts/merge.sh <pr-number> [--dry-run]"
+pr="${1:?$usage}"
+dry_run=""
+case "$#:${2:-}" in
+  1:) ;;
+  2:--dry-run) dry_run="--dry-run" ;;
+  *) echo "$usage" >&2; exit 2 ;;
+esac
+case "$pr" in ''|*[!0-9]*) echo "$usage" >&2; exit 2 ;; esac
 repo="${ETSY_CLIENT_REPO:-profplum700/etsy-v3-api-client}"
 default_branch="master"
 
@@ -21,13 +28,14 @@ refuse() { echo "REFUSED: PR #$pr $1" >&2; exit 1; }
 [ "$draft" = "false" ] || refuse "is a draft; mark it ready for review first."
 [ "$base" = "$default_branch" ] || refuse "targets $base, not $default_branch."
 
-runs="$(gh api "repos/$repo/commits/$sha/check-runs?per_page=100" \
+# --paginate reads every page; if any request fails the script stops (set -e) and nothing merges.
+runs="$(gh api --paginate "repos/$repo/commits/$sha/check-runs?per_page=100" \
   --jq '.check_runs[] | "\(.name)\t\(.status)/\(.conclusion)"')"
 printf '%s\n' "$runs" | grep -q '^test	' || refuse "has no CI job named 'test' on ${sha:0:7} yet."
 while IFS=$'\t' read -r name result; do
   [ -n "$name" ] || continue
   case "$result" in
-    completed/success|completed/skipped|completed/neutral) ;;
+    completed/success|completed/skipped) ;;
     *) refuse "check '$name' on ${sha:0:7} is $result, not success." ;;
   esac
 done <<< "$runs"
