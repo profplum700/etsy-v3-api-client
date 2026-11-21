@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   shared-agent-rules:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.USE_GITHUB_RUNNERS == 'true' && 'ubuntu-latest' || 'self-hosted' }}
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
