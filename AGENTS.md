@@ -1,14 +1,42 @@
 # AGENTS.md — Etsy API v3 Client
 
-<!-- BEGIN:shared-agent-rules sha256=de8174f549587f30c9c6a13365047ab1eff4f415a3485303f45cfd905cacfc2a generated from henrypitmandigital/agent-skills agent-rules/shared.md; edit it there, then run tools/agent_rules.py sync -->
+<!-- BEGIN:shared-agent-rules sha256=89661a7b5bfd376c8e14b5c212dd52a49655d459d7de3b2472d6891a9a621b14 generated from henrypitmandigital/agent-skills agent-rules/shared.md; edit it there, then run tools/agent_rules.py sync -->
 ## Shared rules
 
 These rules apply in every repository that carries this block. Where another rule in this file conflicts with one of them, the other rule wins for this repository, whether or not it names this section.
 
+### Decision rights (Henry, 16 Nov 2026)
+
+- This codebase and its work are yours. By default, decide, do it and report what you chose. Asking is the exception. If you have a recommendation, you have a decision: carry it out, then say in the PR or the task what you chose and why.
+- Only these wait for Henry: sending anything outside the company that no standing authority covers, spending money, contracts and legal terms beyond a standard free-tier sign-up, regulatory filings, prices and strategy, people, revoking a live secret or changing an existing one by hand (rotations Infisical runs are fine), and deleting production data or anything else that cannot be undone. Everything else is yours to decide, including code, schemas in our own projects, CI, tests, docs, research, drafts, internal records and which option to take.
+- When something does need Henry, file one ask with the `hpd-tasks` skill. The ask states your recommendation, the default and the date the default applies. Then carry on with everything that does not depend on it. Never end a session waiting for an answer, and never ask him to type a phrase back.
+- When Henry wants a say on taste, such as a design or a voice, show the options with your recommendation and keep building the recommended one. Switch if he picks another. Post plans; do not wait for them to be approved.
+- A setting only Henry can change (a console, a connector, an environment secret, a network host) is one ask on that business's task list. Never ask for the same setting twice.
+- Hand work to another session through the task list. The task's text is the brief, with links to the files and PRs. Never give Henry a prompt to paste from one session into another.
+- Leave nothing orphaned. Before a session ends, each PR it opened is merged, closed with a reason, or handed over in a task note, and follow-up work is filed as a task. Promote your own follow-ups to ready unless they need Henry. An idle PR or a lapsed claim is any agent's to finish.
+- A failing job or monitor goes to an agent first. Henry hears about it only once the remedies have failed and the fix needs something only he can do.
+- Before adding a gate, a monitor or an approval step, write down which failure it prevents and what it costs in CI minutes and in asks to Henry. Removing a gate is preferred to adding one.
+
+### Task lifecycle (Henry, 17 Nov 2026)
+
+- Agents own the task list, not Henry: "agents own the codebase. Except in exceptional circumstances, I will not be manually closing down tasks. It is not my job, it's the agent's job." Never ask him to close, cancel, dedupe or tidy a task.
+- Close what is finished or no longer needed yourself, with the reason: duplicates (relate them first), work a merged PR or another task already did, asks Henry has already answered anywhere (record his words as a decision comment), and asks you can now decide yourself.
+- Before you file an ask, look for an open task that already covers it and add to that one instead.
+- Ready work nobody holds is any agent's: when your own task is done, take the next one for the business you are working in.
+- Before a session ends, finish each task it holds (`done`, `review` with a link, or `handover` with what is left). A lapsed claim that returns to ready is any agent's to pick up and finish.
+- Ask Henry only when the answer is completely unclear and cannot reasonably be inferred from the repository, the task history, the truth stores or his past decisions. An ask that his earlier words or a recorded canon already answers is yours to decide.
+
+### Talking to Henry (Henry, 17 Nov 2026)
+
+- Each business's bot sends Henry one daily digest: what is open (in progress, waiting on him, stuck) and what happened that day. No other messages: no per-task nudges, no per-incident alerts and no separate weekly reports. Put what you would have sent into the task list or the registry, where the digest reads it.
+- Each bot answers `/status` with what is in progress and what waits on him.
+- A link in a bot message goes to that business's Business Hub (dash.henrypitman.com), except for an item that genuinely needs Henry's input: that links straight to the item.
+
+### Working rules
+
 - Claude Code and Codex both read this AGENTS.md. Do not add a CLAUDE.md.
 - Merge (squash) without asking once all CI checks pass and every review comment and review thread has been answered, including ones that arrive after later pushes, unless another rule in this file says a merge needs a person's approval or must not be done by an agent; then follow that rule. Answer each comment (fix it, or reply why not) before merging. Never merge red or conflicted PRs.
 - Every secret lives in Infisical EU (eu.infisical.com); the `hpd-secrets` skill says how to store and read one. Never print, log or commit secrets: API keys, tokens, passwords, private keys or `.env*` values.
-- The owner decides money, legal terms, people, strategy, and changing or deleting an existing live secret. Decide everything else yourself from the repository and the task, and say what you chose.
 - After a restart or a long gap, re-read durable state (git log, remote branches, open PRs, the task) before you report progress. Do not report from memory.
 - On a public or shared surface, name the acting agent and refer to the user as `profplum700`. Never use a personal first name in an attribution footer.
 <!-- END:shared-agent-rules -->
