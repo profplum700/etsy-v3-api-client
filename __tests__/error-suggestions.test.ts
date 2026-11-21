@@ -131,6 +131,25 @@ describe('Enhanced EtsyApiError', () => {
       expect(error.suggestions).toContain('  • transactions_r (for reading orders)');
     });
 
+    it('should explain the Preferred Partner restriction for receipt tracking', () => {
+      const error = new EtsyApiError(
+        'Forbidden',
+        403,
+        undefined,
+        undefined,
+        '/shops/123/receipts/456/tracking'
+      );
+
+      expect(error.suggestions).toContain('  • transactions_w (for adding tracking to orders)');
+      expect(error.suggestions.some(s => s.includes('Preferred Partner Program'))).toBe(true);
+    });
+
+    it('should not mention the Preferred Partner restriction for other receipt calls', () => {
+      const error = new EtsyApiError('Forbidden', 403, undefined, undefined, '/shops/123/receipts/456');
+
+      expect(error.suggestions.some(s => s.includes('Preferred Partner Program'))).toBe(false);
+    });
+
     it('should provide scope suggestions for shops endpoints', () => {
       const error = new EtsyApiError(
         'Forbidden',

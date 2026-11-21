@@ -2,6 +2,7 @@
  * Receipts and Transactions tests
  */
 
+import { EtsyApiError } from '../src/types';
 import { setupClientMocks, MockClientContext } from './helpers/client-test-setup';
 
 describe('EtsyClient Receipts & Transactions', () => {
@@ -178,6 +179,27 @@ describe('EtsyClient Receipts & Transactions', () => {
         const result = await ctx.client.createReceiptShipment('123', '456', shipmentParams);
 
         expect(result).toEqual(mockShipment);
+      });
+
+      it('should explain a Preferred Partner 403', async () => {
+        ctx.mockFetch.mockResolvedValue({
+          ok: false,
+          status: 403,
+          statusText: 'Forbidden',
+          text: vi.fn().mockResolvedValue('{"error": "Forbidden"}'),
+          headers: new Headers()
+        });
+
+        const error = await ctx.client
+          .createReceiptShipment('123', '456', { tracking_code: 'TH123', carrier_name: 'other' })
+          .catch((e: unknown) => e);
+
+        expect(error).toBeInstanceOf(EtsyApiError);
+        expect((error as EtsyApiError).statusCode).toBe(403);
+        expect((error as EtsyApiError).endpoint).toBe('/shops/123/receipts/456/tracking');
+        expect(
+          (error as EtsyApiError).suggestions.some(s => s.includes('Preferred Partner Program'))
+        ).toBe(true);
       });
     });
   });

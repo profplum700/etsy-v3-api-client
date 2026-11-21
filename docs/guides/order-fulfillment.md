@@ -114,7 +114,7 @@ console.log('Ship to:', shipping);
 
 ```typescript
 // Add tracking to a receipt
-await client.createShopReceiptShipment(shopId, receiptId, {
+await client.createReceiptShipment(shopId, receiptId, {
   tracking_code: '1Z999AA10123456784',
   carrier_name: 'ups',
   send_bcc: true // Send notification to buyer
@@ -149,7 +149,7 @@ await client.updateShopShipment(shopId, shipmentId, {
 ### Mark as Shipped Without Tracking
 
 ```typescript
-await client.createShopReceiptShipment(shopId, receiptId, {
+await client.createReceiptShipment(shopId, receiptId, {
   carrier_name: 'other',
   send_bcc: false
 });
@@ -193,7 +193,7 @@ async function fulfillOrder(
     }
 
     // 5. Add tracking information
-    await client.createShopReceiptShipment(shopId, receiptId, {
+    await client.createReceiptShipment(shopId, receiptId, {
       tracking_code: trackingCode,
       carrier_name: carrier,
       send_bcc: true // Notify customer
@@ -382,7 +382,7 @@ async function safeFulfillOrder(
   trackingInfo: any
 ) {
   try {
-    await client.createShopReceiptShipment(shopId, receiptId, trackingInfo);
+    await client.createReceiptShipment(shopId, receiptId, trackingInfo);
     return { success: true };
   } catch (error) {
     if (error instanceof EtsyApiError) {
@@ -437,7 +437,7 @@ class FulfillmentSystem {
     );
 
     if (tracking) {
-      await this.client.createShopReceiptShipment(
+      await this.client.createReceiptShipment(
         this.shopId,
         receipt.receipt_id.toString(),
         {

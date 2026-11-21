@@ -802,6 +802,13 @@ export class EtsyApiError extends Error {
           suggestions.push('  • transactions_r (for reading orders)');
         }
 
+        if (this.endpoint?.includes('/tracking')) {
+          suggestions.push('  • transactions_w (for adding tracking to orders)');
+          suggestions.push(
+            'In regions where Etsy enforces its Preferred Partner Program (such as Thailand for new keys and sellers from 7 December 2026), createReceiptShipment is limited to approved fulfillment partners'
+          );
+        }
+
         if (this.endpoint?.includes('/shops')) {
           suggestions.push('  • shops_r (for reading shop data)');
           suggestions.push('  • shops_w (for updating shop data)');
@@ -1093,6 +1100,11 @@ export interface EtsyShopReceipt {
   buyer_user_id: number;
   buyer_email: string;
   name: string;
+  /**
+   * The address fields (first_line, second_line, city, state, zip, formatted_address,
+   * country_iso) are withheld in regions where Etsy limits them to Preferred Partners,
+   * such as Thailand for new keys and sellers from 7 December 2026.
+   */
   first_line: string;
   second_line?: string;
   city: string;
