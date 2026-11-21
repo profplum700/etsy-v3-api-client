@@ -488,7 +488,9 @@ export class EtsyClient {
           throw new EtsyApiError(
             `Etsy API error: ${response.status} ${response.statusText}`,
             response.status,
-            errorText
+            errorText,
+            undefined,
+            url.slice(this.baseUrl.length)
           );
         }
 
@@ -1652,6 +1654,12 @@ export class EtsyClient {
    * Create a receipt shipment (add tracking info)
    * Endpoint: POST /v3/application/shops/{shop_id}/receipts/{receipt_id}/tracking
    * Scopes: transactions_w
+   *
+   * In regions where Etsy enforces its Preferred Partner Program, only approved
+   * fulfillment partners can call this, and other applications get a 403 even with
+   * the right scope. From 7 December 2026 that includes new personal keys for shops
+   * in Thailand and new Thai sellers on commercial applications that are not
+   * Preferred Partners or in an approved category. Existing keys and sellers keep access.
    */
   public async createReceiptShipment(
     shopId: string,
