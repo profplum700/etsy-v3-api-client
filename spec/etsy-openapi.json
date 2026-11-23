@@ -92,9 +92,6 @@
             "name": "ShopListing Inventory"
         },
         {
-            "name": "ShopListing Offering"
-        },
-        {
             "name": "ShopListing Product"
         },
         {
@@ -117,7 +114,6 @@
                 "ShopListing File",
                 "ShopListing Image",
                 "ShopListing Inventory",
-                "ShopListing Offering",
                 "ShopListing Personalization",
                 "ShopListing Product",
                 "ShopListing Translation",
@@ -927,7 +923,7 @@
             },
             "get": {
                 "operationId": "getListing",
-                "description": "<div class=\"wt-display-flex-xs wt-align-items-center wt-mt-xs-2 wt-mb-xs-3\"><span class=\"wt-badge wt-badge--notificationPrimary wt-bg-slime-tint wt-mr-xs-2\">General Release</span><a class=\"wt-text-link\" href=\"https://github.com/etsy/open-api/discussions\" target=\"_blank\" rel=\"noopener noreferrer\">Report bug</a></div><div class=\"wt-display-flex-xs wt-align-items-center wt-mt-xs-2 wt-mb-xs-3\"><p class=\"wt-text-body-01 banner-text\">This endpoint is ready for production use.</p></div>\n\nRetrieves a listing record by listing ID.",
+                "description": "<div class=\"wt-display-flex-xs wt-align-items-center wt-mt-xs-2 wt-mb-xs-3\"><span class=\"wt-badge wt-badge--notificationPrimary wt-bg-slime-tint wt-mr-xs-2\">General Release</span><a class=\"wt-text-link\" href=\"https://github.com/etsy/open-api/discussions\" target=\"_blank\" rel=\"noopener noreferrer\">Report bug</a></div><div class=\"wt-display-flex-xs wt-align-items-center wt-mt-xs-2 wt-mb-xs-3\"><p class=\"wt-text-body-01 banner-text\">This endpoint is ready for production use.</p></div>\n\nRetrieves a listing record by listing ID. Inactive, draft, and expired listings are visible only to the listing's owner, using an access token with the listings_r scope.",
                 "tags": ["ShopListing"],
                 "parameters": [
                     {
@@ -2228,7 +2224,7 @@
         "/v3/application/listings/{listing_id}/inventory": {
             "get": {
                 "operationId": "getListingInventory",
-                "description": "<div class=\"wt-display-flex-xs wt-align-items-center wt-mt-xs-2 wt-mb-xs-3\"><span class=\"wt-badge wt-badge--notificationPrimary wt-bg-slime-tint wt-mr-xs-2\">General Release</span><a class=\"wt-text-link\" href=\"https://github.com/etsy/open-api/discussions\" target=\"_blank\" rel=\"noopener noreferrer\">Report bug</a></div><div class=\"wt-display-flex-xs wt-align-items-center wt-mt-xs-2 wt-mb-xs-3\"><p class=\"wt-text-body-01 banner-text\">This endpoint is ready for production use.</p></div>\n\nRetrieves the inventory record for a listing. Listings you did not edit using the Etsy.com inventory tools have no inventory records. This endpoint returns SKU data if you are the owner of the inventory records being fetched.",
+                "description": "<div class=\"wt-display-flex-xs wt-align-items-center wt-mt-xs-2 wt-mb-xs-3\"><span class=\"wt-badge wt-badge--notificationPrimary wt-bg-slime-tint wt-mr-xs-2\">General Release</span><a class=\"wt-text-link\" href=\"https://github.com/etsy/open-api/discussions\" target=\"_blank\" rel=\"noopener noreferrer\">Report bug</a></div><div class=\"wt-display-flex-xs wt-align-items-center wt-mt-xs-2 wt-mb-xs-3\"><p class=\"wt-text-body-01 banner-text\">This endpoint is ready for production use.</p></div>\n\nRetrieves the inventory record for a listing. Listings you did not edit using the Etsy.com inventory tools have no inventory records. Only the owner of the listing may retrieve its inventory record.",
                 "tags": ["ShopListing Inventory"],
                 "parameters": [
                     {
@@ -2288,6 +2284,16 @@
                     },
                     "401": {
                         "description": "The request lacks valid authentication credentials. See the error message for details.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorSchema"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The request attempted to perform an operation it is not allowed to. See the error message for details.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -2780,104 +2786,10 @@
                 ]
             }
         },
-        "/v3/application/listings/{listing_id}/products/{product_id}/offerings/{product_offering_id}": {
-            "get": {
-                "operationId": "getListingOffering",
-                "description": "<div class=\"wt-display-flex-xs wt-align-items-center wt-mt-xs-2 wt-mb-xs-3\"><span class=\"wt-badge wt-badge--notificationPrimary wt-bg-slime-tint wt-mr-xs-2\">General Release</span><a class=\"wt-text-link\" href=\"https://github.com/etsy/open-api/discussions\" target=\"_blank\" rel=\"noopener noreferrer\">Report bug</a></div><div class=\"wt-display-flex-xs wt-align-items-center wt-mt-xs-2 wt-mb-xs-3\"><p class=\"wt-text-body-01 banner-text\">This endpoint is ready for production use.</p></div>\n\nGet an Offering for a Listing",
-                "tags": ["ShopListing Offering"],
-                "parameters": [
-                    {
-                        "name": "listing_id",
-                        "in": "path",
-                        "description": "",
-                        "required": true,
-                        "schema": {
-                            "type": "integer",
-                            "format": "int64",
-                            "minimum": 1
-                        }
-                    },
-                    {
-                        "name": "product_id",
-                        "in": "path",
-                        "description": "",
-                        "required": true,
-                        "schema": {
-                            "type": "integer",
-                            "format": "int64",
-                            "minimum": 1
-                        }
-                    },
-                    {
-                        "name": "product_offering_id",
-                        "in": "path",
-                        "description": "",
-                        "required": true,
-                        "schema": {
-                            "type": "integer",
-                            "format": "int64",
-                            "minimum": 1
-                        }
-                    },
-                    {
-                        "name": "legacy",
-                        "in": "query",
-                        "description": "This parameter is needed to enable new parameters and response values related to processing profiles.",
-                        "required": false,
-                        "schema": {
-                            "type": "boolean",
-                            "description": "This parameter is needed to enable new parameters and response values related to processing profiles."
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "A single ListingInventoryProductOffering",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ListingInventoryProductOffering"
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "A resource could not be found. See the error message for details.",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ErrorSchema"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "There was a problem with the request data. See the error message for details.",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ErrorSchema"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "The server encountered an internal error. See the error message for details.",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ErrorSchema"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/v3/application/listings/batch": {
             "get": {
                 "operationId": "getListingsByListingIds",
-                "description": "<div class=\"wt-display-flex-xs wt-align-items-center wt-mt-xs-2 wt-mb-xs-3\"><span class=\"wt-badge wt-badge--notificationPrimary wt-bg-slime-tint wt-mr-xs-2\">General Release</span><a class=\"wt-text-link\" href=\"https://github.com/etsy/open-api/discussions\" target=\"_blank\" rel=\"noopener noreferrer\">Report bug</a></div><div class=\"wt-display-flex-xs wt-align-items-center wt-mt-xs-2 wt-mb-xs-3\"><p class=\"wt-text-body-01 banner-text\">This endpoint is ready for production use.</p></div>\n\nAllows to query multiple listing ids at once. Limit 100 ids maximum per query.",
+                "description": "<div class=\"wt-display-flex-xs wt-align-items-center wt-mt-xs-2 wt-mb-xs-3\"><span class=\"wt-badge wt-badge--notificationPrimary wt-bg-slime-tint wt-mr-xs-2\">General Release</span><a class=\"wt-text-link\" href=\"https://github.com/etsy/open-api/discussions\" target=\"_blank\" rel=\"noopener noreferrer\">Report bug</a></div><div class=\"wt-display-flex-xs wt-align-items-center wt-mt-xs-2 wt-mb-xs-3\"><p class=\"wt-text-body-01 banner-text\">This endpoint is ready for production use.</p></div>\n\nAllows to query multiple listing ids at once. Limit 100 ids maximum per query. Inactive, draft, and expired listings are returned only to the listing's owner, using an access token with the listings_r scope, and are omitted from the results for everyone else.",
                 "tags": ["ShopListing"],
                 "parameters": [
                     {
@@ -6800,7 +6712,7 @@
                                     },
                                     "revenue_eligibility": {
                                         "type": "string",
-                                        "description": "A flag indicating if the shipment is tied to a revenue share agreement between Etsy and the vendor.",
+                                        "description": "A flag indicating if the shipment is tied to a revenue share agreement between Etsy and the vendor. Accepted values are \"1\" for true and \"0\" for false.",
                                         "nullable": true
                                     },
                                     "ship_from_country": {
@@ -8672,6 +8584,16 @@
                             }
                         }
                     },
+                    "404": {
+                        "description": "A resource could not be found. See the error message for details.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorSchema"
+                                }
+                            }
+                        }
+                    },
                     "500": {
                         "description": "The server encountered an internal error. See the error message for details.",
                         "content": {
@@ -8819,6 +8741,16 @@
                     },
                     "401": {
                         "description": "The request lacks valid authentication credentials. See the error message for details.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorSchema"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "A resource could not be found. See the error message for details.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -14323,7 +14255,7 @@
                     },
                     "digital_sale_message": {
                         "type": "string",
-                        "description": "A message string sent to users who purchase a digital item from this shop.",
+                        "description": "A message string sent to users who purchase a digital item from this shop. Only returned to the shop owner; it is null for any other caller.",
                         "nullable": true
                     },
                     "update_date": {

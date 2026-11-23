@@ -51,7 +51,7 @@ export interface paths {
         /**
          * @description <div class="wt-display-flex-xs wt-align-items-center wt-mt-xs-2 wt-mb-xs-3"><span class="wt-badge wt-badge--notificationPrimary wt-bg-slime-tint wt-mr-xs-2">General Release</span><a class="wt-text-link" href="https://github.com/etsy/open-api/discussions" target="_blank" rel="noopener noreferrer">Report bug</a></div><div class="wt-display-flex-xs wt-align-items-center wt-mt-xs-2 wt-mb-xs-3"><p class="wt-text-body-01 banner-text">This endpoint is ready for production use.</p></div>
          *
-         *     Retrieves a listing record by listing ID.
+         *     Retrieves a listing record by listing ID. Inactive, draft, and expired listings are visible only to the listing's owner, using an access token with the listings_r scope.
          */
         get: operations["getListing"];
         put?: never;
@@ -119,7 +119,7 @@ export interface paths {
         /**
          * @description <div class="wt-display-flex-xs wt-align-items-center wt-mt-xs-2 wt-mb-xs-3"><span class="wt-badge wt-badge--notificationPrimary wt-bg-slime-tint wt-mr-xs-2">General Release</span><a class="wt-text-link" href="https://github.com/etsy/open-api/discussions" target="_blank" rel="noopener noreferrer">Report bug</a></div><div class="wt-display-flex-xs wt-align-items-center wt-mt-xs-2 wt-mb-xs-3"><p class="wt-text-body-01 banner-text">This endpoint is ready for production use.</p></div>
          *
-         *     Retrieves the inventory record for a listing. Listings you did not edit using the Etsy.com inventory tools have no inventory records. This endpoint returns SKU data if you are the owner of the inventory records being fetched.
+         *     Retrieves the inventory record for a listing. Listings you did not edit using the Etsy.com inventory tools have no inventory records. Only the owner of the listing may retrieve its inventory record.
          */
         get: operations["getListingInventory"];
         /**
@@ -169,27 +169,6 @@ export interface paths {
          *     Retrieves a listing's personalization questions by listing ID.
          */
         get: operations["getListingPersonalization"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v3/application/listings/{listing_id}/products/{product_id}/offerings/{product_offering_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * @description <div class="wt-display-flex-xs wt-align-items-center wt-mt-xs-2 wt-mb-xs-3"><span class="wt-badge wt-badge--notificationPrimary wt-bg-slime-tint wt-mr-xs-2">General Release</span><a class="wt-text-link" href="https://github.com/etsy/open-api/discussions" target="_blank" rel="noopener noreferrer">Report bug</a></div><div class="wt-display-flex-xs wt-align-items-center wt-mt-xs-2 wt-mb-xs-3"><p class="wt-text-body-01 banner-text">This endpoint is ready for production use.</p></div>
-         *
-         *     Get an Offering for a Listing
-         */
-        get: operations["getListingOffering"];
         put?: never;
         post?: never;
         delete?: never;
@@ -313,7 +292,7 @@ export interface paths {
         /**
          * @description <div class="wt-display-flex-xs wt-align-items-center wt-mt-xs-2 wt-mb-xs-3"><span class="wt-badge wt-badge--notificationPrimary wt-bg-slime-tint wt-mr-xs-2">General Release</span><a class="wt-text-link" href="https://github.com/etsy/open-api/discussions" target="_blank" rel="noopener noreferrer">Report bug</a></div><div class="wt-display-flex-xs wt-align-items-center wt-mt-xs-2 wt-mb-xs-3"><p class="wt-text-body-01 banner-text">This endpoint is ready for production use.</p></div>
          *
-         *     Allows to query multiple listing ids at once. Limit 100 ids maximum per query.
+         *     Allows to query multiple listing ids at once. Limit 100 ids maximum per query. Inactive, draft, and expired listings are returned only to the listing's owner, using an access token with the listings_r scope, and are omitted from the results for everyone else.
          */
         get: operations["getListingsByListingIds"];
         put?: never;
@@ -2691,7 +2670,7 @@ export interface components {
              * @description The number of digital listings in the shop.
              */
             digital_listing_count?: number;
-            /** @description A message string sent to users who purchase a digital item from this shop. */
+            /** @description A message string sent to users who purchase a digital item from this shop. Only returned to the shop owner; it is null for any other caller. */
             digital_sale_message?: string | null;
             /** @description When true, the shop accepted OR declined after viewing structured policies onboarding. */
             has_onboarded_structured_policies?: boolean;
@@ -4647,6 +4626,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorSchema"];
                 };
             };
+            /** @description The request attempted to perform an operation it is not allowed to. See the error message for details. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorSchema"];
+                };
+            };
             /** @description A resource could not be found. See the error message for details. */
             404: {
                 headers: {
@@ -4920,60 +4908,6 @@ export interface operations {
             };
             /** @description The request attempted to perform an operation it is not allowed to. See the error message for details. */
             403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorSchema"];
-                };
-            };
-            /** @description A resource could not be found. See the error message for details. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorSchema"];
-                };
-            };
-            /** @description The server encountered an internal error. See the error message for details. */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorSchema"];
-                };
-            };
-        };
-    };
-    getListingOffering: {
-        parameters: {
-            query?: {
-                /** @description This parameter is needed to enable new parameters and response values related to processing profiles. */
-                legacy?: boolean;
-            };
-            header?: never;
-            path: {
-                listing_id: number;
-                product_id: number;
-                product_offering_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description A single ListingInventoryProductOffering */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ListingInventoryProductOffering"];
-                };
-            };
-            /** @description There was a problem with the request data. See the error message for details. */
-            400: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -8844,6 +8778,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorSchema"];
                 };
             };
+            /** @description A resource could not be found. See the error message for details. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorSchema"];
+                };
+            };
             /** @description The server encountered an internal error. See the error message for details. */
             500: {
                 headers: {
@@ -9048,6 +8991,15 @@ export interface operations {
             };
             /** @description The request attempted to perform an operation it is not allowed to. See the error message for details. */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorSchema"];
+                };
+            };
+            /** @description A resource could not be found. See the error message for details. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -10107,7 +10059,7 @@ export interface operations {
                     mail_class?: string | null;
                     /** @description Message to include in notification to the buyer. */
                     note_to_buyer?: string;
-                    /** @description A flag indicating if the shipment is tied to a revenue share agreement between Etsy and the vendor. */
+                    /** @description A flag indicating if the shipment is tied to a revenue share agreement between Etsy and the vendor. Accepted values are "1" for true and "0" for false. */
                     revenue_eligibility?: string | null;
                     /** @description If true, the shipping notification will be sent to the seller as well */
                     send_bcc?: boolean;
